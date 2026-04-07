@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Agrandir';
+  src: url('/fonts/Agrandir-Regular.woff2') format('woff2'),
+       url('/fonts/Agrandir-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('/fonts/Poppins-Regular.woff2') format('woff2'),
+       url('/fonts/Poppins-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@keyframes float {
+  0%   { transform: translateY(0px); }
+  50%  { transform: translateY(-15px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ── Print Styles ────────────────────────────────────────────────────────── */
+@media print {
+
+  /* Hide everything on the page */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show only the receipt content */
+  #receipt-content,
+  #receipt-content * {
+    visibility: visible;
+  }
+
+  /* Position receipt to fill the printed page */
+  #receipt-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: 100%;
+    padding: 40px;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  /* Hide action buttons when printing */
+  #receipt-actions {
+    display: none !important;
+  }
+
+  /* Hide browser default header/footer (URL, date, page number) */
+  @page {
+    margin: 1cm;
+    size: A4 portrait;
+  }
+
+  /* Ensure images print correctly */
+  img {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Ensure colors print correctly */
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
