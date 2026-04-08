@@ -18,7 +18,7 @@ const form = useForm({
     notes:              '',
 })
 
-const feeTypeOptions      = ['Standard', 'Group', 'Waived']
+const feeTypeOptions      = ['Regular', 'Senior Citizen', 'Child (0 - 12 years old)']
 const visitorCountOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 // ── Phase 4 Step 8: Mandatory waiver reasons ──────────────────────────────────
@@ -113,7 +113,7 @@ const submit = () => {
 
                         <!-- Fee Type -->
                         <div class="relative">
-                            <label class="block text-gray-700 text-sm font-bold mb-2">Environmental Fee Type</label>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Tourist Type</label>
                             <button type="button" @click="openFeeType = !openFeeType"
                                 class="w-full border py-2 px-3 rounded text-left bg-white text-sm">
                                 {{ form.fee_type || 'Select fee type' }}
@@ -129,38 +129,15 @@ const submit = () => {
                             <p v-if="form.errors.fee_type" class="text-red-500 text-xs mt-1">{{ form.errors.fee_type }}</p>
                         </div>
 
-                        <!-- Number of Visitors — hidden when Waived (1 always applies) -->
                         <div v-if="form.fee_type !== 'Waived'" class="relative">
-                            <label class="block text-gray-700 text-sm font-bold mb-2">Number of Visitors</label>
-                            <button type="button" @click="openVisitorCount = !openVisitorCount"
-                                class="w-full border py-2 px-3 rounded text-left bg-white text-sm">
-                                {{ form.number_of_visitors }}
-                            </button>
-                            <ul v-show="openVisitorCount"
-                                class="absolute z-10 w-full mt-1 border rounded bg-white shadow-md max-h-60 overflow-auto">
-                                <li v-for="option in visitorCountOptions" :key="option"
-                                    @click="selectVisitorCount(option)"
-                                    class="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm">
-                                    {{ option }}
-                                </li>
-                            </ul>
-                            <p v-if="form.errors.number_of_visitors" class="text-red-500 text-xs mt-1">{{ form.errors.number_of_visitors }}</p>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Environmental Fee</label>
+                            <input
+                                v-model="form.environmental_fee"
+                                type="number"
+                                class="w-full border py-2 px-3 rounded bg-white text-sm border-gray-300 focus:outline-none focus:ring-0 focus:border-gray-300"
+                            />
                         </div>
-
-                        <!-- Payment Method -->
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2">Payment Method</label>
-                            <div class="flex flex-col gap-2 mt-2">
-                                <label class="inline-flex items-center">
-                                    <input type="radio" value="Cash" v-model="form.payment_method"
-                                        class="form-radio text-blue-500" />
-                                    <span class="ml-2 text-sm">Cash</span>
-                                </label>
-                            </div>
-                            <p class="text-xs text-gray-400 mt-1">Online payment is not yet available in Version 1.0.</p>
-                        </div>
-
-                        <!-- Notes -->
+                        
                         <div>
                             <label class="block text-gray-700 text-sm font-bold mb-2">
                                 Notes <span class="text-gray-400 font-normal">(optional)</span>

@@ -26,36 +26,49 @@
             </div>
         </div>
 
-        <div class="flex space-between justify-center">
-          <Link :href="route('systemsettings')"
-                class="px-4 py-2 text-gray-700 rounded hover:text-gray-900 font-semibold">
+        <div class="border-b border-gray-300 flex justify-center gap-6">
+
+            <Link
+            :href="route('systemsettings')"
+            :class="navClass('systemsettings')"
+            >
             System Settings
-          </Link>
-          <Link :href="route('usermanagement')" 
-            class="px-4 py-2 text-gray-700 rounded hover:text-gray-900 font-semibold">
+            </Link>
+
+            <Link
+            :href="route('usermanagement')"
+            :class="navClass('usermanagement')"
+            >
             User Management
-          </Link>
-          
-          <Link :href="route('auditlogs')" 
-                class="px-4 py-2 text-gray-700 rounded hover:text-gray-900 font-semibold">
+            </Link>
+
+            <Link
+            :href="route('auditlogs')"
+            :class="navClass('auditlogs')"
+            >
             Audit Logs
-          </Link>
-          
-          <Link :href="route('websitecontent')" 
-                class="px-4 py-2 text-gray-700 rounded hover:text-gray-900 font-semibold">
+            </Link>
+
+            <Link
+            :href="route('websitecontent')"
+            :class="navClass('websitecontent')"
+            >
             Website Content
-          </Link>
-          
-          <Link :href="route('virtualtour')" 
-                class="px-4 py-2 text-gray-700 rounded hover:text-gray-900 font-semibold">
+            </Link>
+
+            <Link
+            :href="route('virtualtour')"
+            :class="navClass('virtualtour')"
+            >
             Virtual Tour
-          </Link>
-          
-          <Link :href="route('securitysettings')" 
-                class="px-4 py-2 text-gray-700 rounded hover:text-gray-900 font-semibold">
+            </Link>
+
+            <Link
+            :href="route('securitysettings')"
+            :class="navClass('securitysettings')"
+            >
             Security
-          </Link>
-          
+            </Link>
 
         </div>
 
@@ -115,4 +128,11 @@
 import { Link } from '@inertiajs/vue3';
 import { route } from 'ziggy-js'; // <-- correct import
 import LandingLayout from '@/Layouts/SidebarLayout.vue';
+
+const navClass = (routeName) => [
+  'pb-2 text-sm font-semibold transition border-b-2',
+  route().current(routeName)
+    ? 'text-gray-900 border-gray-900'
+    : 'text-gray-400 border-transparent hover:text-gray-600'
+]
 </script>
