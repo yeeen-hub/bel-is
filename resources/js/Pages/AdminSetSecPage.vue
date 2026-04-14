@@ -29,8 +29,8 @@
         <div class="border-b border-gray-300 flex justify-center gap-6">
 
             <Link
-            :href="route('systemsettings')"
-            :class="navClass('systemsettings')"
+            :href="route('settings')"
+            :class="navClass('settings')"
             >
             System Settings
             </Link>

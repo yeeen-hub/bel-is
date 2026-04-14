@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
+use App\Models\FeeCategory;
 
 class SettingsController extends Controller
 {
@@ -18,6 +19,7 @@ class SettingsController extends Controller
                 'email' => Auth::user()->email,
                 'role'  => Auth::user()->roles->first()?->name,
             ],
+            'feeCategories' => FeeCategory::orderBy('id')->get(), // ← add this
         ]);
     }
 

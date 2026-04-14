@@ -11,6 +11,7 @@ use App\Http\Controllers\VirtualTourController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\PublicRegController;
+use App\Http\Controllers\FeeCategoryController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -96,9 +97,11 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('AdminRepDemoPage');
     })->name('demographics');
 
-    Route::get('/systemsettings', function () {
-        return Inertia::render('AdminSetPage');
-    })->name('systemsettings');
+    Route::get('/systemsettings', [FeeCategoryController::class, 'index'])
+        ->name('systemsettings');
+
+    Route::post('/admin/settings/fee-categories', [FeeCategoryController::class, 'update'])
+        ->name('fee-categories.update');
 
     Route::get('/usermanagement', function () {
         return Inertia::render('AdminSetUMPage');
