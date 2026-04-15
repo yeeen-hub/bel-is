@@ -103,9 +103,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/settings/fee-categories', [FeeCategoryController::class, 'update'])
         ->name('fee-categories.update');
 
-    Route::get('/usermanagement', function () {
-        return Inertia::render('AdminSetUMPage');
-    })->name('usermanagement');
+
+    // ── User Management Settings ──────────────────────────────────────────────────────────────
+    Route::get('/usermanagement', [UserController::class, 'index'])->name('usermanagement');
+    Route::post('/usermanagement', [UserController::class, 'store'])->name('usermanagement.store');
+    Route::patch('/usermanagement/{user}', [UserController::class, 'update'])->name('usermanagement.update');
+    Route::patch('/usermanagement/{user}/toggle', [UserController::class, 'toggleActive'])->name('usermanagement.toggle');
+    Route::post('/usermanagement/bulk-destroy', [UserController::class, 'bulkDestroy'])->name('usermanagement.bulk-destroy');
     
     Route::get('/auditlogs', function () {
         return Inertia::render('AdminSetALPage');
