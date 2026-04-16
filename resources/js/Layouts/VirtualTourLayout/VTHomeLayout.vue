@@ -3,6 +3,15 @@
     :style="{ backgroundImage: `url(${bg})` }"
     class="relative h-screen overflow-hidden bg-cover bg-center m-0 p-0"
   >
+
+    <router-link
+      to="/"
+      class="absolute top-6 left-6 z-50 flex items-center justify-center transition-all duration-300 pointer-events-auto group"
+      title="Back to Landing Page"
+    >
+      <i class="fa-solid fa-arrow-left text-3xl text-orange-500 group-hover:text-orange-600 group-hover:-translate-x-2 transition-all"></i>
+    </router-link>
+
     <div class="absolute inset-0 flex items-center justify-center z-10">
       <img
         :src="mapImg"
@@ -75,21 +84,55 @@
 </template>
 
 <script>
+// ✅ FIX: Import all assets statically at the top.
+// Previously, new URL('@/assets/...', import.meta.url).href was used inside data(),
+// which is a Vite-only pattern and does NOT work with Webpack/Laravel Mix —
+// it resolves to just the bare filename (e.g. "bg.png") causing 404 errors.
+import bgImg from '../../../assets/bg.png'
+import mapImg from '../../../assets/map.png'
+import textImg from '../../../assets/text.png'
+import jambooBeachIcon from '../../../assets/Jamboo Beach.png'
+import threeSistersIcon from '../../../assets/The 3 Sisters Beach House.png'
+import denPasarIcon from '../../../assets/Den Pasar Nasog Villa.png'
+import mackysIcon from '../../../assets/Mackys Beach Resort.png'
+import belisCoveIcon from '../../../assets/Belis Cove Beach Resort.png'
+import whiteSandIcon from '../../../assets/white sand hinugtan beach resort.png'
+import hinugtanBeachResortIcon from '../../../assets/Hinugtan Beach Resort.png'
+import arielsPointIcon from '../../../assets/Ariels Point.png'
+import tuburanIcon from '../../../assets/Tuburan Cove Beach Resort.png'
+import treeIcon from '../../../assets/tree.png'
+import islandIcon from '../../../assets/island.png'
+import belisIcon from '../../../assets/belis.png'
+import cliffIcon from '../../../assets/cliff.png'
+import sunIcon from '../../../assets/sun.png'
+import hinugtanIcon from '../../../assets/hinugtan.png'
+import rockIcon from '../../../assets/rock.png'
+import shellsIcon from '../../../assets/shells.png'
+import kuboIcon from '../../../assets/kubo.png'
+
 export default {
   data() {
     return {
       hoveredIndex: null,
-      bg: new URL('@/assets/bg.png', import.meta.url).href,
-      mapImg: new URL('@/assets/map.png', import.meta.url).href,
-      text: new URL('@/assets/text.png', import.meta.url).href,
-      
+      bg: bgImg,
+      mapImg: mapImg,
+      text: textImg,
 
       spots: [
         {
+          id: 1,
+          name: "Bel-is Cove Beach Resort",
+          icon: belisCoveIcon,
+          link: "https://www.beliscove.com/",
+          top: "29%",
+          left: "51%",
+          hover: true
+        },
+        {
           id: 2,
           name: "Jamboo Beach",
-          icon: new URL('@/assets/Jamboo Beach.png', import.meta.url).href,
-          link: "https://www.beliscove.com/",
+          icon: jambooBeachIcon,
+          link: " ",
           top: "2%",
           left: "65%",
           hover: true
@@ -97,8 +140,8 @@ export default {
         {
           id: 3,
           name: "The 3 Sister's Beach House",
-          icon: new URL('@/assets/The 3 Sisters Beach House.png', import.meta.url).href,
-          link: "https://www.beliscove.com/",
+          icon: threeSistersIcon,
+          link: " ",
           top: "7%",
           left: "59%",
           hover: true
@@ -106,8 +149,8 @@ export default {
         {
           id: 4,
           name: "Den Pasar Nasog Villa",
-          icon: new URL('@/assets/Den Pasar Nasog Villa.png', import.meta.url).href,
-          link: "https://www.beliscove.com/",
+          icon: denPasarIcon,
+          link: " ",
           top: "15%",
           left: "65%",
           hover: true
@@ -115,26 +158,17 @@ export default {
         {
           id: 5,
           name: "Mackys Beach Resort",
-          icon: new URL('@/assets/Mackys Beach Resort.png', import.meta.url).href,
-          link: "https://www.beliscove.com/",
+          icon: mackysIcon,
+          link: " ",
           top: "15%",
           left: "54%",
           hover: true
         },
         {
-          id: 1,
-          name: "Bel-is Cove Beach Resort",
-          icon: new URL('@/assets/Belis Cove Beach Resort.png', import.meta.url).href,
-          link: "https://www.beliscove.com/",
-          top: "29%",
-          left: "51%",
-          hover: true
-        },
-        {
           id: 6,
           name: "White Sand Hinugtan Beach Resort",
-          icon: new URL('@/assets/white sand hinugtan beach resort.png', import.meta.url).href,
-          link: "https://www.beliscove.com/",
+          icon: whiteSandIcon,
+          link: " ",
           top: "38%",
           left: "42%",
           size: "w-[110px]",
@@ -143,8 +177,8 @@ export default {
         {
           id: 7,
           name: "Hinugtan White Beach Resort",
-          icon: new URL('@/assets/Hinugtan Beach Resort.png', import.meta.url).href,
-          link: "https://www.beliscove.com/",
+          icon: hinugtanBeachResortIcon,
+          link: " ",
           top: "49%",
           left: "32%",
           size: "w-[120px]",
@@ -153,8 +187,8 @@ export default {
         {
           id: 8,
           name: "Ariel's Point",
-          icon: new URL('@/assets/Ariels Point.png', import.meta.url).href,
-          link: "https://www.beliscove.com/",
+          icon: arielsPointIcon,
+          link: " ",
           top: "51%",
           left: "24%",
           hover: true
@@ -162,8 +196,8 @@ export default {
         {
           id: 9,
           name: "Tuburan Cove Beach Resort",
-          icon: new URL('@/assets/Tuburan Cove Beach Resort.png', import.meta.url).href,
-          link: "https://www.beliscove.com/",
+          icon: tuburanIcon,
+          link: " ",
           top: "64%",
           left: "28%",
           size: "w-[90px]",
@@ -171,14 +205,14 @@ export default {
         },
         {
           name: "Tree",
-          icon: new URL('@/assets/tree.png', import.meta.url).href,
+          icon: treeIcon,
           top: "20%",
           left: "59%",
           hover: false
         },
         {
           name: "Island",
-          icon: new URL('@/assets/island.png', import.meta.url).href,
+          icon: islandIcon,
           top: "28%",
           left: "64%",
           size: "w-[120px]",
@@ -186,7 +220,7 @@ export default {
         },
         {
           name: "Belis",
-          icon: new URL('@/assets/belis.png', import.meta.url).href,
+          icon: belisIcon,
           top: "35%",
           left: "59%",
           size: "w-[120px]",
@@ -194,21 +228,21 @@ export default {
         },
         {
           name: "Cliff",
-          icon: new URL('@/assets/cliff.png', import.meta.url).href,
+          icon: cliffIcon,
           top: "43%",
           left: "57%",
           hover: false
         },
         {
           name: "Sun",
-          icon: new URL('@/assets/sun.png', import.meta.url).href,
+          icon: sunIcon,
           top: "45%",
           left: "49%",
           hover: false
         },
         {
           name: "Hinugtan",
-          icon: new URL('@/assets/hinugtan.png', import.meta.url).href,
+          icon: hinugtanIcon,
           top: "55%",
           left: "41%",
           size: "w-[150px]",
@@ -216,14 +250,14 @@ export default {
         },
         {
           name: "Tree",
-          icon: new URL('@/assets/tree.png', import.meta.url).href,
+          icon: treeIcon,
           top: "57%",
           left: "51%",
           hover: false
         },
         {
           name: "Stone",
-          icon: new URL('@/assets/rock.png', import.meta.url).href,
+          icon: rockIcon,
           top: "61%",
           left: "45%",
           size: "w-[110px]",
@@ -231,7 +265,7 @@ export default {
         },
         {
           name: "Shells",
-          icon: new URL('@/assets/shells.png', import.meta.url).href,
+          icon: shellsIcon,
           top: "58%",
           left: "37%",
           size: "w-[110px]",
@@ -239,12 +273,12 @@ export default {
         },
         {
           name: "Kubo",
-          icon: new URL('@/assets/kubo.png', import.meta.url).href,
+          icon: kuboIcon,
           top: "72%",
           left: "34%",
           size: "w-[110px]",
           hover: false
-        } 
+        }
       ]
     }
   },

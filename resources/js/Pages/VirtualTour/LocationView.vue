@@ -20,7 +20,7 @@
 </template>
 
 <script setup>
-import PanoramaViewer from '@/Pages/Virtual Tour/PanoramaViewer.vue'
+import PanoramaViewer from '@/Pages/VirtualTour/PanoramaViewer.vue'
 import { locations } from '@/data/locations'
 import { useRoute } from 'vue-router'
 import { computed } from 'vue'

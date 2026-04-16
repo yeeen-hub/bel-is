@@ -5,6 +5,7 @@ import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from 'ziggy-js';
+import router from './router/index.js'; // <--- 1. IMPORT your virtual tour router
 
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -27,6 +28,7 @@ createInertiaApp({
         vueApp
             .use(plugin)
             .use(ZiggyVue)
+            .use(router) // <--- 2. ADD THIS LINE to activate the virtual tour routing
             .component('FontAwesomeIcon', FontAwesomeIcon)
             .mount(el);
     },

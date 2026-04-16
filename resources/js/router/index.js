@@ -1,22 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import Home from '../Pages/Virtual Tour/Home.vue'
-import HomeLayout from '@/Layouts/Virtual Tour/HomeLayout.vue'
-import BelisLayout from '@/Layouts/Virtual Tour/BelisLayout.vue'
+import HomeLayout from '@/Layouts/VirtualTourLayout/VTHomeLayout.vue' 
+import BelisLayout from '@/Layouts/VirtualTourLayout/BelisLayout.vue'
 
 const routes = [
   {
-    path: '/Home',
-    component: HomeLayout,
-    children: [
-      {
-        path: '',
-        name: 'home',
-        component: Home
-      }
-    ]
+    path: '/VTHome',
+    name: 'home',
+    component: HomeLayout
   },
-
   {
     path: '/location/:id',
     component: BelisLayout,
@@ -24,7 +16,7 @@ const routes = [
       {
         path: '',
         name: 'location-view',
-        component: () => import('@/Pages/Virtual Tour/LocationView.vue')
+        component: () => import('@/Pages/VirtualTour/LocationView.vue')
       }
     ]
   }

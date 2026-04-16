@@ -32,7 +32,7 @@
             :href="route('settings')"
             :class="navClass('settings')"
             >
-            System Settings
+            General Settings
             </Link>
 
             <Link

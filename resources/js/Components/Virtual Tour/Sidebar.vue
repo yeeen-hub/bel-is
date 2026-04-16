@@ -1,3 +1,4 @@
+// app/resources/js/Components/Virtual Tour/
 <template>
   <div class="fixed left-0 top-0 z-50 flex h-screen">
 
@@ -14,7 +15,7 @@
       <div class="relative z-10 flex flex-col h-full p-4 w-64">
 
         <router-link
-          to="/Home"
+          to="/VTHome"
           class="inline-flex items-center gap-3 bg-transparent border-none cursor-pointer p-2 mt-2 mb-2 ml-2"
         >
           <i class="fa-solid fa-chevron-left text-white"></i>
@@ -24,7 +25,7 @@
         </router-link>
 
         <div class="flex justify-center mb-2">
-          <img src="@/assets/text.png" class="w-[550px] h-auto object-contain" />
+          <img src="../../../assets/text.png" class="w-[550px] h-auto object-contain" />
         </div>
 
         <nav class="flex flex-col gap-3">
@@ -111,13 +112,13 @@
       }"
     >
       <router-link
-        to="/Home"
+        to="/VTHome"
         class="flex items-center justify-center w-9 h-9 border-none cursor-pointer text-white mb-1 mt-2">
         <i class="fa-solid fa-chevron-left text-sm"></i>
       </router-link>
 
       <div class="flex justify-center mb-1 mt-4">
-          <img src="@/assets/text.png" class="w-[55px] h-auto object-contain" />
+          <img src="../../../assets/text.png" class="w-[55px] h-auto object-contain" />
         </div>
 
       <nav class="flex flex-col gap-4 mt-8">
@@ -169,7 +170,7 @@
 </template>
 
 <script setup>
-import sidebarBg from '@/assets/sidebarbg.png'
+import sidebarBg from '../../../assets/sidebarbg.png'
 import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { locations } from '@/data/locations'

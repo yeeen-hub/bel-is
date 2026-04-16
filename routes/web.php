@@ -34,6 +34,16 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
+// ── Virtual Tour ────────────────────────────────────────
+Route::get('/VTHome', function () {
+    return inertia('YourMainPageName'); // The page where your Virtual Tour lives
+});
+
+// If you have many virtual tour routes, you might need a catch-all
+Route::get('/location/{id}', function () {
+    return inertia('YourMainPageName');
+});
+
 // ── Public Pre-Registration (Phase 2) ────────────────────────────────────────
 // Privacy-Shielded: never auto-fills, never shows returning visitor data.
 // Creates VisitorVisit (source='pre_registration') — hidden from all records

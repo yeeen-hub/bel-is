@@ -26,7 +26,7 @@
 
         <!-- Navigation Tabs -->
         <div class="border-b border-gray-300 flex justify-center gap-6">
-            <Link :href="route('settings')" :class="navClass('settings')">System Settings</Link>
+            <Link :href="route('settings')" :class="navClass('settings')">General Settings</Link>
             <Link :href="route('usermanagement')" :class="navClass('usermanagement')">User Management</Link>
             <Link :href="route('auditlogs')" :class="navClass('auditlogs')">Audit Logs</Link>
             <Link :href="route('websitecontent')" :class="navClass('websitecontent')">Website Content</Link>

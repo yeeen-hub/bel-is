@@ -1,49 +1,78 @@
 <script setup>
 import { Link } from '@inertiajs/vue3'
-import { ZiggyVue } from 'ziggy-js'
+import { ref, onMounted, onUnmounted } from 'vue'
+
+const activeSection = ref('home')
+let observer = null
+
+onMounted(() => {
+  const sections = document.querySelectorAll('section[data-section]')
+
+  observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          activeSection.value = entry.target.dataset.section
+        }
+      })
+    },
+    {
+      root: document.getElementById('scroll-container'),
+      threshold: 0.5,
+    }
+  )
+
+  sections.forEach(s => observer.observe(s))
+})
+
+onUnmounted(() => {
+  if (observer) observer.disconnect()
+})
+
+function navClass(section) {
+  return activeSection.value === section
+    ? 'underline decoration-blue-700 underline-offset-4 font-semibold transition'
+    : 'hover:underline hover:decoration-blue-700 hover:underline-offset-4 transition'
+}
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col">
+  <!-- Snap-scroll root container -->
+  <div id="scroll-container" class="h-screen overflow-y-scroll snap-y snap-mandatory scroll-smooth">
 
-    <img 
-      src="/images/bg1.jpg" 
-      class="absolute inset-0 w-full h-full object-cover -z-10"
-    />
+    <!-- Fixed Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-7 py-5 pointer-events-none">
+      <h1 class="font-heading text-xl text-white pointer-events-auto">BEL-IS</h1>
 
-    <header class="flex justify-between items-center p-7 text-black">
-      <h1 class="font-heading text-xl text-white">BEL-IS</h1>
-
-      <nav class="fixed top-7 left-1/2 -translate-x-1/2 z-50">
+      <nav class="pointer-events-auto">
         <div class="inline-flex bg-white bg-opacity-20 backdrop-blur-sm px-6 py-3 rounded-md space-x-4 font-paragraph text-base text-black">
-          <Link :href="route('home')" class="hover:underline hover:decoration-blue-700 hover:underline-offset-4 transition">
-              Home
-          </Link>
-          <a href="#attractions" class="hover:underline hover:decoration-blue-700 hover:underline-offset-4 transition">Attractions</a>
-          <a href="#map" class="hover:underline hover:decoration-blue-700 hover:underline-offset-4 transition">Map</a>
-          <a href="#contact" class="hover:underline hover:decoration-blue-700 hover:underline-offset-4 transition">Contact</a>
-          <a href="#about" class=" hover:underline hover:decoration-blue-700 hover:underline-offset-4 transition">About</a>
+          <Link :href="route('home')" :class="navClass('home')">Home</Link>
+          <a href="#attractions" :class="navClass('attractions')">Attractions</a>
+          <a href="#map" :class="navClass('map')">Map</a>
+          <a href="#about" :class="navClass('about')">About</a>
+          <a href="#pre-register" :class="navClass('pre-register')">Pre-Register</a>
+          <a href="#contact" :class="navClass('contact')">Contact</a>
         </div>
       </nav>
 
-      <div>
-        <Link :href="route('login')"> 
+      <div class="pointer-events-auto">
+        <Link :href="route('login')">
           <img src="/images/brgylogo.png" alt="Barangay Logo" class="h-14 object-cover">
         </Link>
       </div>
-
     </header>
 
-    <main class="flex-1 px-4">
-      <slot /> <!-- This is where the page content will appear -->
+    <!-- Page Sections (via slot) -->
+    <main>
+      <slot />
     </main>
 
-     <footer class="bg-black text-white mt-16">
+    <!-- Footer — its own snap point -->
+    <footer class="snap-start bg-black text-white">
       <div class="max-w-6xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-3 gap-8">
-        
+
         <div>
           <h2 class="text-xl font-bold mb-2">BEL-IS</h2>
-        
         </div>
 
         <div class="flex items-center justify-center">
@@ -51,15 +80,16 @@ import { ZiggyVue } from 'ziggy-js'
             <li><a href="#home" class="hover:text-white">Home</a></li>
             <li><a href="#attractions" class="hover:text-white">Attractions</a></li>
             <li><a href="#map" class="hover:text-white">Map</a></li>
+            <li><a href="#about" class="hover:text-white">About</a></li>
+            <li><a href="#pre-register" class="hover:text-white">Pre-Register</a></li>
             <li><a href="#contact" class="hover:text-white">Contact</a></li>
           </ul>
         </div>
 
         <div class="flex justify-end items-center">
-          <button class="group flex items-center gap-2 border-2 border-white text-white px-6 py-3 rounded-full 
-               hover: hover:border-blue-500 transition">
+          <button class="group flex items-center gap-2 border-2 border-white text-white px-6 py-3 rounded-full hover:border-blue-500 transition">
             Explore Destination
-            <svg class="w-5 h-5 stroke-current group-hover:text-white group-hover:stroke-blue-500 transition" 
+            <svg class="w-5 h-5 stroke-current group-hover:stroke-blue-500 transition"
                 fill="none" stroke-width="2" viewBox="0 0 24 24">
               <path d="M5 12h14M13 5l7 7-7 7"/>
             </svg>
@@ -68,15 +98,14 @@ import { ZiggyVue } from 'ziggy-js'
 
       </div>
 
-      <hr/>
-      
-      <div class="flex items-center justify-center text-center text-sm text-gray-400 p-4 gap-8">
+      <hr class="border-gray-700"/>
 
-        <p> Terms of Use</p>
-        <p> Privacy Policy</p>
+      <div class="flex items-center justify-center text-center text-sm text-gray-400 p-4 gap-8">
+        <p>Terms of Use</p>
+        <p>Privacy Policy</p>
         <p>© 2026 Bel-is Developer Team. All Rights Reserved</p>
-        
       </div>
     </footer>
+
   </div>
 </template>
