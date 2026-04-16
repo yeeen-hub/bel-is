@@ -27,21 +27,12 @@
 
     <!-- Nav Tabs (Permission Protected) -->
     <div class="border-b border-gray-300 flex justify-center gap-6">
-<<<<<<< HEAD
-      <Link :href="route('systemsettings')" :class="navClass('systemsettings')">General Settings</Link>
-      <Link :href="route('usermanagement')" :class="navClass('usermanagement')">User Management</Link>
-      <Link :href="route('auditlogs')" :class="navClass('auditlogs')">Audit Logs</Link>
-      <Link :href="route('websitecontent')" :class="navClass('websitecontent')">Website Content</Link>
-      <Link :href="route('virtualtour')" :class="navClass('virtualtour')">Virtual Tour</Link>
-      <Link :href="route('securitysettings')" :class="navClass('securitysettings')">Security</Link>
-=======
-      <Link v-if="can('manage system')" :href="route('systemsettings')" :class="navClass('systemsettings')">System Settings</Link>
+      <Link v-if="can('manage system')" :href="route('systemsettings')" :class="navClass('systemsettings')">General Settings</Link>
       <Link v-if="can('view users')" :href="route('usermanagement')" :class="navClass('usermanagement')">User Management</Link>
       <Link v-if="can('view audit logs')" :href="route('auditlogs')" :class="navClass('auditlogs')">Audit Logs</Link>
       <Link v-if="can('view content')" :href="route('websitecontent')" :class="navClass('websitecontent')">Website Content</Link>
       <Link v-if="can('view virtual tour')" :href="route('virtualtour')" :class="navClass('virtualtour')">Virtual Tour</Link>
       <Link v-if="can('manage settings')" :href="route('securitysettings')" :class="navClass('securitysettings')">Security</Link>
->>>>>>> 3cb0a7c8f72994261f33572aed73bd0fe4defeba
     </div>
 
     <!-- Environmental Fee Management Card -->
