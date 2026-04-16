@@ -23,87 +23,12 @@
 
         <!-- Navigation Tabs — use underscore permission names -->
         <div class="border-b border-gray-300 flex justify-center gap-6">
-<<<<<<< HEAD
-
-            <Link
-            :href="route('settings')"
-            :class="navClass('settings')"
-            >
-            General Settings
-            </Link>
-
-            <Link
-            :href="route('usermanagement')"
-            :class="navClass('usermanagement')"
-            >
-            User Management
-            </Link>
-
-            <Link
-            :href="route('auditlogs')"
-            :class="navClass('auditlogs')"
-            >
-            Audit Logs
-            </Link>
-
-            <Link
-            :href="route('websitecontent')"
-            :class="navClass('websitecontent')"
-            >
-            Website Content
-            </Link>
-
-            <Link
-            :href="route('virtualtour')"
-            :class="navClass('virtualtour')"
-            >
-            Virtual Tour
-            </Link>
-
-            <Link
-            :href="route('securitysettings')"
-            :class="navClass('securitysettings')"
-            >
-            Security
-            </Link>
-
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 p-4">
-
-        <!-- COLUMN 1 -->
-        <div class="mt-10">
-          <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
-            <div class="grid grid-cols-1 md:grid-cols-1 gap-4 mt-2 p-4">
-                            <div>
-                                <h2 class="block text-black text-lg font-bold">Password</h2>
-                                <p class="text-sm text-gray-500 mb-2">Set a password to protect your account.</p>
-                            </div>
-
-                            <div>
-                                <label class="block text-gray-700 text-sm font-bold">Current Password</label>
-                                <input class="border border-gray-400 rounded w-full py-2 px-3" type="password">
-                            </div>
-
-                            <div>
-                                <label class="block text-gray-700 text-sm font-bold">New Password</label>
-                                <input class="border border-gray-400 rounded w-full py-2 px-3" type="password">
-                            </div>
-                            <button
-                    type="button"
-                    class="bg-gray-900 text-white text-sm font-bold px-5 py-2 rounded-xl disabled:opacity-50 hover:bg-gray-800 hover:text-white transition">
-                    Save Changes
-                </button>
-                    </div>
-          </div>
-=======
-            <Link v-if="can('view_system_settings')" :href="route('settings')"         :class="navClass('settings')">System Settings</Link>
+            <Link v-if="can('view_system_settings')" :href="route('settings')"         :class="navClass('settings')">General Settings</Link>
             <Link v-if="can('view_user_management')" :href="route('usermanagement')"   :class="navClass('usermanagement')">User Management</Link>
             <Link v-if="can('view_audit_logs')"      :href="route('auditlogs')"         :class="navClass('auditlogs')">Audit Logs</Link>
             <Link v-if="can('view_website_content')" :href="route('websitecontent')"   :class="navClass('websitecontent')">Website Content</Link>
             <Link v-if="can('view_virtual_tour')"    :href="route('virtualtour')"      :class="navClass('virtualtour')">Virtual Tour</Link>
             <Link v-if="can('view_security')"        :href="route('securitysettings')" :class="navClass('securitysettings')">Security</Link>
->>>>>>> 3cb0a7c8f72994261f33572aed73bd0fe4defeba
         </div>
 
         <!-- Flash messages -->
