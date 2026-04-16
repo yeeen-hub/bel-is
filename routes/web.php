@@ -8,24 +8,18 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\TourismContentController;
 use App\Http\Controllers\VirtualTourController;
-use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\FeeCategoryController;
+use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\PublicRegController;
-use App\Http\Controllers\FeeCategoryController;
+use App\Models\VisitorVisit;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Models\VisitorVisit;
 
-// ── Route Model Binding ───────────────────────────────────────────────────────
-// {visitor} in any route = VisitorVisit (UUID primary key).
 Route::bind('visitor', fn($value) => VisitorVisit::findOrFail($value));
 
-// ═════════════════════════════════════════════════════════════════════════════
-// PUBLIC ROUTES — no auth required
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ── Landing Page ──────────────────────────────────────────────────────────────
+// PUBLIC ROUTES
 Route::get('/', function () {
     return Inertia::render('LandingPage', [
         'canLogin'       => Route::has('login'),
@@ -34,133 +28,75 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
-// ── Public Pre-Registration (Phase 2) ────────────────────────────────────────
-// Privacy-Shielded: never auto-fills, never shows returning visitor data.
-// Creates VisitorVisit (source='pre_registration') — hidden from all records
-// until staff confirms the reference code at the checkpoint.
 Route::get('/pre-register',        [PublicRegController::class, 'create'])->name('pre-register');
 Route::post('/pre-register',       [PublicRegController::class, 'store'])->name('pre-register.store');
 Route::post('/pre-register/group', [PublicRegController::class, 'storeGroup'])->name('pre-register.group');
 Route::get('/pre-register/lookup', [PublicRegController::class, 'lookup'])->name('pre-register.lookup');
 
-// ═════════════════════════════════════════════════════════════════════════════
 // AUTHENTICATED ROUTES
-// ═════════════════════════════════════════════════════════════════════════════
 Route::middleware(['auth'])->group(function () {
 
-    // ── Dashboard ─────────────────────────────────────────────────────────────
+    // FIXED: Changed 'view analytics' to 'view_dashboard'
     Route::get('/admindb', [DashboardController::class, 'index'])
+        ->middleware('permission:view_dashboard')
         ->name('admindb');
 
-    // ── Registration (Admin & Staff only) ─────────────────────────────────────
-    Route::middleware(['role:admin|staff'])->group(function () {
-
-        // Step 1 — Visitor registration form
+    // FIXED: Changed 'view visitors' to 'view_visitor_records'
+    Route::middleware(['permission:view_visitor_records'])->group(function () {
         Route::get('/registration',       [VisitorController::class, 'create'])->name('registration');
         Route::post('/registration',      [VisitorController::class, 'store'])->name('registration.store');
-        Route::post('/registration/group',[VisitorController::class, 'storeGroup'])->name('registration.group');
+        Route::post('/registration/group', [VisitorController::class, 'storeGroup'])->name('registration.group');
+        Route::get('/visitors/search-profile', [VisitorController::class, 'searchProfile'])->name('visitors.search-profile');
 
-        // Returning visitor profile search (JSON — consumed by axios in AdminRegPage.vue)
-        Route::get('/visitors/search-profile', [VisitorController::class, 'searchProfile'])
-            ->name('visitors.search-profile');
-
-        // Step 2 — Payment
         Route::get('/adminpay/{visitor}',  [ReceiptController::class, 'showPayment'])->name('adminpay');
         Route::post('/adminpay/{visitor}', [ReceiptController::class, 'store'])->name('adminpay.store');
-
-        // Step 3 — Receipt
         Route::get('/adminreceipt/{visitor}', [ReceiptController::class, 'showReceipt'])->name('adminreceipt');
-    });
-
-    // ── Visitor Records ───────────────────────────────────────────────────────
-    Route::middleware(['role:admin|staff|coordinator|lgu_official'])->group(function () {
+        
         Route::get('/visitor-records',          [VisitorController::class, 'index'])->name('visitor-records');
-        Route::get('/visitor-records/{visitor}',[VisitorController::class, 'show'])->name('visitor-records.show');
+        Route::get('/visitor-records/{visitor}', [VisitorController::class, 'show'])->name('visitor-records.show');
     });
 
-    // ── Reports ───────────────────────────────────────────────────────────────
-    Route::middleware(['role:admin|staff|coordinator|lgu_official'])->group(function () {
+    // FIXED: Changed 'view reports' to 'view_reports'
+    Route::middleware(['permission:view_reports'])->group(function () {
         Route::get('/reports', fn() => redirect()->route('reports.analytics'))->name('reports');
         Route::get('/reports/analytics',   [ReportController::class, 'analytics'])->name('reports.analytics');
         Route::get('/reports/temporal',    [ReportController::class, 'temporal'])->name('reports.temporal');
         Route::get('/reports/fee-revenue', [ReportController::class, 'feeRevenue'])->name('reports.fee-revenue');
         Route::get('/reports/behavioral',  [ReportController::class, 'behavioral'])->name('reports.behavioral');
+        
+        Route::get('/feerevenue', fn() => Inertia::render('AdminRepFeePage'))->name('feerevenue');
+        Route::get('/demographics', fn() => Inertia::render('AdminRepDemoPage'))->name('demographics');
     });
 
-    // ── Fee revenue
-    Route::get('/feerevenue', function () {
-    return Inertia::render('AdminRepFeePage');
-    })->name('feerevenue');
-
-    // ── Demographics
-    Route::get('/demographics', function () {
-        return Inertia::render('AdminRepDemoPage');
-    })->name('demographics');
-
-    Route::get('/systemsettings', [FeeCategoryController::class, 'index'])
-        ->name('systemsettings');
-
-    Route::post('/admin/settings/fee-categories', [FeeCategoryController::class, 'update'])
-        ->name('fee-categories.update');
-
-
-    // ── User Management Settings ──────────────────────────────────────────────────────────────
-    Route::get('/usermanagement', [UserController::class, 'index'])->name('usermanagement');
-    Route::post('/usermanagement', [UserController::class, 'store'])->name('usermanagement.store');
-    Route::patch('/usermanagement/{user}', [UserController::class, 'update'])->name('usermanagement.update');
-    Route::patch('/usermanagement/{user}/toggle', [UserController::class, 'toggleActive'])->name('usermanagement.toggle');
-    Route::post('/usermanagement/bulk-destroy', [UserController::class, 'bulkDestroy'])->name('usermanagement.bulk-destroy');
-    
-    Route::get('/auditlogs', function () {
-        return Inertia::render('AdminSetALPage');
-    })->name('auditlogs');
-
-    Route::get('/websitecontent', function () {
-        return Inertia::render('AdminSetWCPage');
-    })->name('websitecontent');
-
-    Route::get('/virtualtour', function () {
-        return Inertia::render('AdminSetVTPage');
-    })->name('virtualtour');
-
-    Route::get('/securitysettings', function () {
-        return Inertia::render('AdminSetSecPage');
-    })->name('securitysettings');
-
-    // ── Settings ──────────────────────────────────────────────────────────────
-    Route::get('/settings',          [SettingsController::class, 'index'])->name('settings');
-    Route::post('/settings/password',[SettingsController::class, 'updatePassword'])->name('settings.password');
-
-    // ── User Management (Admin only) ──────────────────────────────────────────
-    Route::middleware(['role:admin'])->group(function () {
-        Route::get('/users',                        [UserController::class, 'index'])->name('users.index');
-        Route::post('/users',                       [UserController::class, 'store'])->name('users.store');
-        Route::put('/users/{user}',                 [UserController::class, 'update'])->name('users.update');
-        Route::patch('/users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('users.toggle_active');
+    // FIXED: Changed 'view users' to 'view_user_management'
+    Route::middleware(['permission:view_user_management'])->group(function () {
+        Route::get('/usermanagement', [UserController::class, 'index'])->name('usermanagement');
+        Route::post('/usermanagement', [UserController::class, 'store'])->name('usermanagement.store');
+        Route::patch('/usermanagement/{user}', [UserController::class, 'update'])->name('usermanagement.update');
+        Route::patch('/usermanagement/{user}/toggle', [UserController::class, 'toggleActive'])->name('usermanagement.toggle');
+        Route::post('/usermanagement/bulk-destroy', [UserController::class, 'bulkDestroy'])->name('usermanagement.bulk-destroy');
+        Route::delete('/usermanagement/{user}/session', [UserController::class, 'forceSessionClear'])->name('usermanagement.clear_session');
     });
 
-    // ── Content Management (Admin & Coordinator) ──────────────────────────────
-    Route::middleware(['role:admin|coordinator'])->group(function () {
-        Route::get('/content',                      [TourismContentController::class, 'index'])->name('content.index');
-        Route::post('/content',                     [TourismContentController::class, 'store'])->name('content.store');
-        Route::put('/content/{tourismContent}',     [TourismContentController::class, 'update'])->name('content.update');
-        Route::delete('/content/{tourismContent}',  [TourismContentController::class, 'destroy'])->name('content.destroy');
+    // FIXED: Changed 'manage settings|manage system' to 'view_security|view_system_settings'
+    Route::middleware(['permission:view_security|view_system_settings'])->group(function () {
+        Route::get('/securitysettings', [SecurityController::class, 'index'])->name('securitysettings');
+        Route::post('/security/rbac/update', [SecurityController::class, 'updateRBAC'])->name('security.rbac.update');
+        Route::post('/security/password', [SecurityController::class, 'updatePassword'])->name('security.password.update');
+        Route::post('/security/settings', [SecurityController::class, 'updateSecuritySettings'])->name('security.settings.update');
+        Route::post('/security/sessions/logout-others', [SecurityController::class, 'logoutOthers'])->name('security.sessions.logout_others');
+        
+        Route::get('/auditlogs', function () { return Inertia::render('AdminSetALPage'); })->name('auditlogs');
+        Route::get('/websitecontent', function () { return Inertia::render('AdminSetWCPage'); })->name('websitecontent');
+        Route::get('/virtualtour', function () { return Inertia::render('AdminSetVTPage'); })->name('virtualtour');
+
+        Route::get('/systemsettings', [FeeCategoryController::class, 'index'])->name('systemsettings');
+        Route::post('/admin/settings/fee-categories', [FeeCategoryController::class, 'update'])->name('fee-categories.update');
     });
 
-    // ── Virtual Tour (Admin & Coordinator) ───────────────────────────────────
-    Route::middleware(['role:admin|coordinator'])->group(function () {
-        Route::get('/virtual-tour',                     [VirtualTourController::class, 'index'])->name('virtual_tour.index');
-        Route::post('/virtual-tour',                    [VirtualTourController::class, 'store'])->name('virtual_tour.store');
-        Route::put('/virtual-tour/{virtualHotspot}',    [VirtualTourController::class, 'update'])->name('virtual_tour.update');
-        Route::delete('/virtual-tour/{virtualHotspot}', [VirtualTourController::class, 'destroy'])->name('virtual_tour.destroy');
-    });
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+    Route::post('/settings/password', [SettingsController::class, 'updatePassword'])->name('settings.password');
 
-    // ── Audit Logs (Admin only) ───────────────────────────────────────────────
-    Route::middleware(['role:admin'])->group(function () {
-        Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit_logs.index');
-    });
-
-    // ── Breeze Profile ────────────────────────────────────────────────────────
     Route::get('/profile',    [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile',  [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

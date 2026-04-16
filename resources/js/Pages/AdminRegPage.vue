@@ -1,8 +1,22 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useForm } from '@inertiajs/vue3'
+import { useForm, usePage, Link } from '@inertiajs/vue3'
 import LandingLayout from '@/Layouts/SidebarLayout.vue'
 import axios from 'axios'
+
+// 1. Initialize page props
+const page = usePage();
+
+// 2. Define the permission helper logic
+const permissions = computed(() => page.props.auth?.permissions ?? []);
+const userRole = computed(() => (page.props.auth?.user?.role ?? '').toLowerCase());
+
+const can = (permission) => {
+    // Admin bypass
+    if (userRole.value === 'admin') return true;
+    // Check if the permission string exists in the user's permission array
+    return permissions.value.includes(permission);
+};
 
 // ── Mode toggle ───────────────────────────────────────────────────────────────
 const mode = ref('single') // 'single' | 'group'
@@ -352,10 +366,17 @@ const preRegBannerText = computed(() => {
                         class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                         Individual
                     </button>
-                    <button type="button" @click="mode = 'group'"
-                        :disabled="preRegData && !preRegData.is_group"
-                        :class="mode === 'group' ? 'bg-gray-900 text-white shadow' : 'text-gray-500 hover:bg-gray-50'"
-                        class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <button 
+                        type="button" 
+                        @click="mode = 'group'"
+                        :disabled="(preRegData && !preRegData.is_group) || !can('edit_registration')"
+                        :class="[
+                            mode === 'group' ? 'bg-gray-900 text-white shadow' : 'text-gray-500 hover:bg-gray-50',
+                            !can('edit_registration') ? 'opacity-40 cursor-not-allowed grayscale' : ''
+                        ]"
+                        class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        :title="!can('edit_registration') ? 'You do not have permission to edit registrations' : ''"
+                    >
                         Group
                         <span v-if="mode === 'group'"
                             class="ml-1.5 text-xs font-bold bg-white text-gray-900 px-1.5 py-0.5 rounded-full">
