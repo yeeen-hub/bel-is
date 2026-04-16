@@ -141,6 +141,11 @@ const closeModal = () => {
     showModal.value = false
     selectedVisitor.value = null
 }
+
+const can = (permission) => {
+    if (userRole.value === 'admin') return true
+    return permissions.value.includes(permission)
+}
 </script>
 
 <template>

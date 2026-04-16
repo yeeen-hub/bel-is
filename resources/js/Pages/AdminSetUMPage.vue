@@ -323,6 +323,11 @@ const confirmDelete = () => {
 
 const toggleUserStatus = (user) => {
     router.patch(route('usermanagement.toggle', user.id), {}, { preserveScroll: true });
+
+const can = (permission) => {
+    if (userRole.value === 'admin') return true
+    return permissions.value.includes(permission)
+}
 };
 </script>
 

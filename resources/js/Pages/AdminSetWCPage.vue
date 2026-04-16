@@ -533,4 +533,9 @@ const navClass = (routeName) => [
     ? 'text-gray-900 border-gray-900'
     : 'text-gray-400 border-transparent hover:text-gray-600'
 ]
+
+const can = (permission) => {
+    if (userRole.value === 'admin') return true
+    return permissions.value.includes(permission)
+}
 </script>

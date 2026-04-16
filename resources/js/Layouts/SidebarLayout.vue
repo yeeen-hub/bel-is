@@ -1,108 +1,105 @@
 <script setup>
-import { Link, useForm } from '@inertiajs/vue3'
-import PrimaryButton from '@/Components/PrimaryButton.vue';
+import { Link, useForm, usePage } from '@inertiajs/vue3'
+import PrimaryButton from '@/Components/PrimaryButton.vue'
+import { ref, computed } from 'vue'
 
 const logoutForm = useForm({})
 const logout = () => logoutForm.post(route('logout'))
-
-import { ref } from 'vue'
-
 const showReports = ref(false)
+
+const page        = usePage()
+const permissions = computed(() => page.props.auth?.permissions ?? [])
+const userRole    = computed(() => (page.props.auth?.user?.role ?? '').toLowerCase())
+
+// ── Permission check ──────────────────────────────────────────────────────────
+// Permission names in DB use underscore format: view_dashboard, edit_registration etc.
+// Admin always gets access to everything.
+const can = (permission) => {
+    if (userRole.value === 'admin') return true
+    return permissions.value.includes(permission)
+}
 </script>
 
 <template>
 <div class="min-h-screen flex">
-
-    <!-- Sidebar -->
     <aside class="w-64 p-6 bg-gray-100 flex flex-col">
-
         <div class="flex items-center space-x-4 mb-4">
-            <Link :href="route('login')">
+            <Link :href="route('home')">
                 <img src="/images/brgylogo.png" class="h-14 w-14 rounded-full" />
             </Link>
-
             <div>
                 <h1 class="font-heading text-xl">BEL-IS</h1>
                 <span class="text-gray-400 text-sm">System</span>
             </div>
         </div>
-
         <hr class="border-black mb-4" />
-
         <nav class="flex flex-col space-y-3 text-gray-600 text-base">
 
-            <Link href="/admindb" class="flex items-center space-x-2 hover:bg-gray-200 p-2 rounded-lg">
+            <!-- Dashboard: view_dashboard -->
+            <Link v-if="can('view_dashboard')"
+                href="/admindb"
+                class="flex items-center space-x-2 hover:bg-gray-200 p-2 rounded-lg">
                 <FontAwesomeIcon icon="gauge" />
                 <span class="font-semibold">Dashboard</span>
             </Link>
 
-            <Link :href="route('registration')" class="flex items-center space-x-2 hover:bg-gray-200 p-2 rounded-lg">
+            <!-- Registration: view_registration -->
+            <Link v-if="can('view_registration')"
+                :href="route('registration')"
+                class="flex items-center space-x-2 hover:bg-gray-200 p-2 rounded-lg">
                 <FontAwesomeIcon icon="user-plus" />
                 <span class="font-semibold">Registration</span>
             </Link>
 
-            <Link :href="route('visitor-records')" class="flex items-center space-x-2 hover:bg-gray-200 p-2 rounded-lg">
+            <!-- Visitor Records: view_visitor_records -->
+            <Link v-if="can('view_visitor_records')"
+                :href="route('visitor-records')"
+                class="flex items-center space-x-2 hover:bg-gray-200 p-2 rounded-lg">
                 <FontAwesomeIcon icon="users" />
                 <span class="font-semibold">Visitor Records</span>
             </Link>
 
-            <div class="flex flex-col">
-
-                <!-- Reports Button (NO Link here) -->
-                <button 
-                    @click="showReports = !showReports"
-                    class="w-full flex items-center justify-between hover:bg-gray-200 p-2 rounded-lg"
-                >
+            <!-- Reports: view_reports -->
+            <div v-if="can('view_reports')" class="flex flex-col">
+                <button @click="showReports = !showReports"
+                    class="w-full flex items-center justify-between hover:bg-gray-200 p-2 rounded-lg">
                     <div class="flex items-center space-x-2">
                         <FontAwesomeIcon icon="chart-bar" />
                         <span class="font-semibold">Reports</span>
                     </div>
-
-                    <svg class="w-4 h-4 transition-transform"
-                        :class="{ 'rotate-180': showReports }"
+                    <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': showReports }"
                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path d="M6 9l6 6 6-6"/>
                     </svg>
                 </button>
-
-                <!-- Dropdown -->
                 <div v-if="showReports" class="ml-8 mt-2 flex flex-col gap-2">
-
                     <Link :href="route('reports')"
                         class="font-semibold border-2 border-gray-200 hover:bg-gray-200 p-2 rounded-lg text-sm">
                         Analytics
                     </Link>
-
                     <Link :href="route('feerevenue')"
                         class="font-semibold border-2 border-gray-200 hover:bg-gray-200 p-2 rounded-lg text-sm">
                         Fee Revenue
                     </Link>
-
                 </div>
             </div>
 
-            <Link :href="route('settings')" class="flex items-center space-x-2 hover:bg-gray-200 p-2 rounded-lg">
+            <!-- Settings: view_settings OR view_system_settings OR view_user_management -->
+            <Link v-if="can('view_settings') || can('view_system_settings') || can('view_user_management')"
+                :href="route('settings')"
+                class="flex items-center space-x-2 hover:bg-gray-200 p-2 rounded-lg">
                 <FontAwesomeIcon icon="cog" />
                 <span class="font-semibold">Settings</span>
             </Link>
 
         </nav>
-
-        <PrimaryButton 
+        <PrimaryButton
             @click="logout"
             :disabled="logoutForm.processing"
-            class="mt-auto bg-gray-800 text-white hover:bg-gray-900 w-full"
-        >
-            {{ logoutForm.processing ? 'Logging out...' : 'Logout' }}
+            class="mt-auto bg-gray-800 text-white hover:bg-gray-900 w-full">
+            Logout
         </PrimaryButton>
-
     </aside>
-
-
-    <!-- Page Content -->
-    <main class="flex-1 p-8 bg-gray-50">
-        <slot />
-    </main>
-
+    <main class="flex-1 p-8 bg-gray-50"><slot /></main>
 </div>
 </template>

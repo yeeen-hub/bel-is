@@ -24,6 +24,8 @@ class UserController extends Controller
                 'contact_no'    => $u->contact_no ?? 'N/A', 
                 'role'          => $u->roles->first()?->name ?? 'User',
                 'is_active'     => (bool)$u->is_active,
+                'current_session_id' => $u->current_session_id,
+                'last_login_at'      => $u->last_login_at?->format('M d, Y h:i A'),
             ]);
 
         $roles = Role::all();
@@ -75,6 +77,10 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
+
+         if (!auth()->user()->can('edit_user_management')) {
+            return back()->with('error', 'You do not have permission to edit users.');
+        }
         $request->validate([
             'name'           => 'required|string|max:255',
             'email'          => 'required|email|unique:users,email,' . $user->id,
@@ -168,5 +174,32 @@ class UserController extends Controller
         User::whereIn('id', $idsToDelete)->delete();
 
         return back()->with('success', count($idsToDelete) . ' user(s) deleted.');
+    }
+
+
+     public function forceSessionClear(Request $request, User $user)
+    {
+        if ($user->current_session_id === null) {
+            return back()->with('info', "{$user->name}'s account has no active session.");
+        }
+ 
+        $cleared = $user->current_session_id;
+        $user->update(['current_session_id' => null]);
+ 
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'session_force_cleared',
+            'module'      => 'user_management',
+            'target_type' => 'User',
+            'target_id'   => $user->id,
+            'new_values'  => json_encode([
+                'cleared_for'   => $user->name,
+                'cleared_by'    => Auth::user()->name,
+                'session'       => $cleared,
+            ]),
+            'ip_address'  => $request->ip(),
+        ]);
+ 
+        return back()->with('success', "Session cleared for {$user->name}.");
     }
 }

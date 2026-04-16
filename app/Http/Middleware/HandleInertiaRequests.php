@@ -7,46 +7,34 @@ use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
-    /**
-     * The root template that is loaded on the first page visit.
-     *
-     * @var string
-     */
     protected $rootView = 'app';
 
-    /**
-     * Determine the current asset version.
-     */
     public function version(Request $request): ?string
     {
         return parent::version($request);
     }
 
-    /**
-     * Define the props that are shared by default.
-     *
-     * @return array<string, mixed>
-     */
     public function share(Request $request): array
     {
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $request->user() ? [
+                    'id'   => $request->user()->id,
+                    'name' => $request->user()->name,
+                    'role' => $request->user()->getRoleNames()->first() ?? 'staff',
+                ] : null,
+                // Permission names as stored in DB: view_dashboard, edit_registration etc.
+                'permissions' => $request->user()
+                    ? $request->user()->getAllPermissions()->pluck('name')
+                    : [],
             ],
-
+            // ✅ Flash messages shared globally — required for success/error banners
             'flash' => [
-                'success'        => session('success'),
-                'mode'           => session('mode'),
-                'reference_code' => session('reference_code'),
-                'full_name'      => session('full_name'),
-                'visit_id'       => session('visit_id'),
-                'group_code'     => session('group_code'),
-                'members'        => session('members'),
-                'message'        => session('message'),
-                'error'          => session('error'),
+                'success' => $request->session()->get('success'),
+                'error'   => $request->session()->get('error'),
+                'info'    => $request->session()->get('info'),
             ],
         ];
-        
     }
 }
