@@ -4,14 +4,17 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\AuditLog;
+use App\Models\User;
 use Inertia\Inertia;
 
 class AuditLogController extends Controller
 {
     public function index(Request $request)
     {
-        $query = AuditLog::with('user')->latest('created_at');
+        // 1. Build Query with Relationships
+        $query = AuditLog::with('user.roles')->latest('created_at');
 
+        // 2. Apply Filters
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);
         }
@@ -20,34 +23,33 @@ class AuditLogController extends Controller
             $query->where('module', $request->module);
         }
 
-        if ($request->filled('action')) {
-            $query->where('action', $request->action);
+        if ($request->filled('search')) {
+            $query->where(function($q) use ($request) {
+                $q->where('action', 'like', "%{$request->search}%")
+                  ->orWhere('target_type', 'like', "%{$request->search}%")
+                  ->orWhere('ip_address', 'like', "%{$request->search}%");
+            });
         }
 
-        if ($request->filled('date_from') && $request->filled('date_to')) {
-            $query->whereBetween('created_at', [
-                $request->date_from,
-                $request->date_to,
-            ]);
-        }
+        // 3. Paginate and Format Data
+        $logs = $query->paginate(15)->withQueryString()->through(function ($log) {
+            return [
+                'id'         => $log->id,
+                'user'       => $log->user->name ?? 'System',
+                'role'       => $log->user->roles->first()->name ?? 'N/A',
+                'action'     => str_replace('_', ' ', $log->action),
+                'module'     => $log->module,
+                'description'=> $log->target_type . ' (' . ($log->target_id ?? 'N/A') . ')',
+                'ip_address' => $log->ip_address,
+                'created_at' => $log->created_at->format('M d, Y h:i A'),
+            ];
+        });
 
-        $logs = $query->paginate(20)->withQueryString();
-
-        return Inertia::render('AdminAuditPage', [
-            'logs' => $logs->through(function ($log) {
-                return [
-                    'id'         => $log->id,
-                    'user'       => $log->user->name ?? 'Unknown',
-                    'action'     => $log->action,
-                    'module'     => $log->module,
-                    // target_id is now a UUID string — no # prefix needed
-                    'target'     => $log->target_type . ' ' . ($log->target_id ?? ''),
-                    'ip_address' => $log->ip_address,
-                    'device_id'  => $log->device_id,
-                    'created_at' => $log->created_at->format('M d, Y h:i A'),
-                ];
-            }),
-            'filters' => $request->only(['user_id', 'module', 'action', 'date_from', 'date_to']),
+        return Inertia::render('AdminSetALPage', [
+            'logs'    => $logs,
+            'filters' => $request->only(['user_id', 'module', 'search']),
+            'users'   => User::select('id', 'name')->get(),
+            'modules' => AuditLog::distinct()->pluck('module'),
         ]);
     }
 }

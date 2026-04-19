@@ -5,9 +5,8 @@
     <section
       id="home"
       data-section="home"
-      class="snap-start h-screen overflow-y-auto relative flex items-center"
+      class="snap-start h-screen relative flex items-center"
     >
-      <!-- Background only on Hero -->
       <img
         src="/images/bg1.jpg"
         class="absolute inset-0 w-full h-full object-cover -z-10"
@@ -32,17 +31,17 @@
           alt="Virtual Map"
           class="w-1/4 max-w-[450px] animate-float flex-shrink-0 cursor-pointer hover:scale-105 transition-transform"
         />
-
       </div>
     </section>
 
     <!-- ── Attractions ──────────────────────────────────────────────────────── -->
+    <!-- overflow-y-auto moved to inner div so the section itself is not a scroll container -->
     <section
       id="attractions"
       data-section="attractions"
-      class="snap-start h-screen overflow-y-auto bg-white"
+      class="snap-start h-screen bg-white"
     >
-      <div class="max-w-6xl mx-auto px-6 pt-24 pb-8">
+      <div class="max-w-6xl mx-auto px-6 pt-24 pb-8 h-full overflow-y-auto">
 
         <h2 class="text-3xl text-center font-semibold">
           Discover places you're going to love
@@ -96,6 +95,7 @@
     </section>
 
     <!-- ── Map ─────────────────────────────────────────────────────────────── -->
+    <!-- overflow-hidden is correct here — keep as-is -->
     <section
       id="map"
       data-section="map"
@@ -173,15 +173,16 @@
       </div>
     </section>
 
-    <!-- ── About — FULL WIDTH ───────────────────────────────────────────────── -->
+    <!-- ── About ────────────────────────────────────────────────────────────── -->
+    <!-- overflow-y-auto moved to inner div -->
     <section
       id="about"
       data-section="about"
-      class="snap-start h-screen overflow-y-auto w-full relative bg-cover bg-center bg-no-repeat"
+      class="snap-start h-screen w-full relative bg-cover bg-center bg-no-repeat"
       style="background-image: url('/images/abstractbg.jpg')"
     >
       <div class="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
-      <div class="relative z-10 flex flex-col items-center justify-center px-8 text-center py-24 min-h-full">
+      <div class="relative z-10 flex flex-col items-center justify-center px-8 text-center py-24 h-full overflow-y-auto">
 
         <p class="text-sm sm:text-base uppercase tracking-wider mb-2">About Us</p>
         <h2 class="font-bold text-3xl sm:text-4xl md:text-5xl leading-tight">
@@ -228,10 +229,11 @@
     </section>
 
     <!-- ── Pre-Registration ─────────────────────────────────────────────────── -->
+    <!-- overflow-y-auto removed — content fits within h-screen -->
     <section
       id="pre-register"
       data-section="pre-register"
-      class="snap-start h-screen overflow-y-auto bg-white flex items-center"
+      class="snap-start h-screen bg-white flex items-center"
     >
       <div class="max-w-6xl mx-auto px-6 py-8 w-full">
         <div class="bg-gray-900 rounded-2xl overflow-hidden">
@@ -308,10 +310,11 @@
     </section>
 
     <!-- ── Contact Form ─────────────────────────────────────────────────────── -->
+    <!-- overflow-y-auto removed — content fits within h-screen -->
     <section
       id="contact"
       data-section="contact"
-      class="snap-start h-screen overflow-y-auto bg-white flex items-center"
+      class="snap-start h-screen bg-white flex items-center"
     >
       <div class="max-w-6xl mx-auto px-6 py-8 w-full">
         <p class="text-sm text-gray-500">Get Started</p>
@@ -377,9 +380,10 @@
       </div>
     </section>
 
-    <!-- ── Contact Info Band — FULL WIDTH ──────────────────────────────────── -->
+    <!-- ── Contact Info Band ────────────────────────────────────────────────── -->
+    <!-- overflow-y-auto removed — content fits within h-screen -->
     <section
-      class="snap-start h-screen overflow-y-auto w-full relative bg-cover bg-center bg-no-repeat flex items-center"
+      class="snap-start h-screen w-full relative bg-cover bg-center bg-no-repeat flex items-center"
       style="background-image: url('/images/abstractbg.jpg')"
     >
       <div class="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
@@ -418,14 +422,14 @@
       </div>
     </section>
 
-    </LandingLayout>
+  </LandingLayout>
 
   <router-view v-else></router-view>
 </template>
 
 <script setup>
 import LandingLayout from '@/Layouts/LandingLayout.vue';
-import { useRoute } from 'vue-router'; 
+import { useRoute } from 'vue-router';
 
-const route = useRoute(); 
+const route = useRoute();
 </script>

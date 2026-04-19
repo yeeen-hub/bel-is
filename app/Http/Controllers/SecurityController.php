@@ -21,7 +21,7 @@ class SecurityController extends Controller
         'Visitor Records' => 'visitor_records',
         'Reports'         => 'reports',
         'Settings'        => 'settings',
-        'System Settings' => 'system_settings',
+        'General Settings' => 'system_settings',
         'User Management' => 'user_management',
         'Audit Logs'      => 'audit_logs',
         'Website Content' => 'website_content',

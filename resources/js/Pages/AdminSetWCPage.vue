@@ -76,13 +76,13 @@
                 <div>
                     <h1 class="text-lg font-semibold text-gray-800">Tourism Website</h1>
 
-                    <div class="flex justify-center mt-2 gap-2">
-                        <button @click="activeTab = 'home'" class="px-4 py-2 border rounded-lg">Home</button>
-                        <button @click="activeTab = 'attractions'" class="px-4 py-2 border rounded-lg">Attractions</button>
-                        <button @click="activeTab = 'map'" class="px-4 py-2 border rounded-lg">Map</button>
-                        <button @click="activeTab = 'about'" class="px-4 py-2 border rounded-lg">About</button>
-                        <button @click="activeTab = 'contact'" class="px-4 py-2 border rounded-lg">Contact</button>
-                        <button @click="activeTab = 'footer'" class="px-4 py-2 border rounded-lg">Footer</button>
+                    <div class="border-b border-gray-300 flex justify-center gap-6">
+                    <Link v-if="can('view_system_settings')" :href="route('settings')" :class="navClass('settings')">General Settings</Link>
+                    <Link v-if="can('view_user_management')" :href="route('usermanagement')" :class="navClass('usermanagement')">User Management</Link>
+                    <Link v-if="can('view_audit_logs')" :href="route('auditlogs')" :class="navClass('auditlogs')">Audit Logs</Link>
+                    <Link v-if="can('view_website_content')" :href="route('websitecontent')" :class="navClass('websitecontent')">Website Content</Link>
+                    <Link v-if="can('view_virtual_tour')" :href="route('virtualtour')" :class="navClass('virtualtour')">Virtual Tour</Link>
+                    <Link v-if="can('view_security')" :href="route('securitysettings')" :class="navClass('securitysettings')">Security</Link>
                     </div>
                 </div>
                 
@@ -523,6 +523,17 @@
 import { Link } from '@inertiajs/vue3';
 import { route } from 'ziggy-js';
 import { ref } from 'vue'
+import { usePage } from '@inertiajs/vue3';
+
+const page = usePage();
+
+const permissions = computed(() => page.props.auth?.permissions ?? []);
+const userRole = computed(() => (page.props.auth?.user?.role ?? '').toLowerCase());
+
+const can = (permission) => {
+    if (userRole.value === 'admin') return true;
+	return permissions.value.includes(permission);
+};
 
 const activeTab = ref('home')
 import LandingLayout from '@/Layouts/SidebarLayout.vue';
@@ -534,8 +545,4 @@ const navClass = (routeName) => [
     : 'text-gray-400 border-transparent hover:text-gray-600'
 ]
 
-const can = (permission) => {
-    if (userRole.value === 'admin') return true
-    return permissions.value.includes(permission)
-}
 </script>
