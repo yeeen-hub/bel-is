@@ -27,7 +27,7 @@
 
     <!-- Nav Tabs (Permission Protected) -->
     <div class="border-b border-gray-300 flex justify-center gap-6">
-      <Link v-if="can('manage system')" :href="route('systemsettings')" :class="navClass('systemsettings')">General Settings</Link>
+      <Link v-if="can('manage system')" :href="route('settings')" :class="navClass('settings')">General Settings</Link>
       <Link v-if="can('view users')" :href="route('usermanagement')" :class="navClass('usermanagement')">User Management</Link>
       <Link v-if="can('view audit logs')" :href="route('auditlogs')" :class="navClass('auditlogs')">Audit Logs</Link>
       <Link v-if="can('view content')" :href="route('websitecontent')" :class="navClass('websitecontent')">Website Content</Link>

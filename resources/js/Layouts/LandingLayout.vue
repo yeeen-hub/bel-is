@@ -16,10 +16,7 @@ onMounted(() => {
         }
       })
     },
-    {
-      root: document.getElementById('scroll-container'),
-      threshold: 0.5,
-    }
+    { threshold: 0.4 }
   )
 
   sections.forEach(s => observer.observe(s))
@@ -37,8 +34,7 @@ function navClass(section) {
 </script>
 
 <template>
-  <!-- Snap-scroll root container -->
-  <div id="scroll-container" class="h-screen overflow-y-scroll snap-y snap-mandatory scroll-smooth">
+  <div class="min-h-screen flex flex-col">
 
     <!-- Fixed Header -->
     <header class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-7 py-5 pointer-events-none">
@@ -62,27 +58,27 @@ function navClass(section) {
       </div>
     </header>
 
-    <!-- Page Sections (via slot) -->
-    <main>
+    <!-- Page content -->
+    <main class="flex-1">
       <slot />
     </main>
 
-    <!-- Footer — its own snap point -->
-    <footer class="snap-start bg-black text-white">
-      <div class="max-w-6xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-3 gap-8">
+    <!-- Footer -->
+    <footer class="bg-black text-white">
+      <div class="max-w-6xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
 
         <div>
-          <h2 class="text-xl font-bold mb-2">BEL-IS</h2>
+          <h2 class="text-xl font-bold">BEL-IS</h2>
         </div>
 
         <div class="flex items-center justify-center">
-          <ul class="flex gap-6 text-sm text-gray-300">
-            <li><a href="#home" class="hover:text-white">Home</a></li>
-            <li><a href="#attractions" class="hover:text-white">Attractions</a></li>
-            <li><a href="#map" class="hover:text-white">Map</a></li>
-            <li><a href="#about" class="hover:text-white">About</a></li>
-            <li><a href="#pre-register" class="hover:text-white">Pre-Register</a></li>
-            <li><a href="#contact" class="hover:text-white">Contact</a></li>
+          <ul class="flex flex-nowrap items-center gap-x-4 text-xs text-gray-300">
+            <li><a href="#home" class="hover:text-white whitespace-nowrap">Home</a></li>
+            <li><a href="#attractions" class="hover:text-white whitespace-nowrap">Attractions</a></li>
+            <li><a href="#map" class="hover:text-white whitespace-nowrap">Map</a></li>
+            <li><a href="#about" class="hover:text-white whitespace-nowrap">About</a></li>
+            <li><a href="#pre-register" class="hover:text-white whitespace-nowrap">Pre-Register</a></li>
+            <li><a href="#contact" class="hover:text-white whitespace-nowrap">Contact</a></li>
           </ul>
         </div>
 

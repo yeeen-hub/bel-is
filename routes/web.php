@@ -13,6 +13,7 @@ use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\PublicRegController;
 use App\Models\VisitorVisit;
+use App\Http\Controllers\WebsiteContentController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -20,14 +21,6 @@ use Inertia\Inertia;
 Route::bind('visitor', fn($value) => VisitorVisit::findOrFail($value));
 
 // PUBLIC ROUTES
-Route::get('/', function () {
-    return Inertia::render('LandingPage', [
-        'canLogin'       => Route::has('login'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion'     => PHP_VERSION,
-    ]);
-})->name('home');
-
 Route::get('/pre-register',        [PublicRegController::class, 'create'])->name('pre-register');
 Route::post('/pre-register',       [PublicRegController::class, 'store'])->name('pre-register.store');
 Route::post('/pre-register/group', [PublicRegController::class, 'storeGroup'])->name('pre-register.group');
@@ -87,7 +80,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/security/sessions/logout-others', [SecurityController::class, 'logoutOthers'])->name('security.sessions.logout_others');
         
         Route::get('/auditlogs', function () { return Inertia::render('AdminSetALPage'); })->name('auditlogs');
-        Route::get('/websitecontent', function () { return Inertia::render('AdminSetWCPage'); })->name('websitecontent');
+        Route::get('/websitecontent', [WebsiteContentController::class, 'index'])->name('websitecontent');
         Route::get('/virtualtour', function () { return Inertia::render('AdminSetVTPage'); })->name('virtualtour');
 
         Route::get('/systemsettings', [FeeCategoryController::class, 'index'])->name('systemsettings');
@@ -111,5 +104,31 @@ Route::get('/VTHome', function () {
 Route::get('/location/{id}', function () {
     return inertia('YourMainPageName');
 });
+
+// ── Web Content (Hero/Home) ────────────────────────────────────────
+Route::get('/', [WebsiteContentController::class, 'landingPage'])->name('home');
+ 
+// Admin: Save hero section
+Route::post('/admin/settings/website-content/hero', [WebsiteContentController::class, 'updateHero'])
+    ->name('websitecontent.hero.update')
+    ->middleware(['auth']);
+
+// Admin: Save contact info section
+Route::post('/admin/settings/website-content/contact', [WebsiteContentController::class, 'updateContact'])
+    ->name('websitecontent.contact.update')
+    ->middleware(['auth']);
+
+// Admin: Attractions CRUD
+Route::post('/admin/settings/website-content/attractions', [WebsiteContentController::class, 'storeAttraction'])
+    ->name('websitecontent.attractions.store')
+    ->middleware(['auth']);
+
+Route::post('/admin/settings/website-content/attractions/{id}', [WebsiteContentController::class, 'updateAttraction'])
+    ->name('websitecontent.attractions.update')
+    ->middleware(['auth']);
+
+Route::delete('/admin/settings/website-content/attractions/{id}', [WebsiteContentController::class, 'destroyAttraction'])
+    ->name('websitecontent.attractions.destroy')
+    ->middleware(['auth']);
 
 require __DIR__.'/auth.php';

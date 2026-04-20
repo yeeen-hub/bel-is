@@ -5,24 +5,27 @@
     <section
       id="home"
       data-section="home"
-      class="snap-start h-screen overflow-y-auto relative flex items-center"
+      class="h-screen overflow-hidden relative flex items-center"
     >
-      <!-- Background only on Hero -->
       <img
-        src="/images/bg1.jpg"
-        class="absolute inset-0 w-full h-full object-cover -z-10"
+        :src="heroBackgroundUrl"
+        class="absolute inset-0 w-full h-full object-cover -z-10 animate-pan"
+        alt="Hero background"
       />
 
       <div class="w-full px-16 flex items-center justify-between">
         <div>
           <h2 class="text-6xl text-white font-heading leading-tight">
-            Discover the beauty of
+            {{ hero.tagline || 'Discover the beauty of' }}
           </h2>
           <span class="text-white font-bold" style="font-size: clamp(5rem, 12vw, 9rem); line-height: 1;">
-            BEL-IS
+            {{ hero.barangay || 'Bel-is' }}
           </span>
+          <p v-if="hero.mun_prov" class="text-white text-lg mt-2 opacity-80">
+            {{ hero.mun_prov }}
+          </p>
           <p class="border-2 border-white text-white p-2 text-xl rounded-lg inline-flex mt-6">
-            Explore nature, culture, and hidden destinations
+            {{ hero.sub || 'Explore nature, culture, and hidden destinations' }}
           </p>
         </div>
 
@@ -32,23 +35,18 @@
           alt="Virtual Map"
           class="w-1/4 max-w-[450px] animate-float flex-shrink-0 cursor-pointer hover:scale-105 transition-transform"
         />
-
       </div>
     </section>
 
     <!-- ── Attractions ──────────────────────────────────────────────────────── -->
-    <section
-      id="attractions"
-      data-section="attractions"
-      class="snap-start h-screen overflow-y-auto bg-white"
-    >
-      <div class="max-w-6xl mx-auto px-6 pt-24 pb-8">
+    <section id="attractions" data-section="attractions" class="bg-white py-20">
+      <div class="max-w-6xl mx-auto px-6">
 
         <h2 class="text-3xl text-center font-semibold">
           Discover places you're going to love
         </h2>
         <p class="text-center text-gray-500 mt-2">
-          From cultural wonders to nature escapes, let what you love point you toward Bali's most amazing experiences.
+          From cultural wonders to nature escapes, let what you love point you toward Bel-is' most amazing experiences.
         </p>
 
         <div class="flex justify-center mt-6">
@@ -59,35 +57,98 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-          <div v-for="n in 6" :key="n" class="bg-white rounded-lg shadow-md overflow-hidden">
-            <img src="/images/h-resort.jpg" class="w-full h-40 object-cover" alt="Bel-is Resort">
-            <div class="p-3">
-              <div class="flex justify-between items-center">
-                <h3 class="font-semibold">Bel-is Resort</h3>
-                <span class="text-sm text-gray-600">⭐ 4.3</span>
-              </div>
-              <hr class="border-gray-200 mt-2">
-              <p class="text-sm text-gray-500 mt-2 line-clamp-2">
-                A relaxing resort surrounded by nature and peaceful views perfect for tourists...
-                <span class="text-blue-600 cursor-pointer">Read...</span>
-              </p>
+        <!-- Empty state -->
+        <div v-if="props.attractions.length === 0" class="text-center py-16 text-gray-400">
+          No attractions available yet.
+        </div>
+
+        <!-- Dynamic cards -->
+        <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+          <div
+            v-for="attraction in visibleAttractions"
+            :key="attraction.id"
+            class="relative rounded-xl overflow-hidden shadow-md group cursor-pointer h-64"
+            @click="openAttractionModal(attraction)">
+
+            <!-- Full image -->
+            <img
+              :src="attraction.image_url || '/images/h-resort.jpg'"
+              class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              :alt="attraction.name"
+            />
+
+            <!-- Gradient overlay -->
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
+
+            <!-- Text at bottom -->
+            <div class="absolute bottom-0 left-0 right-0 p-4">
+              <h3 class="text-white font-bold text-lg leading-tight">{{ attraction.name }}</h3>
+              <p class="text-white/80 text-sm mt-1 line-clamp-2">{{ attraction.description }}</p>
+              <span class="inline-block mt-2 text-xs text-white/70 border border-white/40 rounded-full px-3 py-0.5 hover:bg-white/20 transition">
+                Read more →
+              </span>
             </div>
           </div>
         </div>
 
-        <!-- Pagination -->
-        <div class="flex items-center justify-between mt-6">
-          <button class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-blue-600 hover:text-white transition">
+        <!-- Read More Modal — full image with overlay text -->
+        <div v-if="selectedAttraction"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+          @click.self="selectedAttraction = null">
+          <div class="relative rounded-2xl overflow-hidden shadow-2xl max-w-lg w-full" style="height: 480px;">
+
+            <!-- Full image -->
+            <img
+              :src="selectedAttraction.image_url || '/images/h-resort.jpg'"
+              class="absolute inset-0 w-full h-full object-cover"
+              :alt="selectedAttraction.name"
+            />
+
+            <!-- Gradient overlay -->
+            <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10"></div>
+
+            <!-- Close button -->
+            <button @click="selectedAttraction = null"
+              class="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/70 transition text-xl font-bold leading-none">
+              &times;
+            </button>
+
+            <!-- Text over overlay at bottom -->
+            <div class="absolute bottom-0 left-0 right-0 p-6">
+              <h3 class="text-white text-xl font-bold leading-tight">{{ selectedAttraction.name }}</h3>
+              <p class="text-white/85 text-sm mt-3 leading-relaxed">{{ selectedAttraction.description }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pagination — only shown when there are more than 6 attractions -->
+        <div v-if="totalPages > 1" class="flex items-center justify-between mt-6">
+          <button
+            @click="currentPage = Math.max(1, currentPage - 1)"
+            :disabled="currentPage === 1"
+            class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-blue-600 hover:text-white transition disabled:opacity-40 disabled:cursor-not-allowed">
             Back Page
           </button>
+
           <div class="flex gap-2">
-            <button v-for="p in [1,2,3,'...',5]" :key="p"
-              class="px-3 py-1 border border-gray-300 text-gray-600 rounded hover:bg-blue-600 hover:text-white transition">
+            <button
+              v-for="p in pageNumbers"
+              :key="p"
+              @click="currentPage = p"
+              :class="[
+                'px-3 py-1 border rounded transition',
+                currentPage === p
+                  ? 'bg-gray-900 text-white border-gray-900'
+                  : 'border-gray-300 text-gray-600 hover:bg-blue-600 hover:text-white'
+              ]">
               {{ p }}
             </button>
           </div>
-          <button class="px-4 py-2 border border-gray-300 text-gray-600 rounded hover:bg-blue-600 hover:text-white transition">
+
+          <button
+            @click="currentPage = Math.min(totalPages, currentPage + 1)"
+            :disabled="currentPage === totalPages"
+            class="px-4 py-2 border border-gray-300 text-gray-600 rounded hover:bg-blue-600 hover:text-white transition disabled:opacity-40 disabled:cursor-not-allowed">
             Next Page
           </button>
         </div>
@@ -96,20 +157,16 @@
     </section>
 
     <!-- ── Map ─────────────────────────────────────────────────────────────── -->
-    <section
-      id="map"
-      data-section="map"
-      class="snap-start h-screen overflow-hidden bg-white"
-    >
-      <div class="max-w-6xl mx-auto px-6 pt-24 pb-6 h-full flex flex-col">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 min-h-0">
+    <section id="map" data-section="map" class="bg-white py-20">
+      <div class="max-w-6xl mx-auto px-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6" style="height: 520px;">
 
           <!-- Location list -->
-          <div class="overflow-y-auto pr-2">
+          <div class="overflow-y-auto pr-2 flex flex-col">
             <h2 class="text-2xl font-bold mb-4">Where do you want to go?</h2>
 
             <div class="flex items-center bg-gray-100 rounded-lg px-3 py-2 mb-4">
-              <svg class="mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" viewBox="0 0 64 64" fill="#000000">
+              <svg class="mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" viewBox="0 0 64 64">
                 <path fill="#4f4f4f" d="M32,0C18.746,0,8,10.746,8,24c0,5.219,1.711,10.008,4.555,13.93c0.051,0.094,0.059,0.199,0.117,0.289l16,24C29.414,63.332,30.664,64,32,64s2.586-0.668,3.328-1.781l16-24c0.059-0.09,0.066-0.195,0.117-0.289C54.289,34.008,56,29.219,56,24C56,10.746,45.254,0,32,0z M32,32c-4.418,0-8-3.582-8-8s3.582-8,8-8s8,3.582,8,8S36.418,32,32,32z"/>
               </svg>
               <input type="text" placeholder="Pick a location to explore..."
@@ -140,7 +197,7 @@
                     <svg fill="#0036d6" width="12px" height="12px" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
                       <path d="M16.114-0.011c-6.559 0-12.114 5.587-12.114 12.204 0 6.93 6.439 14.017 10.77 18.998 0.017 0.020 0.717 0.797 1.579 0.797h0.076c0.863 0 1.558-0.777 1.575-0.797 4.064-4.672 10-12.377 10-18.998 0-6.618-4.333-12.204-11.886-12.204zM16.515 29.849c-0.035 0.035-0.086 0.074-0.131 0.107-0.046-0.032-0.096-0.072-0.133-0.107l-0.523-0.602c-4.106-4.71-9.729-11.161-9.729-17.055 0-5.532 4.632-10.205 10.114-10.205 6.829 0 9.886 5.125 9.886 10.205 0 4.474-3.192 10.416-9.485 17.657zM16.035 6.044c-3.313 0-6 2.686-6 6s2.687 6 6 6 6-2.687 6-6-2.686-6-6-6zM16.035 16.044c-2.206 0-4.046-1.838-4.046-4.044s1.794-4 4-4c2.207 0 4 1.794 4 4 0.001 2.206-1.747 4.044-3.954 4.044z"/>
                     </svg>
-                    <p class="text-xs text-gray-500">Kalibo, Aklan</p>
+                    <p class="text-xs text-gray-500">Buruanga, Aklan</p>
                   </div>
                   <div class="flex items-center gap-1 text-sm mt-1">
                     <p class="font-medium">4.3</p>
@@ -161,9 +218,9 @@
           </div>
 
           <!-- Map iframe -->
-          <div class="h-full min-h-[300px]">
+          <div class="h-full">
             <iframe
-              src="https://www.google.com/maps?q=Kalibo,Aklan&output=embed"
+              src="https://www.google.com/maps?q=Bel-is,Buruanga,Aklan&output=embed"
               class="w-full h-full border-0 rounded-lg"
               loading="lazy">
             </iframe>
@@ -177,11 +234,11 @@
     <section
       id="about"
       data-section="about"
-      class="snap-start h-screen overflow-y-auto w-full relative bg-cover bg-center bg-no-repeat"
+      class="w-full relative bg-cover bg-center bg-no-repeat py-24"
       style="background-image: url('/images/abstractbg.jpg')"
     >
       <div class="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
-      <div class="relative z-10 flex flex-col items-center justify-center px-8 text-center py-24 min-h-full">
+      <div class="relative z-10 flex flex-col items-center text-center px-8">
 
         <p class="text-sm sm:text-base uppercase tracking-wider mb-2">About Us</p>
         <h2 class="font-bold text-3xl sm:text-4xl md:text-5xl leading-tight">
@@ -198,27 +255,21 @@
               <p class="text-lg font-bold text-gray-500 flex-shrink-0">01</p>
               <div>
                 <p class="font-semibold text-xl">Our History</p>
-                <p class="text-sm mt-2 text-gray-800">
-                  Experience the beautiful resorts of Bel-is with breathtaking views, serene ambiance, and world-class amenities. Perfect for a relaxing getaway.
-                </p>
+                <p class="text-sm mt-2 text-gray-800">Experience the beautiful resorts of Bel-is with breathtaking views, serene ambiance, and world-class amenities. Perfect for a relaxing getaway.</p>
               </div>
             </div>
             <div class="flex gap-4 items-start">
               <p class="text-lg font-bold text-gray-500 flex-shrink-0">02</p>
               <div>
                 <p class="font-semibold text-xl">Culture &amp; Traditions</p>
-                <p class="text-sm mt-2 text-gray-800">
-                  Immerse yourself in Bel-is' local traditions, festivals, and culinary delights. Connect with the community and make unforgettable memories.
-                </p>
+                <p class="text-sm mt-2 text-gray-800">Immerse yourself in Bel-is' local traditions, festivals, and culinary delights. Connect with the community and make unforgettable memories.</p>
               </div>
             </div>
             <div class="flex gap-4 items-start">
               <p class="text-lg font-bold text-gray-500 flex-shrink-0">03</p>
               <div>
                 <p class="font-semibold text-xl">Nature &amp; Environment</p>
-                <p class="text-sm mt-2 text-gray-800">
-                  Discover pristine beaches, lush landscapes, and the rich biodiversity that makes Bel-is a must-visit destination in Aklan.
-                </p>
+                <p class="text-sm mt-2 text-gray-800">Discover pristine beaches, lush landscapes, and the rich biodiversity that makes Bel-is a must-visit destination in Aklan.</p>
               </div>
             </div>
           </div>
@@ -228,16 +279,11 @@
     </section>
 
     <!-- ── Pre-Registration ─────────────────────────────────────────────────── -->
-    <section
-      id="pre-register"
-      data-section="pre-register"
-      class="snap-start h-screen overflow-y-auto bg-white flex items-center"
-    >
-      <div class="max-w-6xl mx-auto px-6 py-8 w-full">
+    <section id="pre-register" data-section="pre-register" class="bg-white py-20">
+      <div class="max-w-6xl mx-auto px-6">
         <div class="bg-gray-900 rounded-2xl overflow-hidden">
           <div class="grid grid-cols-1 md:grid-cols-2 items-center">
 
-            <!-- Left: Text -->
             <div class="px-10 py-12">
               <span class="inline-block bg-white/10 text-white text-xs font-semibold px-3 py-1 rounded-full mb-4 tracking-wide uppercase">
                 Skip the Queue
@@ -274,7 +320,6 @@
               </a>
             </div>
 
-            <!-- Right: Reference code card -->
             <div class="hidden md:flex items-center justify-center px-10 py-12">
               <div class="bg-white rounded-2xl shadow-2xl p-6 w-64">
                 <div class="text-center mb-4">
@@ -307,23 +352,21 @@
       </div>
     </section>
 
-    <!-- ── Contact Form ─────────────────────────────────────────────────────── -->
-    <section
-      id="contact"
-      data-section="contact"
-      class="snap-start h-screen overflow-y-auto bg-white flex items-center"
-    >
-      <div class="max-w-6xl mx-auto px-6 py-8 w-full">
+    <!-- ── Contact Form + Contact Info Band — combined ──────────────────────── -->
+    <section id="contact" data-section="contact" class="bg-white pt-20">
+
+      <!-- Contact Form -->
+      <div class="max-w-6xl mx-auto px-10 pb-16">
         <p class="text-sm text-gray-500">Get Started</p>
 
-        <div class="grid grid-cols-2 items-start mt-4">
-          <div class="space-y-2">
+        <div class="grid grid-cols-2 items-start mt-1">
+          <div>
             <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight">
               Get in touch with us. <br />
               We're here to assist you.
             </h2>
           </div>
-          <div class="flex flex-col items-end gap-5 pt-2">
+          <div class="flex flex-col items-end gap-5 pt-1">
             <a href="#" class="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-full hover:bg-blue-600 hover:text-white transition">
               <svg fill="#000000" width="22px" height="22px" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
                 <path d="M21.95 5.005l-3.306-.004c-3.206 0-5.277 2.124-5.277 5.415v2.495H10.05v4.515h3.317l-.004 9.575h4.641l.004-9.575h3.806l-.003-4.514h-3.803v-2.117c0-1.018.241-1.533 1.566-1.533l2.366-.001.01-4.256z"/>
@@ -344,7 +387,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1">
           <div>
             <label class="text-sm text-gray-600">Your Name</label>
             <input type="text" class="w-full border-0 border-b border-gray-400 focus:border-blue-500 focus:outline-none py-2 bg-transparent">
@@ -375,57 +418,118 @@
           </button>
         </div>
       </div>
-    </section>
 
-    <!-- ── Contact Info Band — FULL WIDTH ──────────────────────────────────── -->
-    <section
-      class="snap-start h-screen overflow-y-auto w-full relative bg-cover bg-center bg-no-repeat flex items-center"
-      style="background-image: url('/images/abstractbg.jpg')"
-    >
-      <div class="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
-      <div class="relative z-10 w-full px-8 md:px-16 py-16">
+      <!-- Contact Info Band — directly below form, no gap -->
+      <div class="w-full relative bg-cover bg-center bg-no-repeat"
+        style="background-image: url('/images/abstractbg.jpg')">
+        <div class="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
+        <div class="relative z-10 w-full px-10 md:px-16 py-12">
 
-        <p class="text-sm mb-6">Contact Info</p>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+          <p class="text-sm mb-4">Contact Info</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
 
-          <div>
-            <h2 class="text-3xl md:text-4xl font-bold leading-tight">
-              We are always <br /> happy to assist you
-            </h2>
-          </div>
-
-          <div class="space-y-4">
-            <p class="text-sm uppercase tracking-wide">Email Address</p>
-            <div class="w-12 h-[2px] bg-black"></div>
-            <p class="text-lg font-medium">help@info.com</p>
             <div>
-              <p class="text-sm">Assistance hours:</p>
-              <p class="text-sm">Monday – Friday 6 am to 8 pm</p>
+              <h2 class="text-2xl md:text-3xl font-bold leading-tight">
+                We are always <br /> happy to assist you
+              </h2>
             </div>
-          </div>
 
-          <div class="space-y-4">
-            <p class="text-sm uppercase tracking-wide">Phone Number</p>
-            <div class="w-12 h-[2px] bg-black"></div>
-            <p class="text-lg font-medium">+63 123 456 7890</p>
-            <div>
-              <p class="text-sm">Assistance hours:</p>
-              <p class="text-sm">Monday – Friday 6 am to 8 pm</p>
+            <div class="space-y-3">
+              <p class="text-sm uppercase tracking-wide font-medium">Email Address</p>
+              <div class="w-10 h-[2px] bg-black"></div>
+              <p class="text-base font-medium">{{ contact.email || 'help@info.com' }}</p>
+              <div>
+                <p class="text-sm text-gray-700">Assistance hours:</p>
+                <p class="text-sm text-gray-700">{{ contact.email_hours || 'Monday – Friday 6 am to 8 pm' }}</p>
+              </div>
             </div>
-          </div>
 
+            <div class="space-y-3">
+              <p class="text-sm uppercase tracking-wide font-medium">Phone Number</p>
+              <div class="w-10 h-[2px] bg-black"></div>
+              <p class="text-base font-medium">{{ contact.phone || '+63 123 456 7890' }}</p>
+              <div>
+                <p class="text-sm text-gray-700">Assistance hours:</p>
+                <p class="text-sm text-gray-700">{{ contact.phone_hours || 'Monday – Friday 6 am to 8 pm' }}</p>
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>
+
     </section>
 
-    </LandingLayout>
+  </LandingLayout>
 
   <router-view v-else></router-view>
 </template>
 
-<script setup>
-import LandingLayout from '@/Layouts/LandingLayout.vue';
-import { useRoute } from 'vue-router'; 
+<style scoped>
+@keyframes pan {
+  0%   { transform: scale(1.1) translateX(0%); }
+  50%  { transform: scale(1.1) translateX(-5%); }
+  100% { transform: scale(1.1) translateX(0%); }
+}
+.animate-pan {
+  animation: pan 20s ease-in-out infinite;
+}
+</style>
 
-const route = useRoute(); 
+<script setup>
+import LandingLayout from '@/Layouts/LandingLayout.vue'
+import { useRoute } from 'vue-router'
+import { computed, ref } from 'vue'
+
+const route = useRoute()
+
+const props = defineProps({
+    hero: {
+        type: Object,
+        default: () => ({
+            tagline:              'Discover the beauty of',
+            barangay:             'Bel-is',
+            mun_prov:             'Buruanga, Aklan',
+            sub:                  'Explore nature, culture, and hidden destinations',
+            background_image_url: null,
+        }),
+    },
+    contact: {
+        type: Object,
+        default: () => ({
+            email:       'help@info.com',
+            phone:       '+63 123 456 7890',
+            email_hours: 'Monday – Friday 6 am to 8 pm',
+            phone_hours: 'Monday – Friday 6 am to 8 pm',
+        }),
+    },
+    attractions: {
+        type: Array,
+        default: () => [],
+    },
+})
+
+const heroBackgroundUrl = computed(() =>
+    props.hero.background_image_url ?? '/images/bg1.jpg'
+)
+
+// Attractions pagination
+const PER_PAGE       = 6
+const currentPage    = ref(1)
+const totalPages     = computed(() => Math.max(1, Math.ceil(props.attractions.length / PER_PAGE)))
+const visibleAttractions = computed(() => {
+    const start = (currentPage.value - 1) * PER_PAGE
+    return props.attractions.slice(start, start + PER_PAGE)
+})
+const pageNumbers = computed(() => {
+    const pages = []
+    for (let i = 1; i <= totalPages.value; i++) pages.push(i)
+    return pages
+})
+
+// Read more modal
+const selectedAttraction = ref(null)
+function openAttractionModal(attraction) {
+    selectedAttraction.value = attraction
+}
 </script>
