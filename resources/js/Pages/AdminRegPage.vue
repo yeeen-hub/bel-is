@@ -4,22 +4,22 @@ import { useForm, usePage, Link } from '@inertiajs/vue3'
 import LandingLayout from '@/Layouts/SidebarLayout.vue'
 import axios from 'axios'
 
-// 1. Initialize page props
-const page = usePage();
+const page = usePage()
 
-// 2. Define the permission helper logic
-const permissions = computed(() => page.props.auth?.permissions ?? []);
-const userRole = computed(() => (page.props.auth?.user?.role ?? '').toLowerCase());
-
+const permissions = computed(() => page.props.auth?.permissions ?? [])
+const userRole    = computed(() => (page.props.auth?.user?.role ?? '').toLowerCase())
 const can = (permission) => {
-    // Admin bypass
-    if (userRole.value === 'admin') return true;
-    // Check if the permission string exists in the user's permission array
-    return permissions.value.includes(permission);
-};
+    if (userRole.value === 'admin') return true
+    return permissions.value.includes(permission)
+}
+
+// ── Props from controller ──────────────────────────────────────────────────────
+const props = defineProps({
+    feeCategories: { type: Array, default: () => [] },
+})
 
 // ── Mode toggle ───────────────────────────────────────────────────────────────
-const mode = ref('single') // 'single' | 'group'
+const mode = ref('single')
 
 // ── Shared options ────────────────────────────────────────────────────────────
 const purposeOptions  = ['Tourism', 'Research', 'Event', 'Official Visit', 'Other']
@@ -47,14 +47,11 @@ const runProfileSearch = async (state) => {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PRE-REGISTRATION LOOKUP
-// Staff enters the visitor's reference code → pulls their pre-submitted data.
-// Calls GET /pre-register/lookup?code=... → PublicRegController::lookup()
-// If the code is a group code, returns all members and switches to group mode.
 // ═══════════════════════════════════════════════════════════════════════════════
 const refCode       = ref('')
 const lookupLoading = ref(false)
 const lookupError   = ref('')
-const preRegData    = ref(null)   // { found, is_group, visit, members }
+const preRegData    = ref(null)
 
 const lookupByCode = async () => {
     if (!refCode.value.trim()) return
@@ -71,33 +68,33 @@ const lookupByCode = async () => {
             preRegData.value = res.data
 
             if (res.data.is_group) {
-                // Switch to group mode and pre-fill all members
                 mode.value = 'group'
                 members.value = res.data.members.map(m => ({
                     ...blankMember(),
-                    first_name:       m.first_name       ?? '',
-                    last_name:        m.last_name        ?? '',
-                    municipality:     m.municipality     ?? '',
-                    province:         m.province         ?? '',
-                    purpose:          m.purpose          ?? '',
-                    duration_of_stay: m.duration_of_stay ?? '',
-                    contact_number:   m.contact_number   ?? '',
-                    visit_id:         m.visit_id,          // ties to existing visit
-                    reference_code:   m.reference_code,
+                    first_name:        m.first_name        ?? '',
+                    last_name:         m.last_name         ?? '',
+                    municipality:      m.municipality      ?? '',
+                    province:          m.province          ?? '',
+                    purpose:           m.purpose           ?? '',
+                    duration_of_stay:  m.duration_of_stay  ?? '',
+                    contact_number:    m.contact_number    ?? '',
+                    visitor_category:  m.visitor_category  ?? '',  // ← pre-filled
+                    visit_id:          m.visit_id,
+                    reference_code:    m.reference_code,
                 }))
             } else {
-                // Single — pre-fill single form
                 mode.value = 'single'
                 const v = res.data.visit
-                form.first_name       = v.first_name       ?? ''
-                form.last_name        = v.last_name        ?? ''
-                form.municipality     = v.municipality     ?? ''
-                form.province         = v.province         ?? ''
-                form.contact_number   = v.contact_number   ?? ''
-                form.purpose          = v.purpose          ?? ''
-                form.duration_of_stay = v.duration_of_stay ?? ''
-                form.visit_id         = v.visit_id
-                form.profile_id       = ''
+                form.first_name        = v.first_name        ?? ''
+                form.last_name         = v.last_name         ?? ''
+                form.municipality      = v.municipality      ?? ''
+                form.province          = v.province          ?? ''
+                form.contact_number    = v.contact_number    ?? ''
+                form.purpose           = v.purpose           ?? ''
+                form.duration_of_stay  = v.duration_of_stay  ?? ''
+                form.visitor_category  = v.visitor_category  ?? ''   // ← pre-filled
+                form.visit_id          = v.visit_id
+                form.profile_id        = ''
             }
         }
     } catch (err) {
@@ -119,22 +116,24 @@ const clearLookup = () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // SINGLE REGISTRATION
 // ═══════════════════════════════════════════════════════════════════════════════
-const singleSearch = ref(makeSearchState())
-const openPurpose  = ref(false)
-const openDuration = ref(false)
+const singleSearch   = ref(makeSearchState())
+const openPurpose    = ref(false)
+const openDuration   = ref(false)
+const openCategory   = ref(false)   // ← NEW
 
 const form = useForm({
-    first_name:       '',
-    last_name:        '',
-    municipality:     '',
-    province:         '',
-    place_of_origin:  '',
-    purpose:          '',
-    purpose_other:    '',
-    duration_of_stay: '',
-    contact_number:   '',
-    profile_id:       '',
-    visit_id:         '',   // set when pre-registered visit is found
+    first_name:        '',
+    last_name:         '',
+    municipality:      '',
+    province:          '',
+    place_of_origin:   '',
+    purpose:           '',
+    purpose_other:     '',
+    duration_of_stay:  '',
+    contact_number:    '',
+    visitor_category:  '',   // ← NEW
+    profile_id:        '',
+    visit_id:          '',
 })
 
 const onSingleSearch = () => runProfileSearch(singleSearch.value)
@@ -152,10 +151,14 @@ const selectSingleProfile = (profile) => {
 
 const clearSingleProfile = () => {
     singleSearch.value = makeSearchState()
-    // Only clear profile-linked fields, keep pre-reg data if present
     if (!preRegData.value) form.reset()
     else form.profile_id = ''
 }
+
+// ── Category label helper ─────────────────────────────────────────────────────
+const categoryLabel = (cat) => cat.age_range
+    ? `${cat.category} (${cat.age_range}) — ₱${cat.fee}`
+    : `${cat.category} — ₱${cat.fee}`
 
 const submitSingle = () => {
     form.place_of_origin = `${form.municipality}, ${form.province}`
@@ -174,11 +177,13 @@ const blankMember = () => ({
     purpose_other:    '',
     duration_of_stay: '',
     contact_number:   '',
+    visitor_category: '',   // ← NEW
     profile_id:       '',
-    visit_id:         '',           // set when pre-reg member is found
-    reference_code:   '',           // shown in badge when pre-reg found
+    visit_id:         '',
+    reference_code:   '',
     openPurpose:      false,
     openDuration:     false,
+    openCategory:     false,  // ← NEW
     search:           makeSearchState(),
 })
 
@@ -196,9 +201,10 @@ const cloneFromLeader = (index) => {
     m.province         = leader.province
     m.purpose          = leader.purpose
     m.duration_of_stay = leader.duration_of_stay
+    // NOTE: visitor_category is intentionally NOT cloned — each member may differ
 }
 
-const onMemberSearch  = (index) => runProfileSearch(members.value[index].search)
+const onMemberSearch        = (index) => runProfileSearch(members.value[index].search)
 
 const selectMemberProfile = (index, profile) => {
     const m = members.value[index]
@@ -228,14 +234,14 @@ const submitGroup = () => {
         purpose:          m.purpose,
         purpose_other:    m.purpose === 'Other' ? m.purpose_other : '',
         duration_of_stay: m.duration_of_stay,
+        visitor_category: m.visitor_category,   // ← NEW
         contact_number:   m.contact_number || '',
         profile_id:       m.profile_id     || '',
-        visit_id:         m.visit_id       || '',   // pre-reg: update existing
+        visit_id:         m.visit_id       || '',
     }))
     groupForm.post(route('registration.group'))
 }
 
-// ── Pre-reg banner helper ─────────────────────────────────────────────────────
 const preRegBannerText = computed(() => {
     if (!preRegData.value) return ''
     if (preRegData.value.is_group)
@@ -285,22 +291,14 @@ const preRegBannerText = computed(() => {
                 </div>
             </div>
 
-            <!-- ═══════════════════════════════════════════════════════════════ -->
-            <!-- PRE-REGISTRATION LOOKUP — always visible at top               -->
-            <!-- Staff enters visitor's reference code to pull pre-reg data.   -->
-            <!-- If code is a group code → auto-switches to group mode.        -->
-            <!-- ═══════════════════════════════════════════════════════════════ -->
+            <!-- PRE-REGISTRATION LOOKUP -->
             <div class="max-w-2xl mx-auto mb-4">
                 <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
-
                     <p class="text-sm font-semibold text-gray-700 mb-3">
                         Pre-Registration Code
-                        <span class="text-gray-400 font-normal ml-1">
-                            (enter code if visitor pre-registered online)
-                        </span>
+                        <span class="text-gray-400 font-normal ml-1">(enter code if visitor pre-registered online)</span>
                     </p>
 
-                    <!-- Found badge — single -->
                     <div v-if="preRegData && !preRegData.is_group"
                         class="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm mb-0">
                         <div class="flex items-center gap-2">
@@ -317,7 +315,6 @@ const preRegBannerText = computed(() => {
                             class="text-green-400 hover:text-red-500 text-xs font-bold ml-4">✕ Clear</button>
                     </div>
 
-                    <!-- Found badge — group -->
                     <div v-else-if="preRegData && preRegData.is_group"
                         class="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm mb-0">
                         <div class="flex items-center gap-2">
@@ -333,18 +330,11 @@ const preRegBannerText = computed(() => {
                             class="text-green-400 hover:text-red-500 text-xs font-bold ml-4">✕ Clear</button>
                     </div>
 
-                    <!-- Search input — hidden once found -->
                     <div v-if="!preRegData" class="flex gap-2">
-                        <input
-                            v-model="refCode"
-                            type="text"
-                            placeholder="e.g. BEL-482951"
+                        <input v-model="refCode" type="text" placeholder="e.g. BEL-482951"
                             class="flex-1 border border-gray-200 rounded-xl py-2.5 px-4 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-gray-300"
-                            @keyup.enter.prevent="lookupByCode"
-                        />
-                        <button
-                            type="button"
-                            @click="lookupByCode"
+                            @keyup.enter.prevent="lookupByCode" />
+                        <button type="button" @click="lookupByCode"
                             :disabled="lookupLoading || !refCode.trim()"
                             class="bg-gray-900 text-white text-sm font-bold px-5 py-2.5 rounded-xl disabled:opacity-50 hover:bg-gray-700 transition">
                             {{ lookupLoading ? 'Searching...' : 'Find' }}
@@ -357,7 +347,7 @@ const preRegBannerText = computed(() => {
                 </div>
             </div>
 
-            <!-- Mode Toggle — disabled when group pre-reg is loaded -->
+            <!-- Mode Toggle -->
             <div class="max-w-2xl mx-auto mb-6">
                 <div class="flex gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
                     <button type="button" @click="mode = 'single'"
@@ -366,13 +356,10 @@ const preRegBannerText = computed(() => {
                         class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                         Individual
                     </button>
-                    <button 
-                        type="button" 
-                        @click="mode = 'group'"
+                    <button type="button" @click="mode = 'group'"
                         :disabled="preRegData?.is_group"
                         :class="mode === 'group' ? 'bg-gray-900 text-white shadow' : 'text-gray-500 hover:bg-gray-50'"
-                        class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed""
-                    >
+                        class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                         Group
                         <span v-if="mode === 'group'"
                             class="ml-1.5 text-xs font-bold bg-white text-gray-900 px-1.5 py-0.5 rounded-full">
@@ -411,7 +398,7 @@ const preRegBannerText = computed(() => {
                         Details pre-filled from pre-registration. Verify with visitor and edit if needed.
                     </div>
 
-                    <!-- Returning Visitor Search — hidden when pre-reg loaded -->
+                    <!-- Returning Visitor Search -->
                     <div v-if="!preRegData">
                         <label class="block text-gray-700 text-sm font-semibold mb-1.5">
                             Returning Visitor?
@@ -518,6 +505,49 @@ const preRegBannerText = computed(() => {
                             placeholder="09xxxxxxxxx" />
                     </div>
 
+                    <!-- ── NEW: Visitor Category ────────────────────────────── -->
+                    <div class="relative">
+                        <label class="block text-gray-700 text-sm font-semibold mb-1.5">
+                            Visitor Category <span class="text-red-500">*</span>
+                        </label>
+                        <button type="button" @click="openCategory = !openCategory"
+                            class="w-full border border-gray-200 rounded-lg py-2.5 px-4 text-left bg-white text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 flex items-center justify-between">
+                            <span :class="form.visitor_category ? 'text-gray-800' : 'text-gray-400'">
+                                {{ form.visitor_category
+                                    ? categoryLabel(feeCategories.find(c => c.category === form.visitor_category) ?? { category: form.visitor_category, fee: '' })
+                                    : 'Select visitor category' }}
+                            </span>
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        <ul v-show="openCategory"
+                            class="absolute z-20 w-full mt-1 border border-gray-200 rounded-xl bg-white shadow-lg max-h-52 overflow-auto">
+                            <li v-for="cat in feeCategories" :key="cat.id"
+                                @click="form.visitor_category = cat.category; openCategory = false"
+                                class="px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm text-gray-700 border-b last:border-0 flex items-center justify-between"
+                                :class="form.visitor_category === cat.category ? 'bg-gray-50 font-semibold' : ''">
+                                <div>
+                                    <span class="font-medium">{{ cat.category }}</span>
+                                    <span v-if="cat.age_range" class="text-gray-400 text-xs ml-2">{{ cat.age_range }}</span>
+                                </div>
+                                <span class="text-green-700 font-bold text-xs ml-4">₱{{ cat.fee }}</span>
+                            </li>
+                        </ul>
+                        <p v-if="form.errors.visitor_category" class="text-red-500 text-xs mt-1">{{ form.errors.visitor_category }}</p>
+                        <!-- Fee preview pill -->
+                        <div v-if="form.visitor_category" class="mt-2">
+                            <span class="inline-flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10.75 10.818v2.614A3.13 3.13 0 0011.888 13c.482-.315.612-.648.612-.875 0-.227-.13-.560-.612-.875a3.13 3.13 0 00-1.138-.432zM8.33 8.62c.053.055.115.11.184.164.208.16.46.284.736.363V6.603a2.45 2.45 0 00-.35.13c-.14.065-.27.143-.386.233-.377.292-.514.627-.514.909 0 .184.058.39.33.585z"/>
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-6a.75.75 0 01.75.75v.316a3.78 3.78 0 011.653.713c.426.33.744.74.925 1.2a.75.75 0 01-1.395.55 1.35 1.35 0 00-.447-.563 2.187 2.187 0 00-.736-.363V9.3c.698.093 1.383.32 1.959.696.787.514 1.29 1.27 1.29 2.13 0 .86-.504 1.616-1.29 2.13-.576.377-1.261.603-1.96.696v.299a.75.75 0 01-1.5 0v-.3c-.697-.092-1.382-.318-1.958-.695-.482-.315-.857-.717-1.078-1.188a.75.75 0 111.359-.636c.08.173.245.376.54.569.313.205.706.353 1.138.432v-2.748a3.782 3.782 0 01-1.653-.713C6.9 9.433 6.5 8.681 6.5 7.875c0-.805.4-1.558 1.097-2.096a3.78 3.78 0 011.653-.713V4.75A.75.75 0 0110 4z" clip-rule="evenodd"/>
+                                </svg>
+                                Fee per visitor:
+                                ₱{{ feeCategories.find(c => c.category === form.visitor_category)?.fee ?? '—' }}
+                            </span>
+                        </div>
+                    </div>
+
                     <!-- Purpose & Duration -->
                     <div class="grid grid-cols-2 gap-5">
                         <div class="relative">
@@ -566,13 +596,13 @@ const preRegBannerText = computed(() => {
 
                     <div class="flex justify-center pt-2">
                         <button type="submit" :disabled="form.processing"
-                            class="bg-gray-900 text-white font-bold py-2.5 px-10 rounded-lg disabled:opacity-50 text-sm hover:bg-gray-700 transition, ":title="!can('edit_registration') ? 'You do not have permission to edit registrations contact the admin' : ''">
+                            class="bg-gray-900 text-white font-bold py-2.5 px-10 rounded-lg disabled:opacity-50 text-sm hover:bg-gray-700 transition"
+                            :title="!can('edit_registration') ? 'You do not have permission to edit registrations' : ''">
                             {{ form.processing ? 'Saving...' : 'Next →' }}
                         </button>
                     </div>
 
                     </fieldset>
-
                 </form>
             </div>
 
@@ -611,7 +641,6 @@ const preRegBannerText = computed(() => {
                                 :class="i === 0 ? 'bg-white text-gray-900' : 'bg-gray-200 text-gray-600'">
                                 {{ i === 0 ? '★ Group Leader' : `Member ${i + 1}` }}
                             </span>
-                            <!-- Pre-reg code badge per member -->
                             <span v-if="m.reference_code"
                                 class="font-mono text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                                 {{ m.reference_code }}
@@ -639,7 +668,7 @@ const preRegBannerText = computed(() => {
                     <!-- Card Body -->
                     <div class="p-6 space-y-5">
 
-                        <!-- Profile search — hidden for pre-reg members -->
+                        <!-- Profile search -->
                         <div v-if="!m.reference_code">
                             <label class="block text-gray-600 text-xs font-semibold mb-1.5">
                                 Returning visitor? <span class="text-gray-400 font-normal">(optional)</span>
@@ -718,6 +747,43 @@ const preRegBannerText = computed(() => {
                                 placeholder="09xxxxxxxxx" />
                         </div>
 
+                        <!-- ── NEW: Visitor Category per member ──────────────── -->
+                        <div class="relative">
+                            <label class="block text-gray-600 text-xs font-semibold mb-1.5">
+                                Visitor Category <span class="text-red-500">*</span>
+                            </label>
+                            <button type="button" @click="m.openCategory = !m.openCategory"
+                                class="w-full border border-gray-200 rounded-lg py-2.5 px-4 text-left bg-white text-sm focus:outline-none flex items-center justify-between">
+                                <span :class="m.visitor_category ? 'text-gray-800' : 'text-gray-400'">
+                                    {{ m.visitor_category
+                                        ? categoryLabel(feeCategories.find(c => c.category === m.visitor_category) ?? { category: m.visitor_category, fee: '' })
+                                        : 'Select category' }}
+                                </span>
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            <ul v-show="m.openCategory"
+                                class="absolute z-20 w-full mt-1 border border-gray-200 rounded-xl bg-white shadow-lg max-h-44 overflow-auto">
+                                <li v-for="cat in feeCategories" :key="cat.id"
+                                    @click="m.visitor_category = cat.category; m.openCategory = false"
+                                    class="px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm text-gray-700 border-b last:border-0 flex items-center justify-between"
+                                    :class="m.visitor_category === cat.category ? 'bg-gray-50 font-semibold' : ''">
+                                    <div>
+                                        <span class="font-medium">{{ cat.category }}</span>
+                                        <span v-if="cat.age_range" class="text-gray-400 text-xs ml-2">{{ cat.age_range }}</span>
+                                    </div>
+                                    <span class="text-green-700 font-bold text-xs ml-4">₱{{ cat.fee }}</span>
+                                </li>
+                            </ul>
+                            <!-- Fee pill -->
+                            <div v-if="m.visitor_category" class="mt-1.5">
+                                <span class="inline-flex items-center gap-1 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                                    ₱{{ feeCategories.find(c => c.category === m.visitor_category)?.fee ?? '—' }} / visitor
+                                </span>
+                            </div>
+                        </div>
+
                         <!-- Purpose & Duration -->
                         <div class="grid grid-cols-2 gap-4">
                             <div class="relative">
@@ -765,7 +831,7 @@ const preRegBannerText = computed(() => {
                     </div>
                 </div>
 
-                <!-- Add Member — hidden when pre-reg group is loaded -->
+                <!-- Add Member -->
                 <button v-if="!preRegData?.is_group"
                     type="button" @click="addMember"
                     class="w-full py-4 border-2 border-dashed border-gray-300 rounded-2xl text-sm text-gray-500 hover:border-gray-500 hover:text-gray-700 transition font-semibold">
@@ -778,15 +844,15 @@ const preRegBannerText = computed(() => {
                         <p class="text-sm text-gray-800 font-semibold">{{ memberCount }} visitor(s) in this group</p>
                         <p class="text-xs text-gray-400 mt-0.5">Payment will be collected for each member one by one.</p>
                     </div>
-                    <button type="button" @click="submitGroup" :disabled="groupForm.processing" 
-                        class="bg-gray-900 text-white font-bold py-2.5 px-6 rounded-lg disabled:opacity-50 ml-4 whitespace-nowrap text-sm hover:bg-gray-700 transition " :title="!can('edit_registration') ? 'You do not have permission to edit registrations contact the admin' : ''">
+                    <button type="button" @click="submitGroup" :disabled="groupForm.processing"
+                        class="bg-gray-900 text-white font-bold py-2.5 px-6 rounded-lg disabled:opacity-50 ml-4 whitespace-nowrap text-sm hover:bg-gray-700 transition"
+                        :title="!can('edit_registration') ? 'You do not have permission to edit registrations' : ''">
                         {{ groupForm.processing ? 'Registering...' : `Register ${memberCount} Visitor(s) →` }}
                     </button>
                 </div>
 
-                </fieldset>
+                    </fieldset>
                 </form>
-
             </div>
         </div>
 

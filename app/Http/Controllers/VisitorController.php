@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\VisitorVisit;
 use App\Models\VisitorProfile;
+use App\Models\FeeCategory;
 use App\Models\AuditLog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,9 +18,6 @@ class VisitorController extends Controller
     public function index(Request $request)
     {
         $query = VisitorVisit::with('receipt', 'registeredBy')
-            // ✅ VISIBILITY RULE:
-            // source='pre_registration' → hidden until staff confirms at checkpoint
-            // source='staff' → always visible (pending walk-ins show, paid show)
             ->where('source', 'staff')
             ->latest('arrival_at');
 
@@ -47,21 +45,22 @@ class VisitorController extends Controller
 
         return Inertia::render('AdminVRPage', [
             'visitors' => $visits->through(fn($v) => [
-                'id'              => $v->id,
-                'registration_id' => $v->registration_id,
-                'reference_code'  => $v->reference_code,
-                'name'            => $v->full_name,
-                'place_of_origin' => $v->place_of_origin,
-                'municipality'    => $v->snapshot_municipality,
-                'province'        => $v->snapshot_province,
-                'purpose'         => $v->purpose === 'Other' && $v->purpose_other
-                                        ? "Other: {$v->purpose_other}"
-                                        : $v->purpose,
-                'duration'        => $v->duration_of_stay,
-                'contact_number'  => $v->snapshot_contact_number ?? 'N/A',
-                'fee_status'      => $v->fee_status,
-                'arrival_at'      => $v->arrival_at->format('M d, Y'),
-                'registered_by'   => $v->registeredBy->name ?? 'N/A',
+                'id'               => $v->id,
+                'registration_id'  => $v->registration_id,
+                'reference_code'   => $v->reference_code,
+                'name'             => $v->full_name,
+                'place_of_origin'  => $v->place_of_origin,
+                'municipality'     => $v->snapshot_municipality,
+                'province'         => $v->snapshot_province,
+                'purpose'          => $v->purpose === 'Other' && $v->purpose_other
+                                         ? "Other: {$v->purpose_other}"
+                                         : $v->purpose,
+                'duration'         => $v->duration_of_stay,
+                'visitor_category' => $v->visitor_category,
+                'contact_number'   => $v->snapshot_contact_number ?? 'N/A',
+                'fee_status'       => $v->fee_status,
+                'arrival_at'       => $v->arrival_at->format('M d, Y'),
+                'registered_by'    => $v->registeredBy->name ?? 'N/A',
             ]),
             'filters' => [
                 'search'     => $request->search     ?? '',
@@ -70,7 +69,6 @@ class VisitorController extends Controller
                 'date_from'  => $request->date_from  ?? '',
                 'date_to'    => $request->date_to    ?? '',
             ],
-            // ✅ Only count staff-sourced pending — pre-reg pending excluded
             'pendingFees' => VisitorVisit::where('source', 'staff')
                                          ->where('fee_status', 'Pending')
                                          ->count(),
@@ -80,7 +78,10 @@ class VisitorController extends Controller
     // ── Show registration form ────────────────────────────────────────────────
     public function create()
     {
-        return Inertia::render('AdminRegPage');
+        return Inertia::render('AdminRegPage', [
+            // Pass fee categories so the registration form can show the dropdown
+            'feeCategories' => FeeCategory::orderBy('id')->get(['id', 'category', 'age_range', 'fee']),
+        ]);
     }
 
     // ── Store a single visit ──────────────────────────────────────────────────
@@ -96,6 +97,7 @@ class VisitorController extends Controller
             'purpose_other'    => 'required_if:purpose,Other|nullable|string|max:255',
             'duration_of_stay' => 'required|string|max:255',
             'contact_number'   => 'nullable|string|max:20',
+            'visitor_category' => 'required|string|max:100',   // ← NEW
             'profile_id'       => 'nullable|uuid|exists:visitor_profiles,id',
             'visit_id'         => 'nullable|uuid|exists:visitor_visits,id',
         ]);
@@ -104,8 +106,6 @@ class VisitorController extends Controller
 
         try {
             // ── SCENARIO 1: Pre-registered visitor ───────────────────────────
-            // Staff confirmed the reference code → flip source to 'staff'.
-            // This is the exact moment the visitor enters the official records.
             if ($request->filled('visit_id')) {
                 $visit = VisitorVisit::findOrFail($request->visit_id);
 
@@ -126,7 +126,6 @@ class VisitorController extends Controller
                     }
                 }
 
-                // ✅ source = 'staff' — visitor is now confirmed and visible
                 $visit->update([
                     'source'                   => 'staff',
                     'registered_by'            => Auth::id(),
@@ -135,6 +134,7 @@ class VisitorController extends Controller
                                                     ? $request->purpose_other
                                                     : null,
                     'duration_of_stay'         => $request->duration_of_stay,
+                    'visitor_category'         => $request->visitor_category,  // ← NEW
                     'snapshot_first_name'      => $request->first_name,
                     'snapshot_last_name'       => $request->last_name,
                     'snapshot_municipality'    => $request->municipality,
@@ -193,6 +193,7 @@ class VisitorController extends Controller
                                         ? $request->purpose_other
                                         : null,
                 'duration_of_stay' => $request->duration_of_stay,
+                'visitor_category' => $request->visitor_category,  // ← NEW
                 'fee_status'       => 'Pending',
                 'source'           => 'staff',
                 'registered_by'    => Auth::id(),
@@ -226,18 +227,19 @@ class VisitorController extends Controller
     public function storeGroup(Request $request)
     {
         $request->validate([
-            'members'                    => 'required|array|min:1|max:20',
-            'members.*.first_name'       => 'required|string|max:255',
-            'members.*.last_name'        => 'required|string|max:255',
-            'members.*.municipality'     => 'required|string|max:255',
-            'members.*.province'         => 'required|string|max:255',
-            'members.*.place_of_origin'  => 'required|string|max:255',
-            'members.*.purpose'          => 'required|in:Tourism,Research,Event,Official Visit,Other',
-            'members.*.purpose_other'    => 'required_if:members.*.purpose,Other|nullable|string|max:255',
-            'members.*.duration_of_stay' => 'required|string|max:255',
-            'members.*.contact_number'   => 'nullable|string|max:20',
-            'members.*.profile_id'       => 'nullable|uuid|exists:visitor_profiles,id',
-            'members.*.visit_id'         => 'nullable|uuid|exists:visitor_visits,id',
+            'members'                      => 'required|array|min:1|max:20',
+            'members.*.first_name'         => 'required|string|max:255',
+            'members.*.last_name'          => 'required|string|max:255',
+            'members.*.municipality'       => 'required|string|max:255',
+            'members.*.province'           => 'required|string|max:255',
+            'members.*.place_of_origin'    => 'required|string|max:255',
+            'members.*.purpose'            => 'required|in:Tourism,Research,Event,Official Visit,Other',
+            'members.*.purpose_other'      => 'required_if:members.*.purpose,Other|nullable|string|max:255',
+            'members.*.duration_of_stay'   => 'required|string|max:255',
+            'members.*.visitor_category'   => 'required|string|max:100',  // ← NEW
+            'members.*.contact_number'     => 'nullable|string|max:20',
+            'members.*.profile_id'         => 'nullable|uuid|exists:visitor_profiles,id',
+            'members.*.visit_id'           => 'nullable|uuid|exists:visitor_visits,id',
         ]);
 
         DB::beginTransaction();
@@ -246,7 +248,6 @@ class VisitorController extends Controller
             $visits = [];
 
             foreach ($request->members as $memberData) {
-                // Pre-reg member: confirm existing visit
                 if (!empty($memberData['visit_id'])) {
                     $visit = VisitorVisit::findOrFail($memberData['visit_id']);
                     if ($visit->source === 'pre_registration' && $visit->fee_status === 'Pending') {
@@ -258,6 +259,7 @@ class VisitorController extends Controller
                                                             ? ($memberData['purpose_other'] ?? null)
                                                             : null,
                             'duration_of_stay'         => $memberData['duration_of_stay'],
+                            'visitor_category'         => $memberData['visitor_category'],  // ← NEW
                             'snapshot_first_name'      => $memberData['first_name'],
                             'snapshot_last_name'       => $memberData['last_name'],
                             'snapshot_municipality'    => $memberData['municipality'],
@@ -270,7 +272,6 @@ class VisitorController extends Controller
                     }
                 }
 
-                // Walk-in member: create new visit
                 [$visit] = $this->createVisitRecord($memberData, Auth::id());
                 $visits[] = $visit;
             }
@@ -322,6 +323,7 @@ class VisitorController extends Controller
                                     ? ($data['purpose_other'] ?? null)
                                     : null,
             'duration_of_stay' => $data['duration_of_stay'],
+            'visitor_category' => $data['visitor_category'] ?? null,  // ← NEW
             'fee_status'       => 'Pending',
             'source'           => 'staff',
             'registered_by'    => $staffId,
@@ -350,31 +352,32 @@ class VisitorController extends Controller
 
         return Inertia::render('AdminVRShowPage', [
             'visitor' => [
-                'id'              => $visitor->id,
-                'registration_id' => $visitor->registration_id,
-                'reference_code'  => $visitor->reference_code,
-                'profile_id'      => $visitor->profile_id,
-                'first_name'      => $visitor->snapshot_first_name,
-                'last_name'       => $visitor->snapshot_last_name,
-                'full_name'       => $visitor->full_name,
-                'place_of_origin' => $visitor->place_of_origin,
-                'municipality'    => $visitor->snapshot_municipality,
-                'province'        => $visitor->snapshot_province,
-                'contact_number'  => $visitor->snapshot_contact_number ?? 'N/A',
-                'current_profile' => $visitor->profile ? [
+                'id'               => $visitor->id,
+                'registration_id'  => $visitor->registration_id,
+                'reference_code'   => $visitor->reference_code,
+                'profile_id'       => $visitor->profile_id,
+                'first_name'       => $visitor->snapshot_first_name,
+                'last_name'        => $visitor->snapshot_last_name,
+                'full_name'        => $visitor->full_name,
+                'place_of_origin'  => $visitor->place_of_origin,
+                'municipality'     => $visitor->snapshot_municipality,
+                'province'         => $visitor->snapshot_province,
+                'contact_number'   => $visitor->snapshot_contact_number ?? 'N/A',
+                'visitor_category' => $visitor->visitor_category,
+                'current_profile'  => $visitor->profile ? [
                     'municipality'    => $visitor->profile->municipality,
                     'province'        => $visitor->profile->province,
                     'place_of_origin' => $visitor->profile->place_of_origin,
                     'contact_number'  => $visitor->profile->contact_number,
                 ] : null,
-                'purpose'         => $visitor->purpose === 'Other' && $visitor->purpose_other
-                                        ? "Other: {$visitor->purpose_other}"
-                                        : $visitor->purpose,
-                'duration'        => $visitor->duration_of_stay,
-                'fee_status'      => $visitor->fee_status,
-                'arrival_at'      => $visitor->arrival_at->format('M d, Y h:i A'),
-                'registered_by'   => $visitor->registeredBy->name ?? 'N/A',
-                'receipt'         => $visitor->receipt,
+                'purpose'          => $visitor->purpose === 'Other' && $visitor->purpose_other
+                                         ? "Other: {$visitor->purpose_other}"
+                                         : $visitor->purpose,
+                'duration'         => $visitor->duration_of_stay,
+                'fee_status'       => $visitor->fee_status,
+                'arrival_at'       => $visitor->arrival_at->format('M d, Y h:i A'),
+                'registered_by'    => $visitor->registeredBy->name ?? 'N/A',
+                'receipt'          => $visitor->receipt,
             ],
         ]);
     }

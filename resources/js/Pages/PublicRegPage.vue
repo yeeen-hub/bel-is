@@ -3,6 +3,11 @@ import { ref, computed } from 'vue'
 import { useForm, usePage, Link } from '@inertiajs/vue3'
 import PlainLayout from '@/Layouts/PlainLayout.vue'
 
+// ── Props from PublicRegController::create() ──────────────────────────────────
+const props = defineProps({
+    feeCategories: { type: Array, default: () => [] },
+})
+
 const purposeOptions  = ['Tourism', 'Research', 'Event', 'Official Visit', 'Other']
 const durationOptions = ['1 day', '2 days', '3 days', '4-7 days', 'More than 1 week']
 
@@ -11,6 +16,7 @@ const mode = ref('single')
 
 const openPurpose  = ref(false)
 const openDuration = ref(false)
+const openCategory = ref(false)   // ← NEW
 
 // ── Flash (success screen data) ───────────────────────────────────────────────
 const page          = usePage()
@@ -27,16 +33,22 @@ const groupCode     = computed(() => flash.value.group_code ?? '')
 const qrUrl = (code) =>
     code ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(code)}` : ''
 
+// ── Category helper ───────────────────────────────────────────────────────────
+const categoryLabel = (cat) => cat.age_range
+    ? `${cat.category} (${cat.age_range}) — ₱${cat.fee}`
+    : `${cat.category} — ₱${cat.fee}`
+
 // ── Individual form ───────────────────────────────────────────────────────────
 const form = useForm({
-    first_name:       '',
-    last_name:        '',
-    municipality:     '',
-    province:         '',
-    purpose:          '',
-    purpose_other:    '',
-    duration_of_stay: '',
-    contact_number:   '',
+    first_name:        '',
+    last_name:         '',
+    municipality:      '',
+    province:          '',
+    purpose:           '',
+    purpose_other:     '',
+    duration_of_stay:  '',
+    contact_number:    '',
+    visitor_category:  '',   // ← NEW
 })
 
 const submit = () => {
@@ -48,16 +60,18 @@ const submit = () => {
 
 // ── Group form ────────────────────────────────────────────────────────────────
 const blankMember = () => ({
-    first_name:       '',
-    last_name:        '',
-    municipality:     '',
-    province:         '',
-    purpose:          '',
-    purpose_other:    '',
-    duration_of_stay: '',
-    contact_number:   '',
-    openPurpose:      false,
-    openDuration:     false,
+    first_name:        '',
+    last_name:         '',
+    municipality:      '',
+    province:          '',
+    purpose:           '',
+    purpose_other:     '',
+    duration_of_stay:  '',
+    contact_number:    '',
+    visitor_category:  '',   // ← NEW
+    openPurpose:       false,
+    openDuration:      false,
+    openCategory:      false,  // ← NEW
 })
 
 const members   = ref([blankMember()])
@@ -75,22 +89,24 @@ const cloneFromLeader = (i) => {
     m.purpose          = leader.purpose
     m.purpose_other    = leader.purpose_other
     m.duration_of_stay = leader.duration_of_stay
+    // visitor_category intentionally NOT cloned — each person may differ
 }
 
-// ── Client-side validation per member ────────────────────────────────────────
+// ── Client-side validation ────────────────────────────────────────────────────
 const memberErrors = ref([])
 
 const validateMembers = () => {
     memberErrors.value = members.value.map(m => {
         const e = {}
-        if (!m.first_name.trim())    e.first_name       = 'First name is required.'
-        if (!m.last_name.trim())     e.last_name        = 'Last name is required.'
-        if (!m.municipality.trim())  e.municipality     = 'Municipality is required.'
-        if (!m.province.trim())      e.province         = 'Province is required.'
-        if (!m.purpose)              e.purpose          = 'Purpose is required.'
+        if (!m.first_name.trim())    e.first_name        = 'First name is required.'
+        if (!m.last_name.trim())     e.last_name         = 'Last name is required.'
+        if (!m.municipality.trim())  e.municipality      = 'Municipality is required.'
+        if (!m.province.trim())      e.province          = 'Province is required.'
+        if (!m.purpose)              e.purpose           = 'Purpose is required.'
         if (m.purpose === 'Other' && !m.purpose_other?.trim())
-                                     e.purpose_other    = 'Please specify the purpose.'
-        if (!m.duration_of_stay)     e.duration_of_stay = 'Duration is required.'
+                                     e.purpose_other     = 'Please specify the purpose.'
+        if (!m.duration_of_stay)     e.duration_of_stay  = 'Duration is required.'
+        if (!m.visitor_category)     e.visitor_category  = 'Category is required.'  // ← NEW
         return e
     })
     return memberErrors.value.every(e => Object.keys(e).length === 0)
@@ -99,14 +115,15 @@ const validateMembers = () => {
 const submitGroup = () => {
     if (!validateMembers()) return
     groupForm.members = members.value.map(m => ({
-        first_name:       m.first_name,
-        last_name:        m.last_name,
-        municipality:     m.municipality,
-        province:         m.province,
-        purpose:          m.purpose,
-        purpose_other:    m.purpose === 'Other' ? m.purpose_other : '',
-        duration_of_stay: m.duration_of_stay,
-        contact_number:   m.contact_number || '',
+        first_name:        m.first_name,
+        last_name:         m.last_name,
+        municipality:      m.municipality,
+        province:          m.province,
+        purpose:           m.purpose,
+        purpose_other:     m.purpose === 'Other' ? m.purpose_other : '',
+        duration_of_stay:  m.duration_of_stay,
+        contact_number:    m.contact_number || '',
+        visitor_category:  m.visitor_category,   // ← NEW
     }))
     groupForm.post(route('pre-register.group'), {
         preserveScroll: true,
@@ -119,9 +136,9 @@ const submitGroup = () => {
     <PlainLayout>
         <div class="min-h-screen bg-gray-50">
 
-            <!-- ══════════════════════════════════════════════════════════════════ -->
-            <!-- SUCCESS SCREEN                                                    -->
-            <!-- ══════════════════════════════════════════════════════════════════ -->
+            <!-- ══════════════════════════════════════════════════════════════ -->
+            <!-- SUCCESS SCREEN                                                -->
+            <!-- ══════════════════════════════════════════════════════════════ -->
             <div v-if="submitted" class="px-4 py-16">
 
                 <!-- Single success -->
@@ -153,7 +170,7 @@ const submitGroup = () => {
                             <p class="text-sm font-semibold text-amber-800">📸 Screenshot this screen</p>
                             <p class="text-xs text-amber-700 mt-1">
                                 Show your reference code or QR at the Bel-is Tourism Hub checkpoint.
-                                Pay the PHP 100.00 environmental fee to complete your entry.
+                                Pay the environmental fee based on your selected category to complete your entry.
                             </p>
                         </div>
                         <Link :href="route('home')"
@@ -194,9 +211,9 @@ const submitGroup = () => {
                 </div>
             </div>
 
-            <!-- ══════════════════════════════════════════════════════════════════ -->
-            <!-- REGISTRATION FORM                                                 -->
-            <!-- ══════════════════════════════════════════════════════════════════ -->
+            <!-- ══════════════════════════════════════════════════════════════ -->
+            <!-- REGISTRATION FORM                                             -->
+            <!-- ══════════════════════════════════════════════════════════════ -->
             <div v-else class="py-12 px-4">
 
                 <!-- Back link -->
@@ -263,6 +280,8 @@ const submitGroup = () => {
                 <div v-if="mode === 'single'" class="max-w-2xl mx-auto">
                     <form @submit.prevent="submit"
                         class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-6">
+
+                        <!-- Name -->
                         <div class="grid grid-cols-2 gap-5">
                             <div>
                                 <label class="block text-gray-700 text-sm font-semibold mb-1.5">First Name *</label>
@@ -277,6 +296,8 @@ const submitGroup = () => {
                                 <p v-if="form.errors.last_name" class="text-red-500 text-xs mt-1">{{ form.errors.last_name }}</p>
                             </div>
                         </div>
+
+                        <!-- Municipality / Province -->
                         <div class="grid grid-cols-2 gap-5">
                             <div>
                                 <label class="block text-gray-700 text-sm font-semibold mb-1.5">Municipality *</label>
@@ -291,13 +312,56 @@ const submitGroup = () => {
                                 <p v-if="form.errors.province" class="text-red-500 text-xs mt-1">{{ form.errors.province }}</p>
                             </div>
                         </div>
+
+                        <!-- Contact -->
                         <div>
                             <label class="block text-gray-700 text-sm font-semibold mb-1.5">Phone Number (optional)</label>
                             <input v-model="form.contact_number" type="tel"
                                 class="w-full border border-gray-200 rounded-lg py-2.5 px-4 text-sm focus:ring-2 focus:ring-gray-300 focus:outline-none" />
                         </div>
+
+                        <!-- ── NEW: Visitor Category ─────────────────────────── -->
+                        <div class="relative">
+                            <label class="block text-gray-700 text-sm font-semibold mb-1.5">
+                                Visitor Category *
+                            </label>
+                            <button type="button" @mousedown.prevent @click="openCategory = !openCategory"
+                                class="w-full border border-gray-200 rounded-lg py-2.5 px-4 text-left bg-white text-sm flex items-center justify-between">
+                                <span :class="form.visitor_category ? 'text-gray-800' : 'text-gray-400'">
+                                    {{ form.visitor_category
+                                        ? categoryLabel(feeCategories.find(c => c.category === form.visitor_category) ?? { category: form.visitor_category, fee: '' })
+                                        : 'Select your category' }}
+                                </span>
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            <ul v-show="openCategory"
+                                class="absolute z-10 w-full mt-1 border border-gray-200 rounded-lg bg-white shadow-lg">
+                                <li v-for="cat in feeCategories" :key="cat.id"
+                                    @mousedown.prevent @click="form.visitor_category = cat.category; openCategory = false"
+                                    class="px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm border-b last:border-0 flex items-center justify-between"
+                                    :class="form.visitor_category === cat.category ? 'bg-gray-50 font-semibold' : ''">
+                                    <div>
+                                        <span class="font-medium text-gray-800">{{ cat.category }}</span>
+                                        <span v-if="cat.age_range" class="text-gray-400 text-xs ml-2">{{ cat.age_range }}</span>
+                                    </div>
+                                    <span class="text-green-700 font-bold text-xs">₱{{ cat.fee }}</span>
+                                </li>
+                            </ul>
+                            <p v-if="form.errors.visitor_category" class="text-red-500 text-xs mt-1">{{ form.errors.visitor_category }}</p>
+                            <!-- Fee note for chosen category -->
+                            <div v-if="form.visitor_category" class="mt-2">
+                                <span class="inline-flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+                                    Environmental fee:
+                                    ₱{{ feeCategories.find(c => c.category === form.visitor_category)?.fee ?? '—' }}
+                                    to be paid at the checkpoint
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Purpose & Duration -->
                         <div class="grid grid-cols-2 gap-5">
-                            <!-- @mousedown.prevent stops focus-scroll on dropdown click -->
                             <div class="relative">
                                 <label class="block text-gray-700 text-sm font-semibold mb-1.5">Purpose *</label>
                                 <button type="button" @mousedown.prevent @click="openPurpose = !openPurpose"
@@ -331,6 +395,7 @@ const submitGroup = () => {
                                 <p v-if="form.errors.duration_of_stay" class="text-red-500 text-xs mt-1">{{ form.errors.duration_of_stay }}</p>
                             </div>
                         </div>
+
                         <!-- Purpose Other -->
                         <div v-if="form.purpose === 'Other'">
                             <label class="block text-gray-700 text-sm font-semibold mb-1.5">Please specify *</label>
@@ -338,6 +403,7 @@ const submitGroup = () => {
                                 class="w-full border border-gray-200 rounded-lg py-2.5 px-4 text-sm focus:ring-2 focus:ring-gray-300 focus:outline-none" />
                             <p v-if="form.errors.purpose_other" class="text-red-500 text-xs mt-1">{{ form.errors.purpose_other }}</p>
                         </div>
+
                         <button type="submit" :disabled="form.processing"
                             class="w-full bg-gray-900 text-white font-bold py-3 rounded-xl disabled:opacity-50 hover:bg-gray-700 transition">
                             Submit Pre-Registration →
@@ -350,6 +416,8 @@ const submitGroup = () => {
                     <div v-for="(m, i) in members" :key="i"
                         class="bg-white rounded-2xl border shadow-sm"
                         :class="i === 0 ? 'border-gray-800' : 'border-gray-200'">
+
+                        <!-- Card header -->
                         <div class="flex items-center justify-between px-5 py-3 rounded-t-2xl"
                             :class="i === 0 ? 'bg-gray-900 text-white' : 'bg-gray-50'">
                             <span class="text-xs font-bold uppercase tracking-wider">
@@ -366,6 +434,8 @@ const submitGroup = () => {
                                 </button>
                             </div>
                         </div>
+
+                        <!-- Card body -->
                         <div class="p-6 grid grid-cols-2 gap-4">
                             <div>
                                 <input v-model="m.first_name" placeholder="First Name"
@@ -387,6 +457,45 @@ const submitGroup = () => {
                                     class="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-gray-300 focus:outline-none" />
                                 <p v-if="memberErrors[i]?.province" class="text-red-500 text-xs mt-1">{{ memberErrors[i].province }}</p>
                             </div>
+
+                            <!-- ── NEW: Category per member ──────────────────── -->
+                            <div class="col-span-2 relative">
+                                <label class="block text-gray-600 text-xs font-semibold mb-1.5">
+                                    Visitor Category *
+                                </label>
+                                <button type="button" @click="m.openCategory = !m.openCategory"
+                                    class="w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-left flex items-center justify-between focus:outline-none">
+                                    <span :class="m.visitor_category ? 'text-gray-800' : 'text-gray-400'">
+                                        {{ m.visitor_category
+                                            ? categoryLabel(feeCategories.find(c => c.category === m.visitor_category) ?? { category: m.visitor_category, fee: '' })
+                                            : 'Select category' }}
+                                    </span>
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                <ul v-show="m.openCategory"
+                                    class="absolute z-20 w-full mt-1 border border-gray-200 rounded-lg bg-white shadow-lg max-h-44 overflow-auto">
+                                    <li v-for="cat in feeCategories" :key="cat.id"
+                                        @click="m.visitor_category = cat.category; m.openCategory = false"
+                                        class="px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm border-b last:border-0 flex items-center justify-between"
+                                        :class="m.visitor_category === cat.category ? 'bg-gray-50 font-semibold' : ''">
+                                        <div>
+                                            <span class="font-medium">{{ cat.category }}</span>
+                                            <span v-if="cat.age_range" class="text-gray-400 text-xs ml-2">{{ cat.age_range }}</span>
+                                        </div>
+                                        <span class="text-green-700 font-bold text-xs">₱{{ cat.fee }}</span>
+                                    </li>
+                                </ul>
+                                <p v-if="memberErrors[i]?.visitor_category" class="text-red-500 text-xs mt-1">{{ memberErrors[i].visitor_category }}</p>
+                                <!-- Fee pill -->
+                                <div v-if="m.visitor_category" class="mt-1.5">
+                                    <span class="inline-flex items-center gap-1 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                                        ₱{{ feeCategories.find(c => c.category === m.visitor_category)?.fee ?? '—' }} at checkpoint
+                                    </span>
+                                </div>
+                            </div>
+
                             <div>
                                 <select v-model="m.purpose"
                                     class="w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white focus:outline-none">
@@ -403,11 +512,13 @@ const submitGroup = () => {
                                 </select>
                                 <p v-if="memberErrors[i]?.duration_of_stay" class="text-red-500 text-xs mt-1">{{ memberErrors[i].duration_of_stay }}</p>
                             </div>
+
                             <div v-if="m.purpose === 'Other'" class="col-span-2">
                                 <input v-model="m.purpose_other" placeholder="Please specify purpose"
                                     class="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-gray-300 focus:outline-none" />
                                 <p v-if="memberErrors[i]?.purpose_other" class="text-red-500 text-xs mt-1">{{ memberErrors[i].purpose_other }}</p>
                             </div>
+
                             <input v-model="m.contact_number" placeholder="Phone (optional)"
                                 class="col-span-2 border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-gray-300 focus:outline-none" />
                         </div>

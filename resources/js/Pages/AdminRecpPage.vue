@@ -59,9 +59,8 @@ const print = () => window.print()
 
                 <hr class="my-3 border-gray-300">
 
-                <!-- Status icon + receipt number -->
+                <!-- Status icon -->
                 <div class="flex justify-center mb-2">
-                    <!-- ✅ Waived uses amber icon; Collected uses green -->
                     <svg v-if="receipt?.fee_type !== 'Waived'" width="36" height="36" viewBox="0 0 24 24" fill="none">
                         <path fill-rule="evenodd" clip-rule="evenodd"
                             d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12ZM16.0303 8.96967C16.3232 9.26256 16.3232 9.73744 16.0303 10.0303L11.0303 15.0303C10.7374 15.3232 10.2626 15.3232 9.96967 15.0303L7.96967 13.0303C7.67678 12.7374 7.67678 12.2626 7.96967 11.9697C8.26256 11.6768 8.73744 11.6768 9.03033 11.9697L10.5 13.4393L12.7348 11.2045L14.9697 8.96967C15.2626 8.67678 15.7374 8.67678 16.0303 8.96967Z"
@@ -106,6 +105,13 @@ const print = () => window.print()
                         <span class="text-gray-500">Date of Arrival</span>
                         <span class="font-medium text-gray-800">{{ visitor?.arrival_at ?? '—' }}</span>
                     </div>
+                    <!-- Visitor Category -->
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Visitor Category</span>
+                        <span class="font-medium text-gray-800">
+                            {{ visitor?.visitor_category ?? receipt?.fee_type ?? '—' }}
+                        </span>
+                    </div>
                 </div>
 
                 <hr class="my-3 border-dashed border-gray-300">
@@ -118,23 +124,35 @@ const print = () => window.print()
                         <span class="font-medium text-gray-800">{{ receipt?.fee_type ?? '—' }}</span>
                     </div>
 
-                    <!-- ✅ Show waiver reason when applicable (Phase 4 Step 8) -->
+                    <!-- Waiver reason -->
                     <div v-if="receipt?.fee_type === 'Waived' && receipt?.waiver_reason" class="flex justify-between">
                         <span class="text-gray-500">Waiver Reason</span>
                         <span class="font-medium text-amber-700">{{ receipt.waiver_reason }}</span>
                     </div>
 
-                    <div v-if="receipt?.fee_type !== 'Waived'" class="flex justify-between">
-                        <span class="text-gray-500">No. of Visitors</span>
-                        <span class="font-medium text-gray-800">{{ receipt?.number_of_visitors ?? '—' }}</span>
-                    </div>
-                    <div v-if="receipt?.fee_type !== 'Waived'" class="flex justify-between">
-                        <span class="text-gray-500">Amount per Visitor</span>
-                        <!-- ✅ Null-safe Number() — prevents crash when receipt is null -->
-                        <span class="font-medium text-gray-800">
-                            PHP {{ receipt?.amount != null ? Number(receipt.amount).toFixed(2) : '—' }}
-                        </span>
-                    </div>
+                    <template v-if="receipt?.fee_type !== 'Waived'">
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">No. of Visitors</span>
+                            <span class="font-medium text-gray-800">{{ receipt?.number_of_visitors ?? '—' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Fee per Visitor</span>
+                            <span class="font-medium text-gray-800">
+                                PHP {{ receipt?.amount != null ? Number(receipt.amount).toFixed(2) : '—' }}
+                            </span>
+                        </div>
+                        <!-- Calculation breakdown -->
+                        <div class="flex justify-between text-xs text-gray-400 italic">
+                            <span>
+                                {{ visitor?.visitor_category ?? receipt?.fee_type }}
+                                × {{ receipt?.number_of_visitors }}
+                            </span>
+                            <span>
+                                = PHP {{ receipt?.total_amount != null ? Number(receipt.total_amount).toFixed(2) : '—' }}
+                            </span>
+                        </div>
+                    </template>
+
                     <div class="flex justify-between">
                         <span class="text-gray-500">Payment Method</span>
                         <span class="font-medium text-gray-800">{{ receipt?.payment_method ?? '—' }}</span>
@@ -151,7 +169,6 @@ const print = () => window.print()
                 <div class="flex justify-between font-bold text-base mt-2">
                     <span class="text-gray-800">Total Amount</span>
                     <span :class="receipt?.fee_type === 'Waived' ? 'text-amber-600' : 'text-green-700'">
-                        <!-- ✅ Null-safe Number() on total_amount -->
                         {{ receipt?.fee_type === 'Waived'
                             ? 'Waived'
                             : receipt?.total_amount != null
@@ -167,7 +184,7 @@ const print = () => window.print()
                     Thank you for visiting!
                 </p>
 
-                <!-- Action buttons — hidden on print -->
+                <!-- Action buttons -->
                 <div id="receipt-actions" class="flex justify-center gap-4 mt-6">
                     <button @click="print"
                         class="bg-gray-900 text-white font-bold py-2 px-6 rounded hover:bg-gray-700 text-sm">

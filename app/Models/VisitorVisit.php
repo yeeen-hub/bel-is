@@ -29,9 +29,10 @@ class VisitorVisit extends Model
         'profile_id',
         'registration_id',
         'purpose',
-        'purpose_other',    // free-text when purpose = 'Other'
-        'group_code',       // leader's reference_code — shared by all group members
+        'purpose_other',
+        'group_code',
         'duration_of_stay',
+        'visitor_category',    
         'arrival_at',
         'departure_at',
         // Historical snapshot
