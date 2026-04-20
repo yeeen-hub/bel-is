@@ -17,6 +17,7 @@ use App\Http\Controllers\WebsiteContentController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\AuditLogController;
 
 Route::bind('visitor', fn($value) => VisitorVisit::findOrFail($value));
 
@@ -79,8 +80,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/security/settings', [SecurityController::class, 'updateSecuritySettings'])->name('security.settings.update');
         Route::post('/security/sessions/logout-others', [SecurityController::class, 'logoutOthers'])->name('security.sessions.logout_others');
         
-        Route::get('/auditlogs', function () { return Inertia::render('AdminSetALPage'); })->name('auditlogs');
         Route::get('/websitecontent', [WebsiteContentController::class, 'index'])->name('websitecontent');
+        Route::get('/auditlogs', [AuditLogController::class, 'index'])->name('auditlogs');
         Route::get('/virtualtour', function () { return Inertia::render('AdminSetVTPage'); })->name('virtualtour');
 
         Route::get('/systemsettings', [FeeCategoryController::class, 'index'])->name('systemsettings');

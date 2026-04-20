@@ -5,7 +5,7 @@
     <section
       id="home"
       data-section="home"
-      class="h-screen overflow-hidden relative flex items-center"
+      class="snap-start h-screen relative flex items-center"
     >
       <img
         :src="heroBackgroundUrl"
@@ -39,8 +39,13 @@
     </section>
 
     <!-- ── Attractions ──────────────────────────────────────────────────────── -->
-    <section id="attractions" data-section="attractions" class="bg-white py-20">
-      <div class="max-w-6xl mx-auto px-6">
+    <!-- overflow-y-auto moved to inner div so the section itself is not a scroll container -->
+    <section
+      id="attractions"
+      data-section="attractions"
+      class="snap-start h-screen bg-white"
+    >
+      <div class="max-w-6xl mx-auto px-6 pt-24 pb-8 h-full overflow-y-auto">
 
         <h2 class="text-3xl text-center font-semibold">
           Discover places you're going to love
@@ -157,9 +162,14 @@
     </section>
 
     <!-- ── Map ─────────────────────────────────────────────────────────────── -->
-    <section id="map" data-section="map" class="bg-white py-20">
-      <div class="max-w-6xl mx-auto px-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6" style="height: 520px;">
+    <!-- overflow-hidden is correct here — keep as-is -->
+    <section
+      id="map"
+      data-section="map"
+      class="snap-start h-screen overflow-hidden bg-white"
+    >
+      <div class="max-w-6xl mx-auto px-6 pt-24 pb-6 h-full flex flex-col">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 min-h-0">
 
           <!-- Location list -->
           <div class="overflow-y-auto pr-2 flex flex-col">
@@ -230,15 +240,16 @@
       </div>
     </section>
 
-    <!-- ── About — FULL WIDTH ───────────────────────────────────────────────── -->
+    <!-- ── About ────────────────────────────────────────────────────────────── -->
+    <!-- overflow-y-auto moved to inner div -->
     <section
       id="about"
       data-section="about"
-      class="w-full relative bg-cover bg-center bg-no-repeat py-24"
+      class="snap-start h-screen w-full relative bg-cover bg-center bg-no-repeat"
       style="background-image: url('/images/abstractbg.jpg')"
     >
       <div class="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
-      <div class="relative z-10 flex flex-col items-center text-center px-8">
+      <div class="relative z-10 flex flex-col items-center justify-center px-8 text-center py-24 h-full overflow-y-auto">
 
         <p class="text-sm sm:text-base uppercase tracking-wider mb-2">About Us</p>
         <h2 class="font-bold text-3xl sm:text-4xl md:text-5xl leading-tight">
@@ -279,8 +290,13 @@
     </section>
 
     <!-- ── Pre-Registration ─────────────────────────────────────────────────── -->
-    <section id="pre-register" data-section="pre-register" class="bg-white py-20">
-      <div class="max-w-6xl mx-auto px-6">
+    <!-- overflow-y-auto removed — content fits within h-screen -->
+    <section
+      id="pre-register"
+      data-section="pre-register"
+      class="snap-start h-screen bg-white flex items-center"
+    >
+      <div class="max-w-6xl mx-auto px-6 py-8 w-full">
         <div class="bg-gray-900 rounded-2xl overflow-hidden">
           <div class="grid grid-cols-1 md:grid-cols-2 items-center">
 
@@ -352,11 +368,14 @@
       </div>
     </section>
 
-    <!-- ── Contact Form + Contact Info Band — combined ──────────────────────── -->
-    <section id="contact" data-section="contact" class="bg-white pt-20">
-
-      <!-- Contact Form -->
-      <div class="max-w-6xl mx-auto px-10 pb-16">
+    <!-- ── Contact Form ─────────────────────────────────────────────────────── -->
+    <!-- overflow-y-auto removed — content fits within h-screen -->
+    <section
+      id="contact"
+      data-section="contact"
+      class="snap-start h-screen bg-white flex items-center"
+    >
+      <div class="max-w-6xl mx-auto px-6 py-8 w-full">
         <p class="text-sm text-gray-500">Get Started</p>
 
         <div class="grid grid-cols-2 items-start mt-1">
@@ -419,11 +438,14 @@
         </div>
       </div>
 
-      <!-- Contact Info Band — directly below form, no gap -->
-      <div class="w-full relative bg-cover bg-center bg-no-repeat"
-        style="background-image: url('/images/abstractbg.jpg')">
-        <div class="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
-        <div class="relative z-10 w-full px-10 md:px-16 py-12">
+    <!-- ── Contact Info Band ────────────────────────────────────────────────── -->
+    <!-- overflow-y-auto removed — content fits within h-screen -->
+    <section
+      class="snap-start h-screen w-full relative bg-cover bg-center bg-no-repeat flex items-center"
+      style="background-image: url('/images/abstractbg.jpg')"
+    >
+      <div class="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
+      <div class="relative z-10 w-full px-8 md:px-16 py-16">
 
           <p class="text-sm mb-4">Contact Info</p>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-8">

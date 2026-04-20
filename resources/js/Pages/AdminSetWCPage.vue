@@ -426,8 +426,17 @@ import { Link, useForm, usePage } from '@inertiajs/vue3'
 import { route } from 'ziggy-js'
 import LandingLayout from '@/Layouts/SidebarLayout.vue'
 
+const page = usePage();
+
+const permissions = computed(() => page.props.auth?.permissions ?? []);
+const userRole = computed(() => (page.props.auth?.user?.role ?? '').toLowerCase());
+
+const can = (permission) => {
+    if (userRole.value === 'admin') return true;
+	return permissions.value.includes(permission);
+};
+
 // ── Auto-dismiss flash banner ─────────────────────────────────────────────────
-const page      = usePage()
 const showFlash = ref(false)
 let flashTimer  = null
 

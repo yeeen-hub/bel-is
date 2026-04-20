@@ -2,6 +2,17 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import LandingLayout from '@/Layouts/SidebarLayout.vue'
+import { usePage } from '@inertiajs/vue3';
+
+const page = usePage();
+
+const permissions = computed(() => page.props.auth?.permissions ?? []);
+const userRole = computed(() => (page.props.auth?.user?.role ?? '').toLowerCase());
+
+const can = (permission) => {
+    if (userRole.value === 'admin') return true;
+	return permissions.value.includes(permission);
+};
 
 const props = defineProps({
     visitors: Object,
@@ -142,10 +153,6 @@ const closeModal = () => {
     selectedVisitor.value = null
 }
 
-const can = (permission) => {
-    if (userRole.value === 'admin') return true
-    return permissions.value.includes(permission)
-}
 </script>
 
 <template>
@@ -499,21 +506,41 @@ const can = (permission) => {
                 <hr class="my-3 border-gray-200">
 
                 <div class="flex gap-3 justify-end mt-2">
-                    <button @click="closeModal"
-                        class="text-sm text-gray-500 border border-gray-300 px-4 py-2 rounded hover:bg-gray-100">
-                        Close
-                    </button>
-                    <Link v-if="selectedVisitor.fee_status === 'Pending'"
-                        :href="route('adminpay', selectedVisitor.id)"
-                        class="bg-yellow-500 text-white text-sm font-bold px-4 py-2 rounded hover:bg-yellow-600">
-                        Collect Fee
-                    </Link>
-                    <Link v-if="selectedVisitor.fee_status === 'Collected' || selectedVisitor.fee_status === 'Waived'"
-                        :href="route('adminreceipt', selectedVisitor.id)"
-                        class="bg-gray-900 text-white text-sm font-bold px-4 py-2 rounded hover:bg-gray-700">
-                        View Receipt
-                    </Link>
-                </div>
+                <!-- Close Button -->
+                <button @click="closeModal"
+                    class="text-sm text-gray-500 border border-gray-300 px-4 py-2 rounded hover:bg-gray-100">
+                    Close
+                </button>
+
+                <!-- Collect Fee Link (Requires EDIT permission) -->
+                <Link v-if="selectedVisitor.fee_status === 'Pending'"
+                    :href="route('adminpay', selectedVisitor.id)"
+                    :class="[
+                        'text-sm font-bold px-4 py-2 rounded transition-all',
+                        !can('edit_visitor_records') 
+                            ? 'bg-yellow-200 text-yellow-700 cursor-not-allowed pointer-events-none opacity-60' 
+                            : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                    ]"
+                    :title="!can('edit_visitor_records') ? 'Permission Denied: Cannot collect fees' : ''">
+                    Collect Fee
+                </Link>
+
+                <!-- View Receipt Link (Requires VIEW permission) -->
+                <Link v-if="selectedVisitor.fee_status === 'Collected' || selectedVisitor.fee_status === 'Waived'"
+                    :href="route('adminreceipt', selectedVisitor.id)"
+                    :class="[
+                        'text-sm font-bold px-4 py-2 rounded transition-all',
+                        !can('view_visitor_records') 
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed pointer-events-none' 
+                            : 'bg-gray-900 text-white hover:bg-gray-700'
+                    ]"
+                    :title="!can('view_visitor_records') ? 'Permission Denied: Cannot view receipts' : ''">
+                    View Receipt
+                </Link>
+            </div>
+
+
+                
 
             </div>
         </div>

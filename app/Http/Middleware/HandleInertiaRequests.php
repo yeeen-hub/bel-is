@@ -24,16 +24,22 @@ class HandleInertiaRequests extends Middleware
                     'name' => $request->user()->name,
                     'role' => $request->user()->getRoleNames()->first() ?? 'staff',
                 ] : null,
-                // Permission names as stored in DB: view_dashboard, edit_registration etc.
                 'permissions' => $request->user()
                     ? $request->user()->getAllPermissions()->pluck('name')
                     : [],
             ],
-            // ✅ Flash messages shared globally — required for success/error banners
+            // FIXED: Added keys to capture registration data from the session
             'flash' => [
-                'success' => $request->session()->get('success'),
-                'error'   => $request->session()->get('error'),
-                'info'    => $request->session()->get('info'),
+                'success'        => $request->session()->get('success'),
+                'error'          => $request->session()->get('error'),
+                'info'           => $request->session()->get('info'),
+                
+                // --- Add these keys below ---
+                'mode'           => $request->session()->get('mode'),
+                'reference_code' => $request->session()->get('reference_code'),
+                'group_code'     => $request->session()->get('group_code'),
+                'full_name'      => $request->session()->get('full_name'),
+                'members'        => $request->session()->get('members'),
             ],
         ];
     }

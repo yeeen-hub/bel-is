@@ -369,13 +369,9 @@ const preRegBannerText = computed(() => {
                     <button 
                         type="button" 
                         @click="mode = 'group'"
-                        :disabled="(preRegData && !preRegData.is_group) || !can('edit_registration')"
-                        :class="[
-                            mode === 'group' ? 'bg-gray-900 text-white shadow' : 'text-gray-500 hover:bg-gray-50',
-                            !can('edit_registration') ? 'opacity-40 cursor-not-allowed grayscale' : ''
-                        ]"
-                        class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                        :title="!can('edit_registration') ? 'You do not have permission to edit registrations' : ''"
+                        :disabled="preRegData?.is_group"
+                        :class="mode === 'group' ? 'bg-gray-900 text-white shadow' : 'text-gray-500 hover:bg-gray-50'"
+                        class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed""
                     >
                         Group
                         <span v-if="mode === 'group'"
@@ -398,6 +394,8 @@ const preRegBannerText = computed(() => {
             <div v-if="mode === 'single'" class="max-w-2xl mx-auto">
                 <form @submit.prevent="submitSingle"
                     class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-6">
+
+                    <fieldset :disabled="!can('edit_registration')" class="space-y-4">
 
                     <div v-if="form.errors.error"
                         class="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm">
@@ -568,10 +566,12 @@ const preRegBannerText = computed(() => {
 
                     <div class="flex justify-center pt-2">
                         <button type="submit" :disabled="form.processing"
-                            class="bg-gray-900 text-white font-bold py-2.5 px-10 rounded-lg disabled:opacity-50 text-sm hover:bg-gray-700 transition">
+                            class="bg-gray-900 text-white font-bold py-2.5 px-10 rounded-lg disabled:opacity-50 text-sm hover:bg-gray-700 transition, ":title="!can('edit_registration') ? 'You do not have permission to edit registrations contact the admin' : ''">
                             {{ form.processing ? 'Saving...' : 'Next →' }}
                         </button>
                     </div>
+
+                    </fieldset>
 
                 </form>
             </div>
@@ -580,6 +580,8 @@ const preRegBannerText = computed(() => {
             <!-- GROUP                                        -->
             <!-- ════════════════════════════════════════════ -->
             <div v-if="mode === 'group'" class="max-w-2xl mx-auto space-y-4">
+                <form>
+                    <fieldset :disabled="!can('edit_registration')" class="space-y-4">
 
                 <div v-if="groupForm.errors.error"
                     class="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm">
@@ -776,11 +778,14 @@ const preRegBannerText = computed(() => {
                         <p class="text-sm text-gray-800 font-semibold">{{ memberCount }} visitor(s) in this group</p>
                         <p class="text-xs text-gray-400 mt-0.5">Payment will be collected for each member one by one.</p>
                     </div>
-                    <button type="button" @click="submitGroup" :disabled="groupForm.processing"
-                        class="bg-gray-900 text-white font-bold py-2.5 px-6 rounded-lg disabled:opacity-50 ml-4 whitespace-nowrap text-sm hover:bg-gray-700 transition">
+                    <button type="button" @click="submitGroup" :disabled="groupForm.processing" 
+                        class="bg-gray-900 text-white font-bold py-2.5 px-6 rounded-lg disabled:opacity-50 ml-4 whitespace-nowrap text-sm hover:bg-gray-700 transition " :title="!can('edit_registration') ? 'You do not have permission to edit registrations contact the admin' : ''">
                         {{ groupForm.processing ? 'Registering...' : `Register ${memberCount} Visitor(s) →` }}
                     </button>
                 </div>
+
+                </fieldset>
+                </form>
 
             </div>
         </div>
