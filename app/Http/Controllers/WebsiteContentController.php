@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\HeroSetting;
 use App\Models\ContactSetting;
 use App\Models\Attraction;
+use App\Models\AboutSetting;
+use App\Models\AboutImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -25,6 +27,11 @@ class WebsiteContentController extends Controller
                 'image_url'   => $a->image_url,
                 'sort_order'  => $a->sort_order,
             ]);
+        $about       = AboutSetting::instance();
+
+        $about       = AboutSetting::instance();
+        $aboutImages = AboutImage::orderBy('sort_order')->orderBy('id')->get()
+            ->map(fn($i) => ['id' => $i->id, 'image_url' => $i->image_url, 'sort_order' => $i->sort_order]);
 
         return Inertia::render('AdminSetWCPage', [
             'hero' => [
@@ -41,6 +48,17 @@ class WebsiteContentController extends Controller
                 'phone_hours' => $contact->phone_hours,
             ],
             'attractions' => $attractions,
+            'about' => [
+                'title'          => $about->title,
+                'subtitle'       => $about->subtitle,
+                'feature1_title' => $about->feature1_title,
+                'feature1_desc'  => $about->feature1_desc,
+                'feature2_title' => $about->feature2_title,
+                'feature2_desc'  => $about->feature2_desc,
+                'feature3_title' => $about->feature3_title,
+                'feature3_desc'  => $about->feature3_desc,
+            ],
+            'about_images' => $aboutImages,
         ]);
     }
 
@@ -156,12 +174,67 @@ class WebsiteContentController extends Controller
         return redirect()->back()->with('success', 'Attraction deleted successfully!');
     }
 
+    // ── About ─────────────────────────────────────────────────────────────────
+
+    public function updateAbout(Request $request)
+    {
+        $request->validate([
+            'title'          => 'required|string|max:255',
+            'subtitle'       => 'required|string|max:255',
+            'feature1_title' => 'required|string|max:255',
+            'feature1_desc'  => 'required|string|max:1000',
+            'feature2_title' => 'required|string|max:255',
+            'feature2_desc'  => 'required|string|max:1000',
+            'feature3_title' => 'required|string|max:255',
+            'feature3_desc'  => 'required|string|max:1000',
+        ]);
+
+        $about                 = AboutSetting::instance();
+        $about->title          = $request->title;
+        $about->subtitle       = $request->subtitle;
+        $about->feature1_title = $request->feature1_title;
+        $about->feature1_desc  = $request->feature1_desc;
+        $about->feature2_title = $request->feature2_title;
+        $about->feature2_desc  = $request->feature2_desc;
+        $about->feature3_title = $request->feature3_title;
+        $about->feature3_desc  = $request->feature3_desc;
+        $about->save();
+
+        return redirect()->back()->with('success', 'About section updated successfully!');
+    }
+
+    public function storeAboutImage(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|image|mimes:jpg,jpeg,png|max:5120',
+        ]);
+
+        $img             = new AboutImage();
+        $img->image      = $request->file('image')->store('about', 'public');
+        $img->sort_order = AboutImage::max('sort_order') + 1;
+        $img->save();
+
+        return redirect()->back()->with('success', 'Image added successfully!');
+    }
+
+    public function destroyAboutImage($id)
+    {
+        $img = AboutImage::findOrFail($id);
+        if ($img->image) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($img->image);
+        }
+        $img->delete();
+
+        return redirect()->back()->with('success', 'Image removed successfully!');
+    }
+
     // ── Public Landing Page ───────────────────────────────────────────────────
 
     public function landingPage()
     {
         $hero        = HeroSetting::instance();
         $contact     = ContactSetting::instance();
+        $about       = AboutSetting::instance();
         $attractions = Attraction::orderBy('sort_order')->orderBy('id')->get()
             ->map(fn($a) => [
                 'id'          => $a->id,
@@ -169,6 +242,8 @@ class WebsiteContentController extends Controller
                 'description' => $a->description,
                 'image_url'   => $a->image_url,
             ]);
+        $aboutImages = AboutImage::orderBy('sort_order')->orderBy('id')->get()
+            ->map(fn($i) => ['id' => $i->id, 'image_url' => $i->image_url]);
 
         return Inertia::render('LandingPage', [
             'hero' => [
@@ -184,7 +259,17 @@ class WebsiteContentController extends Controller
                 'email_hours' => $contact->email_hours,
                 'phone_hours' => $contact->phone_hours,
             ],
-            'attractions' => $attractions,
+            'attractions'  => $attractions,
+            'about' => [
+                'title'          => $about->title,
+                'subtitle'       => $about->subtitle,
+                'feature1_title' => $about->feature1_title,
+                'feature1_desc'  => $about->feature1_desc,
+                'feature2_title' => $about->feature2_title,
+                'feature2_desc'  => $about->feature2_desc,
+                'feature3_title' => $about->feature3_title,
+                'feature3_desc'  => $about->feature3_desc,
+            ],
+            'about_images' => $aboutImages,
         ]);
-    }
-}
+    }}

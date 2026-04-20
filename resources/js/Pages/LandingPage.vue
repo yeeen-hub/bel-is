@@ -373,9 +373,10 @@
     <section
       id="contact"
       data-section="contact"
-      class="snap-start h-screen bg-white flex items-center"
+      class="snap-start h-screen bg-white flex flex-col"
     >
-      <div class="max-w-6xl mx-auto px-6 py-8 w-full">
+      <!-- Contact form — top half -->
+      <div class="max-w-6xl mx-auto px-6 py-8 w-full flex-1">
         <p class="text-sm text-gray-500">Get Started</p>
 
         <div class="grid grid-cols-2 items-start mt-1">
@@ -421,14 +422,14 @@
           </div>
         </div>
 
-        <div class="mt-6">
+        <div class="mt-4">
           <label class="text-sm text-gray-600">Message</label>
-          <textarea rows="3" placeholder="Write your message..."
+          <textarea rows="2" placeholder="Write your message..."
             class="w-full border-0 border-b border-gray-400 focus:border-blue-500 focus:outline-none py-2 bg-transparent resize-none">
           </textarea>
         </div>
 
-        <div class="mt-8">
+        <div class="mt-4">
           <button class="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700 transition">
             Leave us a Message
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -436,48 +437,6 @@
             </svg>
           </button>
         </div>
-      </div>
-    </section>
-    
-    <!-- ── Contact Info Band ────────────────────────────────────────────────── -->
-    <!-- overflow-y-auto removed — content fits within h-screen -->
-    <section
-      class="snap-start h-screen w-full relative bg-cover bg-center bg-no-repeat flex items-center"
-      style="background-image: url('/images/abstractbg.jpg')"
-    >
-      <div class="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
-      <div class="relative z-10 w-full px-8 md:px-16 py-16">
-
-          <p class="text-sm mb-4">Contact Info</p>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-
-            <div>
-              <h2 class="text-2xl md:text-3xl font-bold leading-tight">
-                We are always <br /> happy to assist you
-              </h2>
-            </div>
-
-            <div class="space-y-3">
-              <p class="text-sm uppercase tracking-wide font-medium">Email Address</p>
-              <div class="w-10 h-[2px] bg-black"></div>
-              <p class="text-base font-medium">{{ contact.email || 'help@info.com' }}</p>
-              <div>
-                <p class="text-sm text-gray-700">Assistance hours:</p>
-                <p class="text-sm text-gray-700">{{ contact.email_hours || 'Monday – Friday 6 am to 8 pm' }}</p>
-              </div>
-            </div>
-
-            <div class="space-y-3">
-              <p class="text-sm uppercase tracking-wide font-medium">Phone Number</p>
-              <div class="w-10 h-[2px] bg-black"></div>
-              <p class="text-base font-medium">{{ contact.phone || '+63 123 456 7890' }}</p>
-              <div>
-                <p class="text-sm text-gray-700">Assistance hours:</p>
-                <p class="text-sm text-gray-700">{{ contact.phone_hours || 'Monday – Friday 6 am to 8 pm' }}</p>
-              </div>
-            </div>
-
-          </div>
       </div>
 
     </section>
@@ -490,7 +449,7 @@
 <style scoped>
 @keyframes pan {
   0%   { transform: scale(1.1) translateX(0%); }
-  50%  { transform: scale(1.1) translateX(-5%); }
+  50%  { transform: scale(1.1) translateX(-3%); }
   100% { transform: scale(1.1) translateX(0%); }
 }
 .animate-pan {

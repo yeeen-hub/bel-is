@@ -324,7 +324,111 @@
             </div>
 
             <div v-else-if="activeTab === 'about'">
-                <!-- About tab content -->
+                <div class="max-w-6xl mx-auto mt-5 space-y-5">
+
+                    <!-- Text content card -->
+                    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <p class="text-md font-semibold text-gray-700">About Section</p>
+                                <p class="text-sm text-gray-500">Edit the title, subtitle and three feature points.</p>
+                            </div>
+                            <button type="button" @click="aboutEditing = !aboutEditing"
+                                class="border border-blue-500 text-blue-500 text-sm font-bold px-5 py-2 rounded-xl hover:bg-gray-900 hover:text-white transition">
+                                {{ aboutEditing ? 'Cancel Edit' : 'Edit' }}
+                            </button>
+                        </div>
+
+                        <form @submit.prevent="submitAbout">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-2">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">Subtitle</label>
+                                    <input v-model="aboutForm.subtitle" :disabled="!aboutEditing" type="text"
+                                        class="border border-gray-300 rounded w-full py-2 px-3 disabled:bg-gray-50 disabled:text-gray-400" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">Title</label>
+                                    <input v-model="aboutForm.title" :disabled="!aboutEditing" type="text"
+                                        class="border border-gray-300 rounded w-full py-2 px-3 disabled:bg-gray-50 disabled:text-gray-400" />
+                                </div>
+                            </div>
+
+                            <div class="mt-4 p-2 space-y-4">
+                                <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">Feature Points</p>
+
+                                <div v-for="n in [1,2,3]" :key="n" class="grid grid-cols-1 md:grid-cols-3 gap-3 border border-gray-100 rounded-xl p-3 bg-gray-50">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-2xl font-bold text-gray-300">0{{ n }}</span>
+                                        <div class="flex-1">
+                                            <label class="block text-xs text-gray-500 mb-1">Title</label>
+                                            <input v-model="aboutForm[`feature${n}_title`]" :disabled="!aboutEditing" type="text"
+                                                class="border border-gray-300 rounded w-full py-1.5 px-2 text-sm disabled:bg-white disabled:text-gray-400" />
+                                        </div>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="block text-xs text-gray-500 mb-1">Description</label>
+                                        <textarea v-model="aboutForm[`feature${n}_desc`]" :disabled="!aboutEditing" rows="2"
+                                            class="border border-gray-300 rounded w-full py-1.5 px-2 text-sm resize-none disabled:bg-white disabled:text-gray-400"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="aboutEditing" class="flex justify-end mt-4 gap-3">
+                                <button type="submit" :disabled="aboutForm.processing"
+                                    class="bg-gray-900 text-white text-sm font-bold px-5 py-2 rounded-xl disabled:opacity-50 hover:bg-gray-800 transition">
+                                    {{ aboutForm.processing ? 'Saving…' : 'Save Changes' }}
+                                </button>
+                                <button type="button" @click="aboutEditing = false"
+                                    class="border border-gray-300 text-gray-600 text-sm font-bold px-5 py-2 rounded-xl hover:bg-gray-100 transition">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Slideshow images card -->
+                    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
+                        <p class="text-md font-semibold text-gray-700 mb-1">Slideshow Images</p>
+                        <p class="text-sm text-gray-500 mb-4">These images auto-switch in the About section. Add as many as you like.</p>
+
+                        <!-- Upload new image -->
+                        <div class="flex items-center gap-4 mb-5">
+                            <div @click="$refs.aboutImgInput.click()"
+                                class="relative flex flex-col items-center justify-center w-40 h-28 border-2 border-dashed border-blue-500 rounded-xl bg-blue-50/30 cursor-pointer hover:bg-blue-50 transition flex-shrink-0">
+                                <input type="file" ref="aboutImgInput" class="hidden" accept="image/png,image/jpeg" @change="handleAboutImage" />
+                                <template v-if="aboutImagePreview">
+                                    <img :src="aboutImagePreview" class="w-full h-full object-cover rounded-xl" />
+                                </template>
+                                <template v-else>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-blue-500 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    <p class="text-xs text-gray-500">Click to pick</p>
+                                </template>
+                            </div>
+                            <button type="button" @click="uploadAboutImage" :disabled="!aboutImageForm.image || aboutImageForm.processing"
+                                class="bg-gray-900 text-white text-sm font-bold px-4 py-2 rounded-xl disabled:opacity-40 hover:bg-gray-700 transition">
+                                {{ aboutImageForm.processing ? 'Uploading…' : 'Upload Image' }}
+                            </button>
+                        </div>
+
+                        <!-- Existing images grid -->
+                        <div v-if="props.about_images.length === 0" class="text-center py-8 text-gray-400 text-sm">
+                            No images yet. Upload some above.
+                        </div>
+                        <div v-else class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div v-for="img in props.about_images" :key="img.id"
+                                class="relative rounded-xl overflow-hidden group h-28">
+                                <img :src="img.image_url" class="w-full h-full object-cover" />
+                                <button @click="deleteAboutImage(img.id)"
+                                    class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold">
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
             </div>
 
             <div v-else-if="activeTab === 'contact'">
@@ -477,6 +581,19 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    about: {
+        type: Object,
+        default: () => ({
+            title: '', subtitle: '',
+            feature1_title: '', feature1_desc: '',
+            feature2_title: '', feature2_desc: '',
+            feature3_title: '', feature3_desc: '',
+        }),
+    },
+    about_images: {
+        type: Array,
+        default: () => [],
+    },
 })
 
 // ── Tab state ─────────────────────────────────────────────────────────────────
@@ -623,6 +740,63 @@ function submitAttraction() {
 function deleteAttraction(id) {
     if (!confirm('Delete this attraction?')) return
     useForm({}).delete(route('websitecontent.attractions.destroy', id))
+}
+
+// ── About ─────────────────────────────────────────────────────────────────────
+const aboutEditing = ref(false)
+
+const aboutForm = useForm({
+    title:          props.about.title,
+    subtitle:       props.about.subtitle,
+    feature1_title: props.about.feature1_title,
+    feature1_desc:  props.about.feature1_desc,
+    feature2_title: props.about.feature2_title,
+    feature2_desc:  props.about.feature2_desc,
+    feature3_title: props.about.feature3_title,
+    feature3_desc:  props.about.feature3_desc,
+})
+
+watch(() => props.about, (a) => {
+    aboutForm.title          = a.title
+    aboutForm.subtitle       = a.subtitle
+    aboutForm.feature1_title = a.feature1_title
+    aboutForm.feature1_desc  = a.feature1_desc
+    aboutForm.feature2_title = a.feature2_title
+    aboutForm.feature2_desc  = a.feature2_desc
+    aboutForm.feature3_title = a.feature3_title
+    aboutForm.feature3_desc  = a.feature3_desc
+}, { immediate: true })
+
+function submitAbout() {
+    aboutForm.post(route('websitecontent.about.update'), {
+        onSuccess: () => { aboutEditing.value = false },
+    })
+}
+
+// About images
+const aboutImageForm = useForm({ image: null })
+const aboutImagePreview = ref(null)
+
+function handleAboutImage(event) {
+    const file = event.target.files[0]
+    if (!file) return
+    aboutImageForm.image = file
+    aboutImagePreview.value = URL.createObjectURL(file)
+}
+
+function uploadAboutImage() {
+    aboutImageForm.post(route('websitecontent.about.images.store'), {
+        forceFormData: true,
+        onSuccess: () => {
+            aboutImageForm.reset()
+            aboutImagePreview.value = null
+        },
+    })
+}
+
+function deleteAboutImage(id) {
+    if (!confirm('Remove this image?')) return
+    useForm({}).delete(route('websitecontent.about.images.destroy', id))
 }
 
 // ── Nav helper ────────────────────────────────────────────────────────────────
