@@ -437,7 +437,8 @@
           </button>
         </div>
       </div>
-
+    </section>
+    
     <!-- ── Contact Info Band ────────────────────────────────────────────────── -->
     <!-- overflow-y-auto removed — content fits within h-screen -->
     <section
@@ -477,7 +478,6 @@
             </div>
 
           </div>
-        </div>
       </div>
 
     </section>
