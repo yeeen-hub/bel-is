@@ -24,6 +24,7 @@ class WebsiteContentController extends Controller
                 'id'          => $a->id,
                 'name'        => $a->name,
                 'description' => $a->description,
+                'location' => $a->location,
                 'image_url'   => $a->image_url,
                 'sort_order'  => $a->sort_order,
             ]);
@@ -110,7 +111,7 @@ class WebsiteContentController extends Controller
         $contact->phone_hours = $request->phone_hours;
         $contact->save();
 
-        return redirect()->back()->with('success', 'Contact info updated successfully!');
+        return redirect()->route('websitecontent')->with('success', 'Contact info updated successfully!');
     }
 
     // ── Attractions ───────────────────────────────────────────────────────────
@@ -125,6 +126,7 @@ class WebsiteContentController extends Controller
 
         $attraction              = new Attraction();
         $attraction->name        = $request->name;
+        $attraction->location    = $request->location;
         $attraction->description = $request->description;
         $attraction->sort_order  = Attraction::max('sort_order') + 1;
 
@@ -134,7 +136,8 @@ class WebsiteContentController extends Controller
 
         $attraction->save();
 
-        return redirect()->back()->with('success', 'Attraction added successfully!');
+        // ✅ Explicit redirect instead of redirect()->back()
+        return redirect()->route('websitecontent')->with('success', 'Attraction added successfully!');
     }
 
     public function updateAttraction(Request $request, $id)
@@ -147,6 +150,7 @@ class WebsiteContentController extends Controller
 
         $attraction              = Attraction::findOrFail($id);
         $attraction->name        = $request->name;
+        $attraction->location    = $request->location;
         $attraction->description = $request->description;
 
         if ($request->hasFile('image')) {
@@ -158,7 +162,8 @@ class WebsiteContentController extends Controller
 
         $attraction->save();
 
-        return redirect()->back()->with('success', 'Attraction updated successfully!');
+        // ✅ Explicit redirect
+        return redirect()->route('websitecontent')->with('success', 'Attraction updated successfully!');
     }
 
     public function destroyAttraction($id)
@@ -171,7 +176,8 @@ class WebsiteContentController extends Controller
 
         $attraction->delete();
 
-        return redirect()->back()->with('success', 'Attraction deleted successfully!');
+        // ✅ Explicit redirect
+        return redirect()->route('websitecontent')->with('success', 'Attraction deleted successfully!');
     }
 
     // ── About ─────────────────────────────────────────────────────────────────
@@ -200,7 +206,7 @@ class WebsiteContentController extends Controller
         $about->feature3_desc  = $request->feature3_desc;
         $about->save();
 
-        return redirect()->back()->with('success', 'About section updated successfully!');
+        return redirect()->route('websitecontent')->with('success', 'About section updated successfully!');
     }
 
     public function storeAboutImage(Request $request)
@@ -214,7 +220,7 @@ class WebsiteContentController extends Controller
         $img->sort_order = AboutImage::max('sort_order') + 1;
         $img->save();
 
-        return redirect()->back()->with('success', 'Image added successfully!');
+        return redirect()->route('websitecontent')->with('success', 'Image added successfully!');
     }
 
     public function destroyAboutImage($id)
@@ -225,7 +231,7 @@ class WebsiteContentController extends Controller
         }
         $img->delete();
 
-        return redirect()->back()->with('success', 'Image removed successfully!');
+        return redirect()->route('websitecontent')->with('success', 'Image removed successfully!');
     }
 
     // ── Public Landing Page ───────────────────────────────────────────────────
@@ -239,6 +245,7 @@ class WebsiteContentController extends Controller
             ->map(fn($a) => [
                 'id'          => $a->id,
                 'name'        => $a->name,
+                'location'    => $a->location,
                 'description' => $a->description,
                 'image_url'   => $a->image_url,
             ]);

@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::create('attractions', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->string('location');
             $table->text('description');
             $table->string('image')->nullable(); // stores path like 'attractions/photo.jpg'
             $table->unsignedInteger('sort_order')->default(0);

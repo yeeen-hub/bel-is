@@ -10,6 +10,7 @@ class Attraction extends Model
 
     protected $fillable = [
         'name',
+        'location',
         'description',
         'image',
         'sort_order',

@@ -215,6 +215,7 @@
                                 class="w-full h-40 object-cover" :alt="attraction.name" />
                             <div class="p-3">
                                 <h3 class="font-semibold text-gray-800">{{ attraction.name }}</h3>
+                                <h3 class="font-semibold text-gray-800">{{ attraction.location }}</h3>
                                 <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ attraction.description }}</p>
                                 <div class="flex gap-2 mt-3">
                                     <button @click="openEditModal(attraction)"
@@ -269,6 +270,15 @@
                                     class="border border-gray-300 rounded w-full py-2 px-3" />
                                 <p v-if="attractionForm.errors.name" class="text-red-500 text-xs mt-1">
                                     {{ attractionForm.errors.name }}
+                                </p>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Location</label>
+                                <input v-model="attractionForm.location" type="text"
+                                    placeholder="e.g. Bel-is Cove Beach Resort"
+                                    class="border border-gray-300 rounded w-full py-2 px-3" />
+                                <p v-if="attractionForm.errors.location" class="text-red-500 text-xs mt-1">
+                                    {{ attractionForm.errors.location }}
                                 </p>
                             </div>
                             <div class="mb-4">
@@ -677,6 +687,7 @@ const attractionPage     = ref(1)
 const attractionForm = useForm({
     name:        '',
     description: '',
+    location: '',
     image:       null,
 })
 
@@ -703,6 +714,7 @@ function openAddModal() {
 function openEditModal(attraction) {
     attractionForm.name        = attraction.name
     attractionForm.description = attraction.description
+    attractionForm.location = attraction.location
     attractionForm.image       = null
     attractionImagePreview.value = null
     editingAttraction.value = attraction
