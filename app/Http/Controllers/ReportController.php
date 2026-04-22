@@ -190,8 +190,7 @@ class ReportController extends Controller
     {
         $feeTypeFilter = $request->fee_type ?? '';
 
-        // ── No Show — these visits have no receipt so we query visitor_visits
-        // directly (no join with receipts) and return them with '—' revenue. ──
+        // ── No Show — no receipt, query visitor_visits directly ──────────────────
         if ($feeTypeFilter === 'No Show') {
             $noShowQuery = DB::table('visitor_visits')
                 ->select(
@@ -232,6 +231,62 @@ class ReportController extends Controller
                     'visit_category' => $r->visit_category ?: '—',
                     'full_name'      => trim($r->full_name) ?: '—',
                     'revenue'        => 'No Show',
+                ]),
+                'totalRevenue' => '0.00',
+                'avgDaily'     => '0.00',
+                'sitios'       => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+                'filters'      => [
+                    'search'    => $request->search    ?? '',
+                    'category'  => $request->category  ?? '',
+                    'fee_type'  => $feeTypeFilter,
+                    'area'      => $request->area       ?? '',
+                    'date_from' => $request->date_from  ?? '',
+                    'date_to'   => $request->date_to    ?? '',
+                ],
+            ]);
+        }
+
+        // ── Pending — no receipt, query visitor_visits directly ───────────────
+        if ($feeTypeFilter === 'Pending') {
+            $pendingQuery = DB::table('visitor_visits')
+                ->select(
+                    DB::raw("TRIM(CONCAT(IFNULL(snapshot_first_name,''), ' ', IFNULL(snapshot_last_name,''))) as full_name"),
+                    'visitor_category as visit_category',
+                    'snapshot_place_of_origin as place_of_origin',
+                    'arrival_at as collected_at'
+                )
+                ->where('fee_status', 'Pending')
+                ->orderByDesc('arrival_at');
+
+            if ($request->filled('date_from')) {
+                $pendingQuery->whereDate('arrival_at', '>=', $request->date_from);
+            }
+            if ($request->filled('date_to')) {
+                $pendingQuery->whereDate('arrival_at', '<=', $request->date_to);
+            }
+            if ($request->filled('search')) {
+                $s = $request->search;
+                $pendingQuery->whereRaw("TRIM(CONCAT(IFNULL(snapshot_first_name,''), ' ', IFNULL(snapshot_last_name,''))) LIKE ?", ["%{$s}%"]);
+            }
+            if ($request->filled('category')) {
+                $pendingQuery->where('visitor_category', $request->category);
+            }
+            if ($request->filled('area')) {
+                $visitIdsInSitio = DB::table('visitor_destinations')
+                    ->join('barangay_attractions', 'visitor_destinations.attraction_id', '=', 'barangay_attractions.id')
+                    ->join('sitios', 'barangay_attractions.sitio_id', '=', 'sitios.id')
+                    ->where('sitios.name', $request->area)
+                    ->pluck('visitor_destinations.visit_id');
+                $pendingQuery->whereIn('id', $visitIdsInSitio);
+            }
+
+            $rows = $pendingQuery->get();
+
+            return Inertia::render('AdminRepFeePage', [
+                'rows' => $rows->map(fn($r) => [
+                    'visit_category' => $r->visit_category ?: '—',
+                    'full_name'      => trim($r->full_name) ?: '—',
+                    'revenue'        => 'Pending',
                 ]),
                 'totalRevenue' => '0.00',
                 'avgDaily'     => '0.00',

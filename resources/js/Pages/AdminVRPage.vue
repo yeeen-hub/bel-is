@@ -1,55 +1,56 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { Link, router, usePage } from '@inertiajs/vue3'
 import LandingLayout from '@/Layouts/SidebarLayout.vue'
-import { usePage } from '@inertiajs/vue3';
 
-const page = usePage();
-
-const permissions = computed(() => page.props.auth?.permissions ?? []);
-const userRole = computed(() => (page.props.auth?.user?.role ?? '').toLowerCase());
+const page        = usePage()
+const permissions = computed(() => page.props.auth?.permissions ?? [])
+const userRole    = computed(() => (page.props.auth?.user?.role ?? '').toLowerCase())
 
 const can = (permission) => {
-    if (userRole.value === 'admin') return true;
-	return permissions.value.includes(permission);
-};
+    if (userRole.value === 'admin') return true
+    return permissions.value.includes(permission)
+}
 
 const props = defineProps({
-    visitors: Object,
-    filters:  Object,
-    // ✅ pending_fees passed from VisitorController (add to controller below)
-    pendingFees: {
-        type: Number,
-        default: 0,
-    },
+    visitors:         Object,
+    filters:          Object,
+    pendingFees:      { type: Number, default: 0 },
+    attractionOptions:{ type: Array,  default: () => [] },
 })
 
 // ── Filter State ──────────────────────────────────────────────────────────────
-const search     = ref(props.filters?.search     ?? '')
-const purpose    = ref(props.filters?.purpose    ?? '')
-const feeStatus  = ref(props.filters?.fee_status ?? '')
-const dateFrom   = ref(props.filters?.date_from  ?? '')
-const dateTo     = ref(props.filters?.date_to    ?? '')
-const showFilter = ref(false)
+const search       = ref(props.filters?.search         ?? '')
+const purpose      = ref(props.filters?.purpose        ?? '')
+const feeStatus    = ref(props.filters?.fee_status     ?? '')
+const dateFrom     = ref(props.filters?.date_from      ?? '')
+const dateTo       = ref(props.filters?.date_to        ?? '')
+const destinationId= ref(props.filters?.destination_id ?? '')
+const showFilter   = ref(false)
 
-// ── Active Filter Count (for badge) ──────────────────────────────────────────
+// ── Active Filter Count ───────────────────────────────────────────────────────
 const activeFilterCount = computed(() => {
     let count = 0
-    if (purpose.value)  count++
-    if (feeStatus.value) count++
-    if (dateFrom.value)  count++
-    if (dateTo.value)    count++
+    if (purpose.value)       count++
+    if (feeStatus.value)     count++
+    if (dateFrom.value)      count++
+    if (dateTo.value)        count++
+    if (destinationId.value) count++
     return count
 })
 
 // ── Active Filter Chips ───────────────────────────────────────────────────────
 const activeChips = computed(() => {
     const chips = []
-    if (search.value)    chips.push({ key: 'search',     label: `Search: "${search.value}"` })
-    if (purpose.value)   chips.push({ key: 'purpose',    label: `Purpose: ${purpose.value}` })
-    if (feeStatus.value)  chips.push({ key: 'fee_status', label: `Status: ${feeStatus.value}` })
-    if (dateFrom.value)   chips.push({ key: 'date_from',  label: `From: ${dateFrom.value}` })
-    if (dateTo.value)     chips.push({ key: 'date_to',    label: `To: ${dateTo.value}` })
+    if (search.value)       chips.push({ key: 'search',         label: `Search: "${search.value}"` })
+    if (purpose.value)      chips.push({ key: 'purpose',        label: `Purpose: ${purpose.value}` })
+    if (feeStatus.value)    chips.push({ key: 'fee_status',     label: `Status: ${feeStatus.value}` })
+    if (dateFrom.value)     chips.push({ key: 'date_from',      label: `From: ${dateFrom.value}` })
+    if (dateTo.value)       chips.push({ key: 'date_to',        label: `To: ${dateTo.value}` })
+    if (destinationId.value) {
+        const a = props.attractionOptions.find(x => x.id == destinationId.value)
+        chips.push({ key: 'destination_id', label: `Attraction: ${a?.name ?? destinationId.value}` })
+    }
     return chips
 })
 
@@ -57,40 +58,34 @@ const hasActiveFilters = computed(() => activeChips.value.length > 0)
 
 // ── Remove a single chip ──────────────────────────────────────────────────────
 const removeChip = (key) => {
-    if (key === 'search')     search.value    = ''
-    if (key === 'purpose')    purpose.value   = ''
-    if (key === 'fee_status') feeStatus.value = ''
-    if (key === 'date_from')  dateFrom.value  = ''
-    if (key === 'date_to')    dateTo.value    = ''
+    if (key === 'search')         search.value        = ''
+    if (key === 'purpose')        purpose.value       = ''
+    if (key === 'fee_status')     feeStatus.value     = ''
+    if (key === 'date_from')      dateFrom.value      = ''
+    if (key === 'date_to')        dateTo.value        = ''
+    if (key === 'destination_id') destinationId.value = ''
     applyFilters()
 }
 
-// ── Apply Filters via Inertia ─────────────────────────────────────────────────
+// ── Apply / Clear ─────────────────────────────────────────────────────────────
 const applyFilters = () => {
     router.get(route('visitor-records'), {
-        search:     search.value     || undefined,
-        purpose:    purpose.value    || undefined,
-        fee_status: feeStatus.value  || undefined,
-        date_from:  dateFrom.value   || undefined,
-        date_to:    dateTo.value     || undefined,
-    }, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
-    })
+        search:         search.value        || undefined,
+        purpose:        purpose.value       || undefined,
+        fee_status:     feeStatus.value     || undefined,
+        date_from:      dateFrom.value      || undefined,
+        date_to:        dateTo.value        || undefined,
+        destination_id: destinationId.value || undefined,
+    }, { preserveState: true, preserveScroll: true, replace: true })
 }
 
-// ── Clear All Filters ─────────────────────────────────────────────────────────
 const clearFilters = () => {
-    search.value    = ''
-    purpose.value   = ''
-    feeStatus.value = ''
-    dateFrom.value  = ''
-    dateTo.value    = ''
+    search.value = purpose.value = feeStatus.value = ''
+    dateFrom.value = dateTo.value = destinationId.value = ''
     applyFilters()
 }
 
-// ── Real-time Search (debounced 400ms) ────────────────────────────────────────
+// ── Debounced search ──────────────────────────────────────────────────────────
 let searchTimeout = null
 watch(search, () => {
     clearTimeout(searchTimeout)
@@ -103,37 +98,28 @@ const bellRef           = ref(null)
 
 const toggleNotifications = () => {
     showNotifications.value = !showNotifications.value
-    // Close filter panel when bell opens
     if (showNotifications.value) showFilter.value = false
 }
 
-// ── Filter Panel ref (for click-outside) ─────────────────────────────────────
-const filterRef       = ref(null)
-const filterBtnRef    = ref(null)
+// ── Filter Panel ──────────────────────────────────────────────────────────────
+const filterRef    = ref(null)
+const filterBtnRef = ref(null)
 
 const toggleFilter = () => {
     showFilter.value = !showFilter.value
-    // Close bell when filter opens
     if (showFilter.value) showNotifications.value = false
 }
 
-// ── Click Outside Handler ─────────────────────────────────────────────────────
+// ── Click Outside ─────────────────────────────────────────────────────────────
 const handleClickOutside = (e) => {
-    // Close filter panel
     if (
         showFilter.value &&
-        filterRef.value &&
-        !filterRef.value.contains(e.target) &&
-        filterBtnRef.value &&
-        !filterBtnRef.value.contains(e.target)
-    ) {
-        showFilter.value = false
-    }
+        filterRef.value && !filterRef.value.contains(e.target) &&
+        filterBtnRef.value && !filterBtnRef.value.contains(e.target)
+    ) showFilter.value = false
 
-    // Close bell dropdown
-    if (bellRef.value && !bellRef.value.contains(e.target)) {
+    if (bellRef.value && !bellRef.value.contains(e.target))
         showNotifications.value = false
-    }
 }
 
 onMounted(() => document.addEventListener('click', handleClickOutside))
@@ -143,16 +129,8 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
 const showModal       = ref(false)
 const selectedVisitor = ref(null)
 
-const openModal = (visitor) => {
-    selectedVisitor.value = visitor
-    showModal.value = true
-}
-
-const closeModal = () => {
-    showModal.value = false
-    selectedVisitor.value = null
-}
-
+const openModal  = (visitor) => { selectedVisitor.value = visitor; showModal.value = true }
+const closeModal = () => { showModal.value = false; selectedVisitor.value = null }
 </script>
 
 <template>
@@ -162,19 +140,15 @@ const closeModal = () => {
         <div class="container mx-auto">
             <div class="bg-gray-100 p-4 rounded-lg flex items-center gap-3">
 
-                <!-- Real-time search with active indicator -->
                 <div class="relative flex-1">
-                    <input
-                        v-model="search"
-                        type="text"
+                    <input v-model="search" type="text"
                         placeholder="Search by name, origin, or registration ID..."
                         :class="[
                             'w-full p-2 pl-8 rounded-lg border text-sm transition-colors duration-200',
                             search
                                 ? 'border-gray-800 bg-white ring-1 ring-gray-800'
                                 : 'border-gray-300 bg-white focus:border-gray-400'
-                        ]"
-                    />
+                        ]" />
                     <svg class="absolute left-2.5 top-2.5 w-4 h-4"
                         :class="search ? 'text-gray-800' : 'text-gray-400'"
                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,7 +161,7 @@ const closeModal = () => {
                     </span>
                 </div>
 
-                <!-- ✅ Notification Bell — same as dashboard -->
+                <!-- Bell -->
                 <div class="relative" ref="bellRef">
                     <button @click="toggleNotifications" class="relative focus:outline-none">
                         <FontAwesomeIcon icon="bell" class="text-gray-700 text-lg" />
@@ -197,7 +171,6 @@ const closeModal = () => {
                         </span>
                     </button>
 
-                    <!-- Notification Dropdown -->
                     <div v-if="showNotifications"
                         class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                         <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -254,7 +227,6 @@ const closeModal = () => {
                         :class="hasActiveFilters ? 'text-gray-800 font-semibold' : 'text-gray-500'">
                         <span v-if="hasActiveFilters">
                             Showing {{ visitors.total }} filtered result(s)
-                            
                         </span>
                         <span v-else>
                             {{ visitors.total }} total record(s)
@@ -263,10 +235,7 @@ const closeModal = () => {
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <!-- ✅ Filter button with ref for click-outside -->
-                    <button
-                        ref="filterBtnRef"
-                        @click="toggleFilter"
+                    <button ref="filterBtnRef" @click="toggleFilter"
                         class="relative flex items-center gap-1.5 text-sm border px-3 py-2 rounded transition"
                         :class="activeFilterCount > 0
                             ? 'border-gray-800 bg-gray-900 text-white'
@@ -292,13 +261,10 @@ const closeModal = () => {
                         </svg>
                     </button>
                 </span>
-                
             </div>
 
-            <!-- ✅ Filter Panel with ref for click-outside -->
-            <div
-                v-if="showFilter"
-                ref="filterRef"
+            <!-- Filter Panel -->
+            <div v-if="showFilter" ref="filterRef"
                 class="bg-white border border-gray-200 rounded-lg p-4 mb-4 grid grid-cols-1 md:grid-cols-4 gap-4">
 
                 <div>
@@ -323,6 +289,15 @@ const closeModal = () => {
                         <option value="Pending">Pending</option>
                         <option value="Waived">Waived</option>
                         <option value="No Show">No Show</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Attraction Visited</label>
+                    <select v-model="destinationId"
+                        class="w-full border rounded py-2 px-2 text-sm text-gray-700 focus:ring-0 focus:border-gray-400">
+                        <option value="">All Attractions</option>
+                        <option v-for="a in attractionOptions" :key="a.id" :value="a.id">{{ a.name }}</option>
                     </select>
                 </div>
 
@@ -385,9 +360,7 @@ const closeModal = () => {
                             </td>
                         </tr>
 
-                        <tr
-                            v-for="visitor in visitors.data"
-                            :key="visitor.id"
+                        <tr v-for="visitor in visitors.data" :key="visitor.id"
                             @click="openModal(visitor)"
                             class="cursor-pointer hover:bg-blue-50 border-b last:border-0 transition-colors duration-100">
                             <td class="p-3 text-gray-400 text-xs font-mono">{{ visitor.registration_id }}</td>
@@ -418,9 +391,7 @@ const closeModal = () => {
                     <span v-if="hasActiveFilters" class="text-yellow-600 font-semibold">(filtered)</span>
                 </p>
                 <div class="flex gap-1">
-                    <Link
-                        v-for="link in visitors.links"
-                        :key="link.label"
+                    <Link v-for="link in visitors.links" :key="link.label"
                         :href="link.url ?? '#'"
                         v-html="link.label"
                         :class="{
@@ -429,8 +400,7 @@ const closeModal = () => {
                             'hover:bg-gray-200 text-gray-700': link.url && !link.active,
                         }"
                         class="px-3 py-1 rounded text-xs border border-gray-200"
-                        preserve-scroll
-                    />
+                        preserve-scroll />
                 </div>
             </div>
 
@@ -462,7 +432,7 @@ const closeModal = () => {
                         'bg-green-100 text-green-700':   selectedVisitor.fee_status === 'Collected',
                         'bg-yellow-100 text-yellow-700': selectedVisitor.fee_status === 'Pending',
                         'bg-gray-100 text-gray-500':     selectedVisitor.fee_status === 'Waived',
-                        'bg-red-100 text-red-600':       visitor.fee_status === 'No Show',
+                        'bg-red-100 text-red-600':       selectedVisitor.fee_status === 'No Show',
                     }" class="px-3 py-1 rounded-full text-xs font-bold mt-1">
                         {{ selectedVisitor.fee_status }}
                     </span>
@@ -502,6 +472,7 @@ const closeModal = () => {
                             'text-green-700':  selectedVisitor.fee_status === 'Collected',
                             'text-yellow-700': selectedVisitor.fee_status === 'Pending',
                             'text-gray-500':   selectedVisitor.fee_status === 'Waived',
+                            'text-red-600':    selectedVisitor.fee_status === 'No Show',
                         }">{{ selectedVisitor.fee_status }}</p>
                     </div>
                 </div>
@@ -509,41 +480,37 @@ const closeModal = () => {
                 <hr class="my-3 border-gray-200">
 
                 <div class="flex gap-3 justify-end mt-2">
-                <!-- Close Button -->
-                <button @click="closeModal"
-                    class="text-sm text-gray-500 border border-gray-300 px-4 py-2 rounded hover:bg-gray-100">
-                    Close
-                </button>
+                    <button @click="closeModal"
+                        class="text-sm text-gray-500 border border-gray-300 px-4 py-2 rounded hover:bg-gray-100">
+                        Close
+                    </button>
 
-                <!-- Collect Fee Link (Requires EDIT permission) -->
-                <Link v-if="selectedVisitor.fee_status === 'Pending'"
-                    :href="route('adminpay', selectedVisitor.id)"
-                    :class="[
-                        'text-sm font-bold px-4 py-2 rounded transition-all',
-                        !can('edit_visitor_records') 
-                            ? 'bg-yellow-200 text-yellow-700 cursor-not-allowed pointer-events-none opacity-60' 
-                            : 'bg-yellow-500 text-white hover:bg-yellow-600'
-                    ]"
-                    :title="!can('edit_visitor_records') ? 'Permission Denied: Cannot collect fees' : ''">
-                    Collect Fee
-                </Link>
+                    <!-- Collect Fee — Pending only -->
+                    <Link v-if="selectedVisitor.fee_status === 'Pending'"
+                        :href="route('adminpay', selectedVisitor.id)"
+                        :class="[
+                            'text-sm font-bold px-4 py-2 rounded transition-all',
+                            !can('edit_visitor_records')
+                                ? 'bg-yellow-200 text-yellow-700 cursor-not-allowed pointer-events-none opacity-60'
+                                : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                        ]"
+                        :title="!can('edit_visitor_records') ? 'Permission Denied: Cannot collect fees' : ''">
+                        Collect Fee
+                    </Link>
 
-                <!-- View Receipt Link (Requires VIEW permission) -->
-                <Link v-if="selectedVisitor.fee_status === 'Collected' || selectedVisitor.fee_status === 'Waived'"
-                    :href="route('adminreceipt', selectedVisitor.id)"
-                    :class="[
-                        'text-sm font-bold px-4 py-2 rounded transition-all',
-                        !can('view_visitor_records') 
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed pointer-events-none' 
-                            : 'bg-gray-900 text-white hover:bg-gray-700'
-                    ]"
-                    :title="!can('view_visitor_records') ? 'Permission Denied: Cannot view receipts' : ''">
-                    View Receipt
-                </Link>
-            </div>
-
-
-                
+                    <!-- View Receipt — Collected or Waived only -->
+                    <Link v-if="selectedVisitor.fee_status === 'Collected' || selectedVisitor.fee_status === 'Waived'"
+                        :href="route('adminreceipt', selectedVisitor.id)"
+                        :class="[
+                            'text-sm font-bold px-4 py-2 rounded transition-all',
+                            !can('view_visitor_records')
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed pointer-events-none'
+                                : 'bg-gray-900 text-white hover:bg-gray-700'
+                        ]"
+                        :title="!can('view_visitor_records') ? 'Permission Denied: Cannot view receipts' : ''">
+                        View Receipt
+                    </Link>
+                </div>
 
             </div>
         </div>

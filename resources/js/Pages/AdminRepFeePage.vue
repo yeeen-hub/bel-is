@@ -102,6 +102,7 @@
                         <option value="">All Statuses</option>
                         <option value="Standard">Collected (Standard)</option>
                         <option value="Waived">Waived</option>
+                        <option value="Pending">Pending</option>
                         <option value="No Show">No Show</option>
                     </select>
                 </div>
