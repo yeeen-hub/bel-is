@@ -32,7 +32,7 @@ class VisitorVisit extends Model
         'purpose_other',
         'group_code',
         'duration_of_stay',
-        'visitor_category',    
+        'visitor_category',
         'arrival_at',
         'departure_at',
         // Historical snapshot
@@ -72,6 +72,7 @@ class VisitorVisit extends Model
     }
 
     // ── Relationships ─────────────────────────────────────────────────────────
+
     public function profile()
     {
         return $this->belongsTo(VisitorProfile::class, 'profile_id');
@@ -85,6 +86,16 @@ class VisitorVisit extends Model
     public function registeredBy()
     {
         return $this->belongsTo(User::class, 'registered_by');
+    }
+
+    /**
+     * Destinations this visitor selected at registration.
+     * Each row = one attraction_id (named) or null + other_destination (free text).
+     * Used by the area/sitio and attraction filters in reports.
+     */
+    public function destinations()
+    {
+        return $this->hasMany(VisitorDestination::class, 'visit_id');
     }
 
     // ── Snapshot: copies profile's current data into the visit record ─────────
@@ -109,10 +120,5 @@ class VisitorVisit extends Model
     public function scopeUnsynced($query)
     {
         return $query->whereNull('synced_at');
-    }
-
-    public function destinations()
-    {
-        return $this->hasMany(\App\Models\VisitorDestination::class, 'visit_id');
     }
 }

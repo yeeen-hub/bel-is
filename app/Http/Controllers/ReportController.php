@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\VisitorVisit;
 use App\Models\VisitorDestination;
 use App\Models\BarangayAttraction;
+use App\Models\Sitio;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -35,8 +36,31 @@ class ReportController extends Controller
         if ($request->filled('date_to')) {
             $query->whereDate('arrival_at', '<=', $request->date_to);
         }
+        // Area = sitio name → filter visits whose selected destinations belong to that sitio
         if ($request->filled('area')) {
-            $query->where('snapshot_place_of_origin', 'like', "%{$request->area}%");
+            $query->whereHas('destinations', function ($q) use ($request) {
+                $q->whereHas('attraction', function ($q2) use ($request) {
+                    $q2->whereHas('sitio', function ($q3) use ($request) {
+                        $q3->where('name', $request->area);
+                    });
+                });
+            });
+        }
+        if ($request->filled('purpose')) {
+            $query->where('purpose', $request->purpose);
+        }
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(function ($q) use ($s) {
+                $q->whereRaw("CONCAT(IFNULL(snapshot_first_name,''), ' ', IFNULL(snapshot_last_name,'')) LIKE ?", ["%{$s}%"])
+                  ->orWhere('snapshot_place_of_origin', 'like', "%{$s}%");
+            });
+        }
+        // Attraction filter — only visits that include this attraction
+        if ($request->filled('attraction_id')) {
+            $query->whereHas('destinations', fn($q) =>
+                $q->where('attraction_id', $request->attraction_id)
+            );
         }
 
         $visits = $query->get();
@@ -92,10 +116,15 @@ class ReportController extends Controller
 
         return Inertia::render('AdminRepOvPage', [
             'rows'    => $rows,
+            'sitios'  => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'attractions' => BarangayAttraction::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'filters' => [
-                'date_from' => $request->date_from ?? '',
-                'date_to'   => $request->date_to   ?? '',
-                'area'      => $request->area       ?? '',
+                'search'        => $request->search        ?? '',
+                'purpose'       => $request->purpose       ?? '',
+                'area'          => $request->area          ?? '',
+                'attraction_id' => $request->attraction_id ?? '',
+                'date_from'     => $request->date_from     ?? '',
+                'date_to'       => $request->date_to       ?? '',
             ],
         ]);
     }
@@ -108,7 +137,7 @@ class ReportController extends Controller
     {
         $query = VisitorVisit::query()
             ->select(
-                'snapshot_place_of_origin as place_of_origin',
+                'snapshot_place_of_origin',
                 DB::raw('COUNT(*) as total_tourists')
             )
             ->groupBy('snapshot_place_of_origin')
@@ -123,18 +152,33 @@ class ReportController extends Controller
         if ($request->filled('area')) {
             $query->where('snapshot_place_of_origin', 'like', "%{$request->area}%");
         }
+        if ($request->filled('search')) {
+            $query->where('snapshot_place_of_origin', 'like', "%{$request->search}%");
+        }
+        // Area = sitio name → filter visits whose destinations belong to that sitio
+        if ($request->filled('area')) {
+            $query->whereHas('destinations', function ($q) use ($request) {
+                $q->whereHas('attraction', function ($q2) use ($request) {
+                    $q2->whereHas('sitio', function ($q3) use ($request) {
+                        $q3->where('name', $request->area);
+                    });
+                });
+            });
+        }
 
         $rows = $query->get()->map(fn($r) => [
-            'place_of_origin' => $r->place_of_origin ?? '—',
-            'total_tourists'  => $r->total_tourists,
-        ]);
+            'place_of_origin' => $r->snapshot_place_of_origin ?? '—',
+            'total_tourists'  => (int) $r->total_tourists,
+        ])->values();
 
         return Inertia::render('AdminRepDemoPage', [
-            'rows'    => $rows,
+            'rows'   => $rows,
+            'sitios' => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'filters' => [
+                'search'    => $request->search    ?? '',
+                'area'      => $request->area      ?? '',
                 'date_from' => $request->date_from ?? '',
                 'date_to'   => $request->date_to   ?? '',
-                'area'      => $request->area       ?? '',
             ],
         ]);
     }
@@ -144,15 +188,21 @@ class ReportController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     public function feeRevenue(Request $request)
     {
-        $query = VisitorVisit::query()
+        // Use DB::table (not Eloquent) to avoid model hydration overwriting
+        // computed aliases when visitor_visits and receipts share column names
+        // (id, created_at, updated_at). DB::table returns plain stdClass rows
+        // where every aliased column is directly accessible.
+        $query = DB::table('visitor_visits')
             ->join('receipts', 'visitor_visits.id', '=', 'receipts.visit_id')
             ->select(
+                DB::raw("TRIM(CONCAT(IFNULL(visitor_visits.snapshot_first_name,''), ' ', IFNULL(visitor_visits.snapshot_last_name,''))) as full_name"),
                 'visitor_visits.visitor_category as visit_category',
-                DB::raw("CONCAT(visitor_visits.snapshot_first_name, ' ', visitor_visits.snapshot_last_name) as full_name"),
+                'visitor_visits.snapshot_place_of_origin as place_of_origin',
                 'receipts.total_amount as revenue',
                 'receipts.fee_type',
                 'receipts.collected_at'
-            );
+            )
+            ->orderByDesc('receipts.collected_at');
 
         if ($request->filled('date_from')) {
             $query->whereDate('receipts.collected_at', '>=', $request->date_from);
@@ -161,27 +211,49 @@ class ReportController extends Controller
             $query->whereDate('receipts.collected_at', '<=', $request->date_to);
         }
         if ($request->filled('area')) {
-            $query->where('visitor_visits.snapshot_place_of_origin', 'like', "%{$request->area}%");
+            // Filter via visitor_destinations → barangay_attractions → sitios
+            $visitIdsInSitio = DB::table('visitor_destinations')
+                ->join('barangay_attractions', 'visitor_destinations.attraction_id', '=', 'barangay_attractions.id')
+                ->join('sitios', 'barangay_attractions.sitio_id', '=', 'sitios.id')
+                ->where('sitios.name', $request->area)
+                ->pluck('visitor_destinations.visit_id');
+            $query->whereIn('visitor_visits.id', $visitIdsInSitio);
+        }
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->whereRaw("TRIM(CONCAT(IFNULL(visitor_visits.snapshot_first_name,''), ' ', IFNULL(visitor_visits.snapshot_last_name,''))) LIKE ?", ["%{$s}%"]);
+        }
+        if ($request->filled('category')) {
+            $query->where('visitor_visits.visitor_category', $request->category);
+        }
+        if ($request->filled('fee_type')) {
+            $query->where('receipts.fee_type', $request->fee_type);
         }
 
-        $rows = $query->orderByDesc('receipts.collected_at')->get();
+        $rows = $query->get();
 
         $totalRevenue = $rows->where('fee_type', '!=', 'Waived')->sum('revenue');
-        $days         = $rows->groupBy(fn($r) => \Carbon\Carbon::parse($r->collected_at)->toDateString())->count();
+        $days         = $rows->groupBy(fn($r) => Carbon::parse($r->collected_at)->toDateString())->count();
         $avgDaily     = $days > 0 ? round($totalRevenue / $days, 2) : 0;
 
         return Inertia::render('AdminRepFeePage', [
-            'rows'         => $rows->map(fn($r) => [
-                'visit_category' => $r->visit_category ?? '—',
+            'rows' => $rows->map(fn($r) => [
+                'visit_category' => $r->visit_category ?: '—',
                 'full_name'      => trim($r->full_name) ?: '—',
-                'revenue'        => $r->fee_type === 'Waived' ? 'Waived' : number_format((float) $r->revenue, 2),
+                'revenue'        => $r->fee_type === 'Waived'
+                    ? 'Waived'
+                    : number_format((float) $r->revenue, 2),
             ]),
             'totalRevenue' => number_format($totalRevenue, 2),
             'avgDaily'     => number_format($avgDaily, 2),
+            'sitios'       => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'filters'      => [
+                'search'    => $request->search    ?? '',
+                'category'  => $request->category  ?? '',
+                'fee_type'  => $request->fee_type  ?? '',
+                'area'      => $request->area       ?? '',
                 'date_from' => $request->date_from ?? '',
                 'date_to'   => $request->date_to   ?? '',
-                'area'      => $request->area       ?? '',
             ],
         ]);
     }
