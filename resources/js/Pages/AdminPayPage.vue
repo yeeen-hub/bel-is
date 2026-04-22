@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from 'vue'
-import { useForm } from '@inertiajs/vue3'
+import { computed, ref } from 'vue'
+import { useForm, router, usePage } from '@inertiajs/vue3'
 import LandingLayout from '@/Layouts/SidebarLayout.vue'
 
 const props = defineProps({
@@ -11,41 +11,48 @@ const props = defineProps({
     feeCategories: { type: Array,   default: () => [] },
 })
 
-// The ONLY staff decision is Collected vs Waived.
-// Fee amount, visitor count and category are locked from registration.
+// ── Permission check ──────────────────────────────────────────────────────────
+const page        = usePage()
+const permissions = computed(() => page.props.auth?.permissions ?? [])
+const userRole    = computed(() => (page.props.auth?.user?.role ?? '').toLowerCase())
+const can = (permission) => {
+    if (userRole.value === 'admin') return true
+    return permissions.value.includes(permission)
+}
+
+// ── Payment form ──────────────────────────────────────────────────────────────
 const form = useForm({
-    fee_type:       'Collected',  // 'Collected' | 'Waived'
+    fee_type:       'Collected',
     payment_method: 'Cash',
     waiver_reason:  '',
     notes:          '',
 })
 
 const waiverReasonOptions = [
-    'Resident',
-    'Official Business',
-    'Child (below 12)',
-    'PWD (Person with Disability)',
-    'Senior Citizen',
-    'Barangay Official',
-    'Other (see notes)',
+    'Resident', 'Official Business', 'Child (below 12)',
+    'PWD (Person with Disability)', 'Senior Citizen',
+    'Barangay Official', 'Other (see notes)',
 ]
 
-// Total is always driven by server-resolved fees, never by form inputs
 const totalAmount = computed(() =>
     form.fee_type === 'Waived' ? 0 : props.totalDue
 )
 
-// For individual: single-line label. For group: "X visitor(s) — mixed categories"
-const feeLabel = computed(() => {
-    if (props.isGroup) {
-        return `${props.groupMembers.length} visitor(s) — fees based on individual categories`
-    }
-    const cat = props.visitor?.visitor_category || 'Category'
-    const fee = Number(props.visitor?.category_fee ?? 0).toFixed(2)
-    return `${cat} — ₱${fee} / visitor`
-})
-
 const submit = () => form.post(route('adminpay.store', props.visitor.id))
+
+// ── No Show ───────────────────────────────────────────────────────────────────
+const showNoShowConfirm = ref(false)
+const noShowProcessing  = ref(false)
+
+const confirmNoShow = () => { showNoShowConfirm.value = true }
+const cancelNoShow  = () => { showNoShowConfirm.value = false }
+
+const submitNoShow = () => {
+    noShowProcessing.value = true
+    router.post(route('adminpay.no-show', props.visitor.id), {}, {
+        onFinish: () => { noShowProcessing.value = false },
+    })
+}
 </script>
 
 <template>
@@ -85,12 +92,7 @@ const submit = () => form.post(route('adminpay.store', props.visitor.id))
                 </div>
             </div>
 
-            <!-- ══════════════════════════════════════════════════════════════ -->
-            <!-- VISITOR SUMMARY — individual shows single block,              -->
-            <!-- group shows member table (same original card style)           -->
-            <!-- ══════════════════════════════════════════════════════════════ -->
-
-            <!-- Individual -->
+            <!-- Individual Summary -->
             <div v-if="!isGroup" class="w-full mt-2 bg-white p-4 rounded-lg text-sm text-gray-700 space-y-1 max-w-2xl">
                 <p><span class="font-bold">Visitor:</span> {{ visitor.full_name }}</p>
                 <p><span class="font-bold">Origin:</span> {{ visitor.place_of_origin }}</p>
@@ -107,7 +109,7 @@ const submit = () => form.post(route('adminpay.store', props.visitor.id))
                 </p>
             </div>
 
-            <!-- Group -->
+            <!-- Group Summary -->
             <div v-else class="w-full mt-2 bg-white rounded-lg max-w-2xl overflow-hidden">
                 <div class="px-4 pt-3 pb-1 flex items-center gap-2 border-b border-gray-100">
                     <span class="text-sm font-bold text-gray-800">Group Registration</span>
@@ -161,9 +163,7 @@ const submit = () => form.post(route('adminpay.store', props.visitor.id))
                 </div>
             </div>
 
-            <!-- ══════════════════════════════════════════════════════════════ -->
-            <!-- PAYMENT FORM — original layout preserved                      -->
-            <!-- ══════════════════════════════════════════════════════════════ -->
+            <!-- Payment Form -->
             <div class="w-full mt-4 max-w-2xl">
                 <form @submit.prevent="submit" class="bg-white p-6 rounded-lg shadow-sm space-y-6">
 
@@ -171,7 +171,7 @@ const submit = () => form.post(route('adminpay.store', props.visitor.id))
                         {{ form.errors.error }}
                     </div>
 
-                    <!-- Fee type — read-only display badge, NOT a dropdown -->
+                    <!-- Fee Type (read-only) -->
                     <div>
                         <label class="block text-gray-700 text-sm font-bold mb-2">Fee Type</label>
                         <div class="flex flex-wrap gap-2">
@@ -192,7 +192,7 @@ const submit = () => form.post(route('adminpay.store', props.visitor.id))
                         </div>
                     </div>
 
-                    <!-- Number of visitors — read-only display -->
+                    <!-- Number of Visitors (read-only) -->
                     <div>
                         <label class="block text-gray-700 text-sm font-bold mb-2">Number of Visitors</label>
                         <div class="border border-gray-200 rounded bg-gray-50 py-2 px-3 text-sm text-gray-700 flex items-center justify-between">
@@ -201,31 +201,75 @@ const submit = () => form.post(route('adminpay.store', props.visitor.id))
                         </div>
                     </div>
 
-                    <!-- Payment status toggle -->
+                    <!-- ── Payment Status toggle ── -->
                     <div>
                         <label class="block text-gray-700 text-sm font-bold mb-2">Payment Status</label>
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid gap-3" :class="can('edit_payment') ? 'grid-cols-3' : 'grid-cols-2'">
+
                             <button type="button"
-                                @click="form.fee_type = 'Collected'; form.waiver_reason = ''"
-                                :class="form.fee_type === 'Collected'
+                                @click="form.fee_type = 'Collected'; form.waiver_reason = ''; showNoShowConfirm = false"
+                                :class="form.fee_type === 'Collected' && !showNoShowConfirm
                                     ? 'bg-green-600 text-white border-green-600'
                                     : 'bg-white text-gray-600 border-gray-300 hover:border-green-400'"
                                 class="border-2 rounded-lg py-2.5 text-sm font-semibold transition">
                                 ✓ Collect Payment
                             </button>
+
                             <button type="button"
-                                @click="form.fee_type = 'Waived'"
-                                :class="form.fee_type === 'Waived'
+                                @click="form.fee_type = 'Waived'; showNoShowConfirm = false"
+                                :class="form.fee_type === 'Waived' && !showNoShowConfirm
                                     ? 'bg-amber-500 text-white border-amber-500'
                                     : 'bg-white text-gray-600 border-gray-300 hover:border-amber-400'"
                                 class="border-2 rounded-lg py-2.5 text-sm font-semibold transition">
                                 ⊘ Waive Fee
                             </button>
+
+                            <!-- No Show — only visible with edit_payment permission -->
+                            <button v-if="can('edit_payment')" type="button"
+                                @click="confirmNoShow"
+                                :class="showNoShowConfirm
+                                    ? 'bg-red-600 text-white border-red-600'
+                                    : 'bg-white text-gray-600 border-gray-300 hover:border-red-400'"
+                                class="border-2 rounded-lg py-2.5 text-sm font-semibold transition">
+                                ✕ No Show
+                            </button>
+
                         </div>
                     </div>
 
-                    <!-- Notes -->
-                    <div>
+                    <!-- ── No Show Confirmation Panel ── -->
+                    <div v-if="showNoShowConfirm"
+                        class="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                                    clip-rule="evenodd"/>
+                            </svg>
+                            <p class="text-sm font-bold text-red-800">Mark as No Show?</p>
+                        </div>
+                        <p class="text-xs text-red-700">
+                            This will permanently mark
+                            <span class="font-semibold">
+                                {{ isGroup ? `all ${groupMembers.length} visitor(s) in this group` : visitor.full_name }}
+                            </span>
+                            as <span class="font-bold">No Show</span>.
+                            The record will be closed and no payment can be collected afterwards.
+                        </p>
+                        <div class="flex gap-3 pt-1">
+                            <button type="button" @click="cancelNoShow"
+                                class="flex-1 text-sm font-semibold border border-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-100 transition">
+                                Cancel
+                            </button>
+                            <button type="button" @click="submitNoShow" :disabled="noShowProcessing"
+                                class="flex-1 text-sm font-bold bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition disabled:opacity-60">
+                                {{ noShowProcessing ? 'Processing...' : 'Confirm No Show' }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Notes (hidden during No Show confirm) -->
+                    <div v-if="!showNoShowConfirm">
                         <label class="block text-gray-700 text-sm font-bold mb-2">
                             Notes <span class="text-gray-400 font-normal">(optional)</span>
                         </label>
@@ -234,8 +278,8 @@ const submit = () => form.post(route('adminpay.store', props.visitor.id))
                             rows="3" placeholder="Any additional notes..."></textarea>
                     </div>
 
-                    <!-- Waiver reason (only when Waived) -->
-                    <div v-if="form.fee_type === 'Waived'"
+                    <!-- Waiver reason (hidden during No Show confirm) -->
+                    <div v-if="form.fee_type === 'Waived' && !showNoShowConfirm"
                         class="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
                         <div class="flex items-center gap-2">
                             <svg class="w-4 h-4 text-amber-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -262,8 +306,8 @@ const submit = () => form.post(route('adminpay.store', props.visitor.id))
                         </p>
                     </div>
 
-                    <!-- ── Total Amount Due — original style, with full breakdown ── -->
-                    <div class="rounded-lg p-4 text-sm"
+                    <!-- Total Amount Due (hidden during No Show confirm) -->
+                    <div v-if="!showNoShowConfirm" class="rounded-lg p-4 text-sm"
                         :class="form.fee_type === 'Waived'
                             ? 'bg-amber-50 border border-amber-200'
                             : 'bg-green-50 border border-green-200'">
@@ -274,23 +318,19 @@ const submit = () => form.post(route('adminpay.store', props.visitor.id))
                             </span>
                         </div>
 
-                        <!-- Individual breakdown (original style) -->
                         <template v-if="form.fee_type !== 'Waived' && !isGroup">
                             <p class="text-gray-500 text-xs mt-1">
                                 {{ visitor.visitor_category || 'Category' }} — ₱{{ Number(visitor.category_fee ?? 0).toFixed(2) }}
                             </p>
                             <div class="mt-3 pt-3 border-t border-green-200 space-y-1">
                                 <div class="flex justify-between text-xs text-gray-600">
-                                    <span>Category</span>
-                                    <span>{{ visitor.visitor_category || '—' }}</span>
+                                    <span>Category</span><span>{{ visitor.visitor_category || '—' }}</span>
                                 </div>
                                 <div class="flex justify-between text-xs text-gray-600">
-                                    <span>Fee per head</span>
-                                    <span>₱{{ Number(visitor.category_fee ?? 0).toFixed(2) }}</span>
+                                    <span>Fee per head</span><span>₱{{ Number(visitor.category_fee ?? 0).toFixed(2) }}</span>
                                 </div>
                                 <div class="flex justify-between text-xs text-gray-600">
-                                    <span>No. of visitors</span>
-                                    <span>× 1</span>
+                                    <span>No. of visitors</span><span>× 1</span>
                                 </div>
                                 <div class="flex justify-between text-xs font-bold text-gray-800 pt-1 border-t border-green-200">
                                     <span>Total</span>
@@ -299,7 +339,6 @@ const submit = () => form.post(route('adminpay.store', props.visitor.id))
                             </div>
                         </template>
 
-                        <!-- Group breakdown -->
                         <template v-else-if="form.fee_type !== 'Waived' && isGroup">
                             <p class="text-gray-500 text-xs mt-1">
                                 {{ groupMembers.length }} visitor(s) — fees computed from individual categories
@@ -307,9 +346,7 @@ const submit = () => form.post(route('adminpay.store', props.visitor.id))
                             <div class="mt-3 pt-3 border-t border-green-200 space-y-1">
                                 <div v-for="m in groupMembers" :key="m.id"
                                     class="flex justify-between text-xs text-gray-600">
-                                    <span>{{ m.full_name }}
-                                        <span class="text-gray-400 ml-1">({{ m.visitor_category || 'No cat.' }})</span>
-                                    </span>
+                                    <span>{{ m.full_name }} <span class="text-gray-400 ml-1">({{ m.visitor_category || 'No cat.' }})</span></span>
                                     <span>₱{{ Number(m.category_fee ?? 0).toFixed(2) }}</span>
                                 </div>
                                 <div class="flex justify-between text-xs font-bold text-gray-800 pt-1 border-t border-green-200">
@@ -319,7 +356,6 @@ const submit = () => form.post(route('adminpay.store', props.visitor.id))
                             </div>
                         </template>
 
-                        <!-- Waived -->
                         <template v-else>
                             <p class="text-gray-500 text-xs mt-1">
                                 Reason: {{ form.waiver_reason || '— not yet selected' }}
@@ -327,8 +363,8 @@ const submit = () => form.post(route('adminpay.store', props.visitor.id))
                         </template>
                     </div>
 
-                    <!-- Submit -->
-                    <div class="flex justify-center">
+                    <!-- Submit (hidden during No Show confirm) -->
+                    <div v-if="!showNoShowConfirm" class="flex justify-center">
                         <button type="submit" :disabled="form.processing"
                             class="bg-gray-900 text-white font-bold py-2 px-6 rounded disabled:opacity-50 text-sm">
                             {{ form.processing ? 'Processing...' : 'Collect Payment' }}

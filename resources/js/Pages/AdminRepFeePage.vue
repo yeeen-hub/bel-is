@@ -68,7 +68,11 @@
                     </span>
                 </div>
 
+                <!-- RIGHT: Enter + Export only -->
                 <div class="flex items-center gap-2">
+                    <button @click="applyFilters" class="h-10 bg-gray-900 text-white font-bold px-4 text-sm rounded">
+                        Enter
+                    </button>
                     <button class="h-10 border border-gray-900 font-bold px-3 text-sm rounded-lg">Export PDF</button>
                     <button class="h-10 border border-gray-900 font-bold px-3 text-sm rounded-lg">Export EXCEL</button>
                 </div>
@@ -90,14 +94,15 @@
                     </select>
                 </div>
 
-                <!-- Fee Type -->
+                <!-- Fee Status -->
                 <div>
-                    <label class="block text-xs font-bold text-gray-700 mb-1">Fee Type</label>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Fee Status</label>
                     <select v-model="feeType"
                         class="w-full border rounded py-2 px-2 text-sm text-gray-700 focus:ring-0 focus:border-gray-400">
-                        <option value="">All Types</option>
-                        <option value="Standard">Standard</option>
+                        <option value="">All Statuses</option>
+                        <option value="Standard">Collected (Standard)</option>
                         <option value="Waived">Waived</option>
+                        <option value="No Show">No Show</option>
                     </select>
                 </div>
 
@@ -202,7 +207,7 @@ const activeChips = computed(() => {
     const chips = []
     if (search.value)   chips.push({ key: 'search',    label: `Search: "${search.value}"` })
     if (category.value) chips.push({ key: 'category',  label: `Category: ${category.value}` })
-    if (feeType.value)  chips.push({ key: 'fee_type',  label: `Type: ${feeType.value}` })
+    if (feeType.value)  chips.push({ key: 'fee_type',  label: `Status: ${feeType.value}` })
     if (area.value)     chips.push({ key: 'area',      label: `Area: ${area.value}` })
     if (dateFrom.value) chips.push({ key: 'date_from', label: `From: ${dateFrom.value}` })
     if (dateTo.value)   chips.push({ key: 'date_to',   label: `To: ${dateTo.value}` })

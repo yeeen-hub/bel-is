@@ -1,11 +1,11 @@
 import '../css/app.css';
 import './bootstrap';
 
-import { createInertiaApp } from '@inertiajs/vue3';
+import { createInertiaApp, router } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from 'ziggy-js';
-import router from './router/index.js'; // <--- 1. IMPORT your virtual tour router
+import vueRouter from './router/index.js'; // <--- virtual tour router
 
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -14,6 +14,18 @@ import { faGauge, faUserPlus, faUsers, faChartBar, faCog, faBell, faUser, faFilt
 library.add(faGauge, faUserPlus, faUsers, faChartBar, faCog, faBell, faUser, faFilter);
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+
+// ── Session expiry handler ────────────────────────────────────────────────────
+// ValidateSessionOwnership middleware returns HTTP 409 for Inertia requests
+// when the session is no longer valid (tab closed, forced logout, etc.).
+// Catch it here and do a full-page redirect to login to clear state cleanly.
+router.on('invalid', (event) => {
+    if (event.detail?.response?.status === 409) {
+        event.preventDefault();
+        window.location.href = '/login';
+    }
+});
+// ─────────────────────────────────────────────────────────────────────────────
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
@@ -28,7 +40,7 @@ createInertiaApp({
         vueApp
             .use(plugin)
             .use(ZiggyVue)
-            .use(router) // <--- 2. ADD THIS LINE to activate the virtual tour routing
+            .use(vueRouter) // <--- virtual tour routing
             .component('FontAwesomeIcon', FontAwesomeIcon)
             .mount(el);
     },

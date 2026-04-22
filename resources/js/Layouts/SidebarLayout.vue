@@ -4,7 +4,6 @@ import PrimaryButton from '@/Components/PrimaryButton.vue'
 import { ref, computed } from 'vue'
 
 const logoutForm = useForm({})
-const logout = () => logoutForm.post(route('logout'))
 const showReports = ref(false)
 
 const page        = usePage()
@@ -14,6 +13,22 @@ const userRole    = computed(() => (page.props.auth?.user?.role ?? '').toLowerCa
 const can = (permission) => {
     if (userRole.value === 'admin') return true
     return permissions.value.includes(permission)
+}
+
+// ── Logout confirmation modal ─────────────────────────────────────────────────
+const showLogoutModal = ref(false)
+
+const confirmLogout = () => {
+    showLogoutModal.value = true
+}
+
+const cancelLogout = () => {
+    showLogoutModal.value = false
+}
+
+const doLogout = () => {
+    showLogoutModal.value = false
+    logoutForm.post(route('logout'))
 }
 </script>
 
@@ -90,13 +105,57 @@ const can = (permission) => {
             </Link>
 
         </nav>
+
+        <!-- Logout button — now opens confirmation modal -->
         <PrimaryButton
-            @click="logout"
+            @click="confirmLogout"
             :disabled="logoutForm.processing"
             class="mt-auto bg-gray-800 text-white hover:bg-gray-900 w-full">
             Logout
         </PrimaryButton>
     </aside>
+
     <main class="flex-1 p-8 bg-gray-50"><slot /></main>
 </div>
+
+<!-- ── Logout Confirmation Modal ──────────────────────────────────────────── -->
+<div v-if="showLogoutModal"
+    class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+    @click.self="cancelLogout">
+
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm mx-4">
+
+        <!-- Icon -->
+        <div class="flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 mx-auto mb-4">
+            <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+        </div>
+
+        <!-- Text -->
+        <h2 class="text-lg font-bold text-gray-800 text-center mb-1">Confirm Logout</h2>
+        <p class="text-sm text-gray-500 text-center mb-6">
+            Are you sure you want to log out? Your current session will be ended.
+        </p>
+
+        <!-- Actions -->
+        <div class="flex gap-3">
+            <button
+                @click="cancelLogout"
+                class="flex-1 text-sm font-semibold border border-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-100 transition">
+                Cancel
+            </button>
+            <button
+                @click="doLogout"
+                :disabled="logoutForm.processing"
+                class="flex-1 text-sm font-bold bg-gray-900 text-white py-2 rounded-lg hover:bg-gray-700 transition disabled:opacity-60">
+                {{ logoutForm.processing ? 'Logging out...' : 'Yes, Logout' }}
+            </button>
+        </div>
+
+    </div>
+</div>
+<!-- ─────────────────────────────────────────────────────────────────────────── -->
+
 </template>

@@ -14,19 +14,19 @@ use Inertia\Inertia;
 class SecurityController extends Controller
 {
     // ── UI Tab → DB module slug ───────────────────────────────────────────────
-    // This map ensures UI text always points to the correct DB permission slug.
     private array $permissionMap = [
-        'Dashboard'       => 'dashboard',
-        'Registration'    => 'registration',
-        'Visitor Records' => 'visitor_records',
-        'Reports'         => 'reports',
-        'Settings'        => 'settings',
+        'Dashboard'        => 'dashboard',
+        'Registration'     => 'registration',
+        'Visitor Records'  => 'visitor_records',
+        'Payment'          => 'payment',          // ← NEW: controls No Show action
+        'Reports'          => 'reports',
+        'Settings'         => 'settings',
         'General Settings' => 'system_settings',
-        'User Management' => 'user_management',
-        'Audit Logs'      => 'audit_logs',
-        'Website Content' => 'website_content',
-        'Virtual Tour'    => 'virtual_tour',
-        'Security'        => 'security',
+        'User Management'  => 'user_management',
+        'Audit Logs'       => 'audit_logs',
+        'Website Content'  => 'website_content',
+        'Virtual Tour'     => 'virtual_tour',
+        'Security'         => 'security',
     ];
 
     public function index()
@@ -45,28 +45,28 @@ class SecurityController extends Controller
                 ];
             }
             return [
-                'id' => $role->id,
-                'name' => $role->name,
+                'id'         => $role->id,
+                'name'       => $role->name,
                 'colorClass' => match(strtolower($role->name)) {
                     'admin'       => 'bg-indigo-600',
                     'staff'       => 'bg-emerald-500',
                     'coordinator' => 'bg-amber-500',
                     default       => 'bg-gray-500'
                 },
-                'modulePermissions' => $matrix
+                'modulePermissions' => $matrix,
             ];
         });
 
         return Inertia::render('AdminSetSecPage', [
-            'roles' => $roles,
+            'roles'   => $roles,
             'modules' => $modules,
             'recentActivities' => AuditLog::with('user')->latest()->limit(5)->get()->map(fn($l) => [
-                'id' => $l->id,
-                'action' => $l->action,
-                'user' => $l->user->name ?? 'System',
-                'time_ago' => $l->created_at->diffForHumans()
+                'id'       => $l->id,
+                'action'   => $l->action,
+                'user'     => $l->user->name ?? 'System',
+                'time_ago' => $l->created_at->diffForHumans(),
             ]),
-            'securitySettings' => DB::table('security_settings')->first()
+            'securitySettings' => DB::table('security_settings')->first(),
         ]);
     }
 
@@ -85,27 +85,21 @@ class SecurityController extends Controller
                 $slug = $this->permissionMap[trim($moduleName)] ?? null;
                 if (!$slug) continue;
 
-                // 1. Handle VIEW toggle
-                if (isset($actions['view']) && $actions['view'] === true) {
+                if (!empty($actions['view'])) {
                     $permissionsToSync[] = "view_{$slug}";
                 }
-
-                // 2. Handle EDIT toggle
-                if (isset($actions['edit']) && $actions['edit'] === true) {
-                    // IMPORTANT: If Edit is checked, we automatically grant View
-                    $permissionsToSync[] = "view_{$slug}"; 
+                if (!empty($actions['edit'])) {
+                    $permissionsToSync[] = "view_{$slug}";
                     $permissionsToSync[] = "edit_{$slug}";
                 }
             }
 
-            // Standardize: Remove duplicates and verify they exist in the DB
             $validStrings = array_unique($permissionsToSync);
-            $existsInDb = Permission::where('guard_name', 'web')
+            $existsInDb   = Permission::where('guard_name', 'web')
                 ->whereIn('name', $validStrings)
                 ->pluck('name')
                 ->toArray();
 
-            // This replaces all old permissions with the new View/Edit set
             $role->syncPermissions($existsInDb);
         }
 
@@ -123,22 +117,20 @@ class SecurityController extends Controller
         ]);
 
         $request->user()->update([
-            'password' => \Illuminate\Support\Facades\Hash::make($request->password)
+            'password' => \Illuminate\Support\Facades\Hash::make($request->password),
         ]);
 
         return back()->with('success', 'Your password has been changed.');
     }
 
-    // ── Security Settings (Two-Factor, etc) ───────────────────────────────────
+    // ── Security Settings ─────────────────────────────────────────────────────
     public function updateSecuritySettings(Request $request)
     {
-        $request->validate([
-            'strong_password' => 'boolean',
-        ]);
+        $request->validate(['strong_password' => 'boolean']);
 
         DB::table('security_settings')->where('id', 1)->update([
             'require_strong_password' => $request->strong_password,
-            'updated_at' => now(),
+            'updated_at'              => now(),
         ]);
 
         return back()->with('success', 'Security configurations updated.');
@@ -148,7 +140,7 @@ class SecurityController extends Controller
     public function logoutOthers(Request $request)
     {
         Auth::logoutOtherDevices($request->current_password);
-        
+
         return back()->with('success', 'Logged out from all other active sessions.');
     }
 }

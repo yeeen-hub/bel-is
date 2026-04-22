@@ -51,6 +51,11 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/visitor-records',           [VisitorController::class, 'index'])->name('visitor-records');
         Route::get('/visitor-records/{visitor}', [VisitorController::class, 'show'])->name('visitor-records.show');
+
+        // Mark a pending visit as No Show — requires edit_payment permission
+        Route::post('/adminpay/{visitor}/no-show', [ReceiptController::class, 'markNoShow'])
+            ->middleware('permission:edit_payment')
+            ->name('adminpay.no-show');
     });
 
     // ── Reports ───────────────────────────────────────────────────────────────

@@ -188,10 +188,66 @@ class ReportController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     public function feeRevenue(Request $request)
     {
-        // Use DB::table (not Eloquent) to avoid model hydration overwriting
-        // computed aliases when visitor_visits and receipts share column names
-        // (id, created_at, updated_at). DB::table returns plain stdClass rows
-        // where every aliased column is directly accessible.
+        $feeTypeFilter = $request->fee_type ?? '';
+
+        // ── No Show — these visits have no receipt so we query visitor_visits
+        // directly (no join with receipts) and return them with '—' revenue. ──
+        if ($feeTypeFilter === 'No Show') {
+            $noShowQuery = DB::table('visitor_visits')
+                ->select(
+                    DB::raw("TRIM(CONCAT(IFNULL(snapshot_first_name,''), ' ', IFNULL(snapshot_last_name,''))) as full_name"),
+                    'visitor_category as visit_category',
+                    'snapshot_place_of_origin as place_of_origin',
+                    'arrival_at as collected_at'
+                )
+                ->where('fee_status', 'No Show')
+                ->orderByDesc('arrival_at');
+
+            if ($request->filled('date_from')) {
+                $noShowQuery->whereDate('arrival_at', '>=', $request->date_from);
+            }
+            if ($request->filled('date_to')) {
+                $noShowQuery->whereDate('arrival_at', '<=', $request->date_to);
+            }
+            if ($request->filled('search')) {
+                $s = $request->search;
+                $noShowQuery->whereRaw("TRIM(CONCAT(IFNULL(snapshot_first_name,''), ' ', IFNULL(snapshot_last_name,''))) LIKE ?", ["%{$s}%"]);
+            }
+            if ($request->filled('category')) {
+                $noShowQuery->where('visitor_category', $request->category);
+            }
+            if ($request->filled('area')) {
+                $visitIdsInSitio = DB::table('visitor_destinations')
+                    ->join('barangay_attractions', 'visitor_destinations.attraction_id', '=', 'barangay_attractions.id')
+                    ->join('sitios', 'barangay_attractions.sitio_id', '=', 'sitios.id')
+                    ->where('sitios.name', $request->area)
+                    ->pluck('visitor_destinations.visit_id');
+                $noShowQuery->whereIn('id', $visitIdsInSitio);
+            }
+
+            $rows = $noShowQuery->get();
+
+            return Inertia::render('AdminRepFeePage', [
+                'rows' => $rows->map(fn($r) => [
+                    'visit_category' => $r->visit_category ?: '—',
+                    'full_name'      => trim($r->full_name) ?: '—',
+                    'revenue'        => 'No Show',
+                ]),
+                'totalRevenue' => '0.00',
+                'avgDaily'     => '0.00',
+                'sitios'       => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+                'filters'      => [
+                    'search'    => $request->search    ?? '',
+                    'category'  => $request->category  ?? '',
+                    'fee_type'  => $feeTypeFilter,
+                    'area'      => $request->area       ?? '',
+                    'date_from' => $request->date_from  ?? '',
+                    'date_to'   => $request->date_to    ?? '',
+                ],
+            ]);
+        }
+
+        // ── Standard / Waived / All — join with receipts as before ───────────
         $query = DB::table('visitor_visits')
             ->join('receipts', 'visitor_visits.id', '=', 'receipts.visit_id')
             ->select(
@@ -211,7 +267,6 @@ class ReportController extends Controller
             $query->whereDate('receipts.collected_at', '<=', $request->date_to);
         }
         if ($request->filled('area')) {
-            // Filter via visitor_destinations → barangay_attractions → sitios
             $visitIdsInSitio = DB::table('visitor_destinations')
                 ->join('barangay_attractions', 'visitor_destinations.attraction_id', '=', 'barangay_attractions.id')
                 ->join('sitios', 'barangay_attractions.sitio_id', '=', 'sitios.id')
@@ -226,8 +281,8 @@ class ReportController extends Controller
         if ($request->filled('category')) {
             $query->where('visitor_visits.visitor_category', $request->category);
         }
-        if ($request->filled('fee_type')) {
-            $query->where('receipts.fee_type', $request->fee_type);
+        if ($feeTypeFilter) {
+            $query->where('receipts.fee_type', $feeTypeFilter);
         }
 
         $rows = $query->get();
@@ -250,10 +305,10 @@ class ReportController extends Controller
             'filters'      => [
                 'search'    => $request->search    ?? '',
                 'category'  => $request->category  ?? '',
-                'fee_type'  => $request->fee_type  ?? '',
+                'fee_type'  => $feeTypeFilter,
                 'area'      => $request->area       ?? '',
-                'date_from' => $request->date_from ?? '',
-                'date_to'   => $request->date_to   ?? '',
+                'date_from' => $request->date_from  ?? '',
+                'date_to'   => $request->date_to    ?? '',
             ],
         ]);
     }

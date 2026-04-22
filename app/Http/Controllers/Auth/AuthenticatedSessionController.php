@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
-use App\Models\AuditLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,102 +13,81 @@ use Inertia\Response;
 
 class AuthenticatedSessionController extends Controller
 {
-    // ── Show login form ───────────────────────────────────────────────────────
-    public function create(): Response
+    /**
+     * Show the login page.
+     *
+     * If the user is already authenticated but their stored session ID no
+     * longer matches the current session (e.g. they closed a tab without
+     * logging out and then came back), we clear the stale auth state so
+     * they can log in fresh instead of being bounced to the dashboard.
+     */
+    public function create(Request $request): Response|RedirectResponse
     {
+        if (Auth::check()) {
+            $user = Auth::user();
+
+            // Session ID matches → genuinely still logged in → send to dashboard
+            if ($user->current_session_id === session()->getId()) {
+                return redirect()->intended(route('admindb'));
+            }
+
+            // Session ID mismatch → stale auth cookie from a previously closed
+            // tab. Log out silently so the login page renders normally.
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status'           => session('status'),
         ]);
     }
 
-    // ── Handle login ─────────────────────────────────────────────────────────
-    // LoginRequest::authenticate() handles credentials + rate limiting (5 attempts).
-    // We add SSE collision check on top of that.
+    /**
+     * Handle an incoming authentication request.
+     *
+     * After successful authentication we immediately store the new session ID
+     * on the user record. This is the "ownership token" that the
+     * ValidateSessionOwnership middleware checks on every subsequent request.
+     */
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
 
-        $user      = $request->user();
-        $sessionId = $request->session()->getId();
-
-        // ── SSE: One account, one device ──────────────────────────────────────
-        // Scenario A — NULL (Vacant): allow
-        // Scenario B — Same session ID (same browser refresh): allow
-        // Scenario C — Different session ID (another device): BLOCK
-        if (
-            $user->current_session_id !== null &&
-            $user->current_session_id !== $sessionId
-        ) {
-            AuditLog::create([
-                'user_id'     => $user->id,
-                'action'      => 'session_blocked',
-                'module'      => 'auth',
-                'target_type' => 'User',
-                'target_id'   => (string) $user->id,
-                'new_values'  => json_encode([
-                    'reason'  => 'SSE collision — account active on another device',
-                    'blocked' => $sessionId,
-                    'active'  => $user->current_session_id,
-                ]),
-                'ip_address'  => $request->ip(),
-            ]);
-
-            Auth::guard('web')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            return back()->withErrors([
-                'email' => 'Access Denied: This account is currently active on another device. Please log out from the other terminal to continue.',
-            ]);
-        }
-
-        // ── Allow: anchor session to this user ────────────────────────────────
+        // Rotate the session ID to prevent session fixation attacks
         $request->session()->regenerate();
 
-        $user->update([
-            'current_session_id' => $request->session()->getId(),
-            'last_login_at'      => now(),
-        ]);
-
-        AuditLog::create([
-            'user_id'     => $user->id,
-            'action'      => 'login',
-            'module'      => 'auth',
-            'target_type' => 'User',
-            'target_id'   => (string) $user->id,
-            'new_values'  => json_encode(['ip' => $request->ip()]),
-            'ip_address'  => $request->ip(),
-        ]);
+        // Stamp the new session ID onto the user record so the middleware
+        // can verify ownership on every subsequent authenticated request.
+        $user = Auth::user();
+        $user->current_session_id = session()->getId();
+        $user->last_login_at      = now();
+        $user->save();
 
         return redirect()->intended(route('admindb'));
     }
 
-    // ── Handle logout — atomic release ────────────────────────────────────────
+    /**
+     * Destroy the authenticated session.
+     *
+     * Clear the stored session ID so the account is fully released and
+     * another device / browser tab can log in.
+     */
     public function destroy(Request $request): RedirectResponse
     {
-        $user = Auth::user();
-
-        if ($user) {
-            // Clear session BEFORE destroying the cookie — account is
-            // immediately Vacant so the next shift can log in right away
-            $user->update(['current_session_id' => null]);
-
-            AuditLog::create([
-                'user_id'     => $user->id,
-                'action'      => 'logout',
-                'module'      => 'auth',
-                'target_type' => 'User',
-                'target_id'   => (string) $user->id,
-                'new_values'  => json_encode(['ip' => $request->ip()]),
-                'ip_address'  => $request->ip(),
-            ]);
+        // Clear ownership token before logging out
+        if (Auth::check()) {
+            $user = Auth::user();
+            $user->current_session_id = null;
+            $user->save();
         }
 
-        Auth::guard('web')->logout();
+        Auth::logout();
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('home');
+        return redirect('/');
     }
 }

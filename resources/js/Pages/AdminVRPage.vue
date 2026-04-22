@@ -322,6 +322,7 @@ const closeModal = () => {
                         <option value="Collected">Collected</option>
                         <option value="Pending">Pending</option>
                         <option value="Waived">Waived</option>
+                        <option value="No Show">No Show</option>
                     </select>
                 </div>
 
@@ -399,6 +400,7 @@ const closeModal = () => {
                                     'bg-green-100 text-green-700':   visitor.fee_status === 'Collected',
                                     'bg-yellow-100 text-yellow-700': visitor.fee_status === 'Pending',
                                     'bg-gray-100 text-gray-500':     visitor.fee_status === 'Waived',
+                                    'bg-red-100 text-red-600':       visitor.fee_status === 'No Show',
                                 }" class="px-2 py-1 rounded-full text-xs font-bold">
                                     {{ visitor.fee_status }}
                                 </span>
@@ -460,6 +462,7 @@ const closeModal = () => {
                         'bg-green-100 text-green-700':   selectedVisitor.fee_status === 'Collected',
                         'bg-yellow-100 text-yellow-700': selectedVisitor.fee_status === 'Pending',
                         'bg-gray-100 text-gray-500':     selectedVisitor.fee_status === 'Waived',
+                        'bg-red-100 text-red-600':       visitor.fee_status === 'No Show',
                     }" class="px-3 py-1 rounded-full text-xs font-bold mt-1">
                         {{ selectedVisitor.fee_status }}
                     </span>

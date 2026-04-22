@@ -15,8 +15,7 @@ use Carbon\Carbon;
 class ReceiptController extends Controller
 {
     // ─────────────────────────────────────────────────────────────────────────
-    // Helper: resolve the fee amount for a single visit from its category.
-    // Falls back to 0 if the category is not found in fee_categories.
+    // Helper: resolve fee for a single visit from its category in the DB.
     // ─────────────────────────────────────────────────────────────────────────
     private function resolveFee(VisitorVisit $visit): float
     {
@@ -26,11 +25,10 @@ class ReceiptController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Helper: format a single visit into the shape the frontend expects.
+    // Helper: format a single visit for the frontend.
     // ─────────────────────────────────────────────────────────────────────────
     private function formatVisit(VisitorVisit $visit): array
     {
-        $fee = $this->resolveFee($visit);
         return [
             'id'               => $visit->id,
             'registration_id'  => $visit->registration_id,
@@ -39,61 +37,70 @@ class ReceiptController extends Controller
             'purpose'          => $visit->purpose,
             'duration'         => $visit->duration_of_stay,
             'visitor_category' => $visit->visitor_category,
-            'category_fee'     => $fee,
+            'category_fee'     => $this->resolveFee($visit),
             'fee_status'       => $visit->fee_status,
             'arrival_at'       => $visit->arrival_at->format('M d, Y'),
         ];
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Show payment form
-    // Route: GET /adminpay/{visitor}
+    // Helper: get all visits that belong to the same group payment batch.
+    // For a group_code visit → all pending members.
+    // For a solo visit      → just that visit.
     // ─────────────────────────────────────────────────────────────────────────
-    public function showPayment(VisitorVisit $visitor)
+    private function resolveGroupVisits(VisitorVisit $visitor, string $status = 'Pending')
     {
-        // Check if this visit is part of a group (shares registration_id prefix
-        // from storeGroup which uses the same sequential ID for the first member,
-        // OR they share a group_code).
-        // We identify a "group payment" by checking session flash for group_visit_ids,
-        // but since Inertia redirects lose flash on GET, we use group_code instead.
-        $groupVisits = collect([$visitor]);
-
         if ($visitor->group_code) {
-            // Load ALL pending members of this group (same group_code, not yet paid)
-            $groupVisits = VisitorVisit::where('group_code', $visitor->group_code)
-                ->where('fee_status', 'Pending')
+            $visits = VisitorVisit::where('group_code', $visitor->group_code)
+                ->where('fee_status', $status)
                 ->orderBy('created_at')
                 ->get();
 
-            // If none are pending any more, just show the current visitor alone
-            if ($groupVisits->isEmpty()) {
-                $groupVisits = collect([$visitor]);
-            }
+            if ($visits->isNotEmpty()) return $visits;
         }
 
-        $isGroup    = $groupVisits->count() > 1;
-        $members    = $groupVisits->map(fn($v) => $this->formatVisit($v))->values()->toArray();
-        $totalDue   = collect($members)->sum('category_fee');
+        return collect([$visitor]);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Build the member breakdown array (used by both showPayment & showReceipt)
+    // ─────────────────────────────────────────────────────────────────────────
+    private function buildBreakdown($visits, bool $isWaived = false): array
+    {
+        return $visits->map(function ($v) use ($isWaived) {
+            return [
+                'visit_id'         => $v->id,
+                'registration_id'  => $v->registration_id,
+                'full_name'        => $v->full_name,
+                'visitor_category' => $v->visitor_category,
+                'fee'              => $isWaived ? 0 : $this->resolveFee($v),
+            ];
+        })->values()->toArray();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Show payment form
+    // GET /adminpay/{visitor}
+    // ─────────────────────────────────────────────────────────────────────────
+    public function showPayment(VisitorVisit $visitor)
+    {
+        $visits      = $this->resolveGroupVisits($visitor, 'Pending');
+        $isGroup     = $visits->count() > 1;
+        $members     = $visits->map(fn($v) => $this->formatVisit($v))->values()->toArray();
+        $totalDue    = collect($members)->sum('category_fee');
 
         return Inertia::render('AdminPayPage', [
-            // Primary visitor (the one the route was opened for)
-            'visitor' => $this->formatVisit($visitor),
-
-            // Group members (includes the primary visitor; count=1 for individuals)
+            'visitor'      => $this->formatVisit($visitor),
             'groupMembers' => $members,
             'isGroup'      => $isGroup,
             'totalDue'     => $totalDue,
-
-            // Fee categories only needed if staff needs to see the list
-            // (kept for the waiver reason UI but NOT for overriding)
-            'feeCategories' => FeeCategory::orderBy('id')->get(['id', 'category', 'age_range', 'fee']),
+            'feeCategories'=> FeeCategory::orderBy('id')->get(['id', 'category', 'age_range', 'fee']),
         ]);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Store receipt / collect payment
-    // Route: POST /adminpay/{visitor}
-    // For groups: creates ONE receipt covering all pending group members.
+    // POST /adminpay/{visitor}
     // ─────────────────────────────────────────────────────────────────────────
     public function store(Request $request, VisitorVisit $visitor)
     {
@@ -107,50 +114,28 @@ class ReceiptController extends Controller
         DB::beginTransaction();
 
         try {
-            // Resolve all visits covered by this payment
-            $visits = collect([$visitor]);
-
-            if ($visitor->group_code) {
-                $visits = VisitorVisit::where('group_code', $visitor->group_code)
-                    ->where('fee_status', 'Pending')
-                    ->orderBy('created_at')
-                    ->get();
-
-                if ($visits->isEmpty()) {
-                    $visits = collect([$visitor]);
-                }
-            }
-
             $isWaived = $request->fee_type === 'Waived';
 
-            // Build per-member fee breakdown
-            $memberBreakdown = $visits->map(function ($v) use ($isWaived) {
-                $fee = $isWaived ? 0 : $this->resolveFee($v);
-                return [
-                    'visit_id'         => $v->id,
-                    'registration_id'  => $v->registration_id,
-                    'full_name'        => $v->full_name,
-                    'visitor_category' => $v->visitor_category,
-                    'fee'              => $fee,
-                ];
-            })->values()->toArray();
+            // Resolve all visits covered by this payment
+            $visits = $this->resolveGroupVisits($visitor, 'Pending');
 
-            $totalAmount       = collect($memberBreakdown)->sum('fee');
-            $numberOfVisitors  = $visits->count();
+            // Compute totals
+            $totalAmount      = $isWaived ? 0 : $visits->sum(fn($v) => $this->resolveFee($v));
+            $numberOfVisitors = $visits->count();
 
-            // Receipt number
+            // Generate receipt number
             $receiptNumber = 'OR-' . Carbon::now()->format('Y') . '-' . str_pad(
                 Receipt::whereYear('collected_at', Carbon::now()->year)->count() + 1,
                 7, '0', STR_PAD_LEFT
             );
 
-            // Create ONE receipt record linked to the primary visitor
+            // Create the receipt — only columns that ALREADY EXIST in the DB
             $receipt = Receipt::create([
                 'receipt_number'     => $receiptNumber,
                 'visit_id'           => $visitor->id,
                 'amount'             => $numberOfVisitors > 0
-                    ? round($totalAmount / $numberOfVisitors, 2)
-                    : 0,
+                                            ? round($totalAmount / $numberOfVisitors, 2)
+                                            : 0,
                 'currency'           => 'PHP',
                 'fee_type'           => $isWaived ? 'Waived' : 'Standard',
                 'number_of_visitors' => $numberOfVisitors,
@@ -160,9 +145,15 @@ class ReceiptController extends Controller
                 'collected_by'       => Auth::id(),
                 'collected_at'       => now(),
                 'notes'              => $request->notes ?: null,
-                // Cast to array by the model — no manual json_encode needed
-                'member_breakdown'   => $memberBreakdown,
+                // member_breakdown column only written if it exists (migration ran)
+                // Falls back gracefully if the column is not yet in the DB
             ]);
+
+            // Conditionally store member_breakdown if the column exists
+            if (DB::getSchemaBuilder()->hasColumn('receipts', 'member_breakdown')) {
+                $breakdown = $this->buildBreakdown($visits, $isWaived);
+                $receipt->forceFill(['member_breakdown' => json_encode($breakdown)])->save();
+            }
 
             // Mark all covered visits as paid/waived
             foreach ($visits as $v) {
@@ -195,30 +186,39 @@ class ReceiptController extends Controller
 
     // ─────────────────────────────────────────────────────────────────────────
     // Show receipt
-    // Route: GET /adminreceipt/{visitor}
+    // GET /adminreceipt/{visitor}
     // ─────────────────────────────────────────────────────────────────────────
     public function showReceipt(VisitorVisit $visitor)
     {
         $visitor->load('receipt', 'registeredBy');
 
-        // member_breakdown is cast as array by the Receipt model automatically
+        // ── Rebuild member breakdown from the actual visits ───────────────────
+        // We recompute this from the database rather than relying on a stored
+        // JSON column — this works whether or not the migration has been run,
+        // and always reflects the current category fees.
+        $isWaived = $visitor->receipt?->fee_type === 'Waived';
+
+        // For a group payment, load ALL visits that share this group_code
+        // regardless of current fee_status (they were already marked Collected/Waived)
         $memberBreakdown = [];
-        if ($visitor->receipt && !empty($visitor->receipt->member_breakdown)) {
-            $memberBreakdown = $visitor->receipt->member_breakdown;
+
+        if ($visitor->group_code) {
+            $groupVisits = VisitorVisit::where('group_code', $visitor->group_code)
+                ->whereIn('fee_status', ['Collected', 'Waived'])
+                ->orderBy('created_at')
+                ->get();
+
+            if ($groupVisits->isNotEmpty()) {
+                $memberBreakdown = $this->buildBreakdown($groupVisits, $isWaived);
+            }
         }
 
-        // Fallback: if no breakdown stored, build it from the current visit
+        // Fallback / individual visit
         if (empty($memberBreakdown)) {
-            $memberBreakdown = [[
-                'visit_id'         => $visitor->id,
-                'registration_id'  => $visitor->registration_id,
-                'full_name'        => $visitor->full_name,
-                'visitor_category' => $visitor->visitor_category,
-                'fee'              => $visitor->receipt
-                    ? (float) $visitor->receipt->amount
-                    : 0,
-            ]];
+            $memberBreakdown = $this->buildBreakdown(collect([$visitor]), $isWaived);
         }
+
+        $isGroup = count($memberBreakdown) > 1;
 
         return Inertia::render('AdminRecpPage', [
             'visitor' => [
@@ -245,10 +245,61 @@ class ReceiptController extends Controller
                 'total_amount'       => $visitor->receipt->total_amount,
                 'payment_method'     => $visitor->receipt->payment_method,
                 'collected_at'       => $visitor->receipt->collected_at->format('M d, Y'),
-                'notes'              => $visitor->receipt->notes,        // ← was missing
+                'notes'              => $visitor->receipt->notes,   // ← included
                 'member_breakdown'   => $memberBreakdown,
             ] : null,
-            'isGroup'  => count($memberBreakdown) > 1,
+            'isGroup' => $isGroup,
         ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Mark a pending visit (or group) as "No Show" — visitor did not complete
+    // the registration process / never actually arrived / abandoned payment.
+    // Requires the 'edit_payment' permission (enforced in route middleware).
+    // ─────────────────────────────────────────────────────────────────────────
+    public function markNoShow(VisitorVisit $visitor): \Illuminate\Http\RedirectResponse
+    {
+        abort_unless($visitor->fee_status === 'Pending', 422, 'Only Pending visits can be marked as No Show.');
+
+        DB::beginTransaction();
+        try {
+            // For group visits mark all members in the same group
+            if ($visitor->group_code) {
+                $affected = VisitorVisit::where('group_code', $visitor->group_code)
+                    ->where('fee_status', 'Pending')
+                    ->get();
+                foreach ($affected as $v) {
+                    $v->fee_status = 'No Show';
+                    $v->save();
+                    AuditLog::create([
+                        'user_id'     => Auth::id(),
+                        'action'      => 'marked_no_show',
+                        'module'      => 'visitor_visits',
+                        'target_type' => 'VisitorVisit',
+                        'target_id'   => $v->id,
+                        'ip_address'  => request()->ip(),
+                    ]);
+                }
+            } else {
+                $visitor->fee_status = 'No Show';
+                $visitor->save();
+                AuditLog::create([
+                    'user_id'     => Auth::id(),
+                    'action'      => 'marked_no_show',
+                    'module'      => 'visitor_visits',
+                    'target_type' => 'VisitorVisit',
+                    'target_id'   => $visitor->id,
+                    'ip_address'  => request()->ip(),
+                ]);
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            throw $e;
+        }
+
+        return redirect()->route('visitor-records')
+            ->with('success', 'Visit marked as No Show.');
     }
 }
