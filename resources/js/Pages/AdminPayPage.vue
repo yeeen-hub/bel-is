@@ -1,41 +1,24 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import LandingLayout from '@/Layouts/SidebarLayout.vue'
 
 const props = defineProps({
-    visitor:        Object,   // includes visitor_category and category_fee
-    feeCategories:  { type: Array, default: () => [] },
+    visitor:       Object,
+    groupMembers:  { type: Array,   default: () => [] },
+    isGroup:       { type: Boolean, default: false },
+    totalDue:      { type: Number,  default: 0 },
+    feeCategories: { type: Array,   default: () => [] },
 })
 
-const openFeeType       = ref(false)
-const openCategoryOverride = ref(false)
-
-// ── Resolve the initial fee per head from the visitor's category ──────────────
-// visitor.category_fee is pre-resolved server-side; used as the default.
-const feePerHead = computed(() => {
-    if (form.fee_type === 'Waived') return 0
-    // If staff overrides the category, resolve from feeCategories
-    if (form.visitor_category) {
-        const cat = props.feeCategories.find(c => c.category === form.visitor_category)
-        return cat ? Number(cat.fee) : Number(props.visitor.category_fee ?? 0)
-    }
-    return Number(props.visitor.category_fee ?? 0)
-})
-
+// The ONLY staff decision is Collected vs Waived.
+// Fee amount, visitor count and category are locked from registration.
 const form = useForm({
-    fee_type:           'Standard',
-    number_of_visitors: 1,
-    payment_method:     'Cash',
-    waiver_reason:      '',
-    notes:              '',
-    // visitor_category can be overridden at payment time (e.g. if staff missed it)
-    visitor_category:   props.visitor.visitor_category ?? '',
-    // amount_per_head is computed and sent for server-side verification
-    amount_per_head:    props.visitor.category_fee ?? 0,
+    fee_type:       'Collected',  // 'Collected' | 'Waived'
+    payment_method: 'Cash',
+    waiver_reason:  '',
+    notes:          '',
 })
-
-const feeTypeOptions = ['Standard', 'Group', 'Waived']
 
 const waiverReasonOptions = [
     'Resident',
@@ -47,40 +30,22 @@ const waiverReasonOptions = [
     'Other (see notes)',
 ]
 
-const visitorCountOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20]
+// Total is always driven by server-resolved fees, never by form inputs
+const totalAmount = computed(() =>
+    form.fee_type === 'Waived' ? 0 : props.totalDue
+)
 
-const openVisitorCount = ref(false)
-
-const selectFeeType = (val) => {
-    form.fee_type = val
-    if (val !== 'Waived') form.waiver_reason = ''
-    openFeeType.value = false
-}
-
-const selectVisitorCount = (val) => {
-    form.number_of_visitors = val
-    openVisitorCount.value  = false
-}
-
-// ── Autonomous total: fee per head × number of visitors ──────────────────────
-const totalAmount = computed(() => {
-    if (form.fee_type === 'Waived') return 0
-    return feePerHead.value * form.number_of_visitors
+// For individual: single-line label. For group: "X visitor(s) — mixed categories"
+const feeLabel = computed(() => {
+    if (props.isGroup) {
+        return `${props.groupMembers.length} visitor(s) — fees based on individual categories`
+    }
+    const cat = props.visitor?.visitor_category || 'Category'
+    const fee = Number(props.visitor?.category_fee ?? 0).toFixed(2)
+    return `${cat} — ₱${fee} / visitor`
 })
 
-// ── Resolved category label for display ──────────────────────────────────────
-const resolvedCategoryLabel = computed(() => {
-    const cat = props.feeCategories.find(c => c.category === form.visitor_category)
-    if (!cat) return form.visitor_category || '—'
-    return cat.age_range
-        ? `${cat.category} (${cat.age_range})`
-        : cat.category
-})
-
-const submit = () => {
-    form.amount_per_head = feePerHead.value
-    form.post(route('adminpay.store', props.visitor.id))
-}
+const submit = () => form.post(route('adminpay.store', props.visitor.id))
 </script>
 
 <template>
@@ -120,8 +85,13 @@ const submit = () => {
                 </div>
             </div>
 
-            <!-- Visitor Summary -->
-            <div class="w-full mt-2 bg-white p-4 rounded-lg text-sm text-gray-700 space-y-1 max-w-2xl">
+            <!-- ══════════════════════════════════════════════════════════════ -->
+            <!-- VISITOR SUMMARY — individual shows single block,              -->
+            <!-- group shows member table (same original card style)           -->
+            <!-- ══════════════════════════════════════════════════════════════ -->
+
+            <!-- Individual -->
+            <div v-if="!isGroup" class="w-full mt-2 bg-white p-4 rounded-lg text-sm text-gray-700 space-y-1 max-w-2xl">
                 <p><span class="font-bold">Visitor:</span> {{ visitor.full_name }}</p>
                 <p><span class="font-bold">Origin:</span> {{ visitor.place_of_origin }}</p>
                 <p><span class="font-bold">Purpose:</span> {{ visitor.purpose }}</p>
@@ -137,7 +107,63 @@ const submit = () => {
                 </p>
             </div>
 
-            <!-- Form -->
+            <!-- Group -->
+            <div v-else class="w-full mt-2 bg-white rounded-lg max-w-2xl overflow-hidden">
+                <div class="px-4 pt-3 pb-1 flex items-center gap-2 border-b border-gray-100">
+                    <span class="text-sm font-bold text-gray-800">Group Registration</span>
+                    <span class="text-xs font-bold bg-gray-800 text-white px-2 py-0.5 rounded-full">
+                        {{ groupMembers.length }} visitor(s)
+                    </span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm min-w-[480px]">
+                        <thead class="bg-gray-50 border-b border-gray-100">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 w-8">#</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Name</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Origin</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Category</th>
+                                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500">Fee</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(m, i) in groupMembers" :key="m.id"
+                                class="border-b border-gray-50 last:border-0 hover:bg-gray-50">
+                                <td class="px-4 py-2.5 text-xs text-gray-400">{{ i + 1 }}</td>
+                                <td class="px-4 py-2.5 font-medium text-gray-800">
+                                    {{ m.full_name }}
+                                    <span v-if="i === 0" class="ml-1 text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full">Leader</span>
+                                </td>
+                                <td class="px-4 py-2.5 text-xs text-gray-500">{{ m.place_of_origin }}</td>
+                                <td class="px-4 py-2.5">
+                                    <span class="inline-flex items-center bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                                        {{ m.visitor_category || 'Not set' }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2.5 text-right text-xs font-semibold text-green-700">
+                                    ₱{{ Number(m.category_fee ?? 0).toFixed(2) }}
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-gray-50 border-t-2 border-gray-200">
+                                <td colspan="4" class="px-4 py-2.5 text-sm font-bold text-gray-700">Subtotal</td>
+                                <td class="px-4 py-2.5 text-right text-sm font-bold text-green-700">
+                                    ₱{{ Number(totalDue).toFixed(2) }}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div class="px-4 py-2.5 text-xs text-gray-500 border-t border-gray-100 flex flex-wrap gap-4">
+                    <span><span class="font-semibold text-gray-600">Purpose:</span> {{ visitor.purpose }}</span>
+                    <span><span class="font-semibold text-gray-600">Duration:</span> {{ visitor.duration }}</span>
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════════════ -->
+            <!-- PAYMENT FORM — original layout preserved                      -->
+            <!-- ══════════════════════════════════════════════════════════════ -->
             <div class="w-full mt-4 max-w-2xl">
                 <form @submit.prevent="submit" class="bg-white p-6 rounded-lg shadow-sm space-y-6">
 
@@ -145,123 +171,98 @@ const submit = () => {
                         {{ form.errors.error }}
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                        <!-- Fee Type -->
-                        <div class="relative">
-                            <label class="block text-gray-700 text-sm font-bold mb-2">Fee Type</label>
-                            <button type="button" @click="openFeeType = !openFeeType"
-                                class="w-full border py-2 px-3 rounded text-left bg-white text-sm border-gray-300">
-                                {{ form.fee_type || 'Select fee type' }}
-                            </button>
-                            <ul v-show="openFeeType"
-                                class="absolute z-10 w-full mt-1 border rounded bg-white shadow-md max-h-60 overflow-auto">
-                                <li v-for="option in feeTypeOptions" :key="option"
-                                    @click="selectFeeType(option)"
-                                    class="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm">
-                                    {{ option }}
-                                </li>
-                            </ul>
-                            <p v-if="form.errors.fee_type" class="text-red-500 text-xs mt-1">{{ form.errors.fee_type }}</p>
-                        </div>
-
-                        <!-- Number of Visitors -->
-                        <div v-if="form.fee_type !== 'Waived'" class="relative">
-                            <label class="block text-gray-700 text-sm font-bold mb-2">Number of Visitors</label>
-                            <button type="button" @click="openVisitorCount = !openVisitorCount"
-                                class="w-full border py-2 px-3 rounded text-left bg-white text-sm border-gray-300">
-                                {{ form.number_of_visitors }}
-                            </button>
-                            <ul v-show="openVisitorCount"
-                                class="absolute z-10 w-full mt-1 border rounded bg-white shadow-md max-h-60 overflow-auto">
-                                <li v-for="n in visitorCountOptions" :key="n"
-                                    @click="selectVisitorCount(n)"
-                                    class="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm">
-                                    {{ n }}
-                                </li>
-                            </ul>
-                        </div>
-
-                        <!-- Category Override (if no category set or staff wants to change) -->
-                        <div v-if="form.fee_type !== 'Waived'" class="relative md:col-span-2">
-                            <label class="block text-gray-700 text-sm font-bold mb-2">
-                                Visitor Category
-                                <span class="text-gray-400 font-normal text-xs ml-1">
-                                    (change if needed — fee updates automatically)
+                    <!-- Fee type — read-only display badge, NOT a dropdown -->
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Fee Type</label>
+                        <div class="flex flex-wrap gap-2">
+                            <span v-if="!isGroup"
+                                class="inline-flex items-center bg-gray-100 text-gray-700 text-sm font-semibold px-4 py-2 rounded-lg">
+                                {{ visitor.visitor_category || 'Standard' }}
+                            </span>
+                            <template v-else>
+                                <span v-for="m in groupMembers" :key="m.id"
+                                    class="inline-flex items-center gap-1.5 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+                                    {{ m.full_name.split(' ')[0] }}: {{ m.visitor_category || 'N/A' }}
+                                    <span class="text-green-700">₱{{ Number(m.category_fee ?? 0).toFixed(2) }}</span>
                                 </span>
-                            </label>
-                            <button type="button" @click="openCategoryOverride = !openCategoryOverride"
-                                class="w-full border py-2 px-3 rounded text-left bg-white text-sm border-gray-300 flex items-center justify-between">
-                                <span :class="form.visitor_category ? 'text-gray-800' : 'text-gray-400'">
-                                    {{ form.visitor_category ? resolvedCategoryLabel : 'Select category' }}
-                                </span>
-                                <span v-if="form.visitor_category" class="text-green-600 font-bold text-xs ml-2">
-                                    ₱{{ feePerHead.toFixed(2) }} / head
-                                </span>
-                            </button>
-                            <ul v-show="openCategoryOverride"
-                                class="absolute z-10 w-full mt-1 border rounded bg-white shadow-md max-h-60 overflow-auto">
-                                <li v-for="cat in feeCategories" :key="cat.id"
-                                    @click="form.visitor_category = cat.category; openCategoryOverride = false"
-                                    class="px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm flex items-center justify-between border-b last:border-0"
-                                    :class="form.visitor_category === cat.category ? 'bg-gray-50 font-semibold' : ''">
-                                    <div>
-                                        <span>{{ cat.category }}</span>
-                                        <span v-if="cat.age_range" class="text-gray-400 text-xs ml-2">{{ cat.age_range }}</span>
-                                    </div>
-                                    <span class="text-green-700 font-bold text-xs">₱{{ cat.fee }}</span>
-                                </li>
-                            </ul>
-                            <p v-if="form.errors.visitor_category" class="text-red-500 text-xs mt-1">{{ form.errors.visitor_category }}</p>
-                        </div>
-
-                        <!-- Notes -->
-                        <div class="md:col-span-2">
-                            <label class="block text-gray-700 text-sm font-bold mb-2">
-                                Notes <span class="text-gray-400 font-normal">(optional)</span>
-                            </label>
-                            <textarea v-model="form.notes"
-                                class="border rounded w-full py-2 px-3 text-sm border-gray-300"
-                                rows="3" placeholder="Any additional notes..."></textarea>
+                            </template>
+                            <span class="text-xs text-gray-400 self-center ml-1">
+                                (set during registration — not editable)
+                            </span>
                         </div>
                     </div>
 
-                    <!-- Waiver Reason -->
+                    <!-- Number of visitors — read-only display -->
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Number of Visitors</label>
+                        <div class="border border-gray-200 rounded bg-gray-50 py-2 px-3 text-sm text-gray-700 flex items-center justify-between">
+                            <span class="font-semibold">{{ groupMembers.length || 1 }}</span>
+                            <span class="text-gray-400 text-xs">visitor(s) registered</span>
+                        </div>
+                    </div>
+
+                    <!-- Payment status toggle -->
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Payment Status</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button type="button"
+                                @click="form.fee_type = 'Collected'; form.waiver_reason = ''"
+                                :class="form.fee_type === 'Collected'
+                                    ? 'bg-green-600 text-white border-green-600'
+                                    : 'bg-white text-gray-600 border-gray-300 hover:border-green-400'"
+                                class="border-2 rounded-lg py-2.5 text-sm font-semibold transition">
+                                ✓ Collect Payment
+                            </button>
+                            <button type="button"
+                                @click="form.fee_type = 'Waived'"
+                                :class="form.fee_type === 'Waived'
+                                    ? 'bg-amber-500 text-white border-amber-500'
+                                    : 'bg-white text-gray-600 border-gray-300 hover:border-amber-400'"
+                                class="border-2 rounded-lg py-2.5 text-sm font-semibold transition">
+                                ⊘ Waive Fee
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">
+                            Notes <span class="text-gray-400 font-normal">(optional)</span>
+                        </label>
+                        <textarea v-model="form.notes"
+                            class="border rounded w-full py-2 px-3 text-sm border-gray-300"
+                            rows="3" placeholder="Any additional notes..."></textarea>
+                    </div>
+
+                    <!-- Waiver reason (only when Waived) -->
                     <div v-if="form.fee_type === 'Waived'"
                         class="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
                         <div class="flex items-center gap-2">
                             <svg class="w-4 h-4 text-amber-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd"
                                     d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
-                                    clip-rule="evenodd" />
+                                    clip-rule="evenodd"/>
                             </svg>
                             <p class="text-sm font-bold text-amber-800">Waiver Reason Required</p>
                         </div>
-                        <p class="text-xs text-amber-700">
-                            Every waived fee must be recorded for LGU audit compliance.
-                        </p>
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2">
-                                Reason for Waiver <span class="text-red-500">*</span>
+                        <p class="text-xs text-amber-700">Every waived fee must be recorded for LGU audit compliance.</p>
+                        <div class="grid grid-cols-1 gap-2">
+                            <label v-for="reason in waiverReasonOptions" :key="reason"
+                                class="flex items-center gap-3 p-2 rounded border cursor-pointer transition"
+                                :class="form.waiver_reason === reason
+                                    ? 'border-amber-400 bg-amber-100'
+                                    : 'border-gray-200 hover:bg-gray-50'">
+                                <input type="radio" :value="reason" v-model="form.waiver_reason"
+                                    class="form-radio text-amber-500" />
+                                <span class="text-sm text-gray-800">{{ reason }}</span>
                             </label>
-                            <div class="grid grid-cols-1 gap-2">
-                                <label v-for="reason in waiverReasonOptions" :key="reason"
-                                    class="flex items-center gap-3 p-2 rounded border cursor-pointer transition"
-                                    :class="form.waiver_reason === reason
-                                        ? 'border-amber-400 bg-amber-100'
-                                        : 'border-gray-200 hover:bg-gray-50'">
-                                    <input type="radio" :value="reason" v-model="form.waiver_reason"
-                                        class="form-radio text-amber-500" />
-                                    <span class="text-sm text-gray-800">{{ reason }}</span>
-                                </label>
-                            </div>
-                            <p v-if="form.errors.waiver_reason" class="text-red-500 text-xs mt-2">
-                                {{ form.errors.waiver_reason }}
-                            </p>
                         </div>
+                        <p v-if="form.errors.waiver_reason" class="text-red-500 text-xs mt-2">
+                            {{ form.errors.waiver_reason }}
+                        </p>
                     </div>
 
-                    <!-- ── Autonomous Total Amount Preview ─────────────────────── -->
+                    <!-- ── Total Amount Due — original style, with full breakdown ── -->
                     <div class="rounded-lg p-4 text-sm"
                         :class="form.fee_type === 'Waived'
                             ? 'bg-amber-50 border border-amber-200'
@@ -269,34 +270,56 @@ const submit = () => {
                         <div class="flex justify-between font-bold text-gray-800 text-base">
                             <span>Total Amount Due:</span>
                             <span :class="form.fee_type === 'Waived' ? 'text-amber-600' : 'text-green-700'">
-                                {{ form.fee_type === 'Waived' ? 'Waived' : `PHP ${totalAmount.toFixed(2)}` }}
+                                {{ form.fee_type === 'Waived' ? 'Waived' : `PHP ${Number(totalAmount).toFixed(2)}` }}
                             </span>
                         </div>
-                        <template v-if="form.fee_type !== 'Waived'">
+
+                        <!-- Individual breakdown (original style) -->
+                        <template v-if="form.fee_type !== 'Waived' && !isGroup">
                             <p class="text-gray-500 text-xs mt-1">
-                                {{ resolvedCategoryLabel }} — ₱{{ feePerHead.toFixed(2) }}
-                                × {{ form.number_of_visitors }} visitor(s)
+                                {{ visitor.visitor_category || 'Category' }} — ₱{{ Number(visitor.category_fee ?? 0).toFixed(2) }}
                             </p>
-                            <!-- Breakdown per visitor count -->
                             <div class="mt-3 pt-3 border-t border-green-200 space-y-1">
                                 <div class="flex justify-between text-xs text-gray-600">
                                     <span>Category</span>
-                                    <span>{{ resolvedCategoryLabel }}</span>
+                                    <span>{{ visitor.visitor_category || '—' }}</span>
                                 </div>
                                 <div class="flex justify-between text-xs text-gray-600">
                                     <span>Fee per head</span>
-                                    <span>₱{{ feePerHead.toFixed(2) }}</span>
+                                    <span>₱{{ Number(visitor.category_fee ?? 0).toFixed(2) }}</span>
                                 </div>
                                 <div class="flex justify-between text-xs text-gray-600">
                                     <span>No. of visitors</span>
-                                    <span>× {{ form.number_of_visitors }}</span>
+                                    <span>× 1</span>
                                 </div>
                                 <div class="flex justify-between text-xs font-bold text-gray-800 pt-1 border-t border-green-200">
                                     <span>Total</span>
-                                    <span class="text-green-700">₱{{ totalAmount.toFixed(2) }}</span>
+                                    <span class="text-green-700">₱{{ Number(totalAmount).toFixed(2) }}</span>
                                 </div>
                             </div>
                         </template>
+
+                        <!-- Group breakdown -->
+                        <template v-else-if="form.fee_type !== 'Waived' && isGroup">
+                            <p class="text-gray-500 text-xs mt-1">
+                                {{ groupMembers.length }} visitor(s) — fees computed from individual categories
+                            </p>
+                            <div class="mt-3 pt-3 border-t border-green-200 space-y-1">
+                                <div v-for="m in groupMembers" :key="m.id"
+                                    class="flex justify-between text-xs text-gray-600">
+                                    <span>{{ m.full_name }}
+                                        <span class="text-gray-400 ml-1">({{ m.visitor_category || 'No cat.' }})</span>
+                                    </span>
+                                    <span>₱{{ Number(m.category_fee ?? 0).toFixed(2) }}</span>
+                                </div>
+                                <div class="flex justify-between text-xs font-bold text-gray-800 pt-1 border-t border-green-200">
+                                    <span>Total</span>
+                                    <span class="text-green-700">₱{{ Number(totalAmount).toFixed(2) }}</span>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Waived -->
                         <template v-else>
                             <p class="text-gray-500 text-xs mt-1">
                                 Reason: {{ form.waiver_reason || '— not yet selected' }}

@@ -11,9 +11,6 @@ const page        = usePage()
 const permissions = computed(() => page.props.auth?.permissions ?? [])
 const userRole    = computed(() => (page.props.auth?.user?.role ?? '').toLowerCase())
 
-// ── Permission check ──────────────────────────────────────────────────────────
-// Permission names in DB use underscore format: view_dashboard, edit_registration etc.
-// Admin always gets access to everything.
 const can = (permission) => {
     if (userRole.value === 'admin') return true
     return permissions.value.includes(permission)
@@ -35,7 +32,7 @@ const can = (permission) => {
         <hr class="border-black mb-4" />
         <nav class="flex flex-col space-y-3 text-gray-600 text-base">
 
-            <!-- Dashboard: view_dashboard -->
+            <!-- Dashboard -->
             <Link v-if="can('view_dashboard')"
                 href="/admindb"
                 class="flex items-center space-x-2 hover:bg-gray-200 p-2 rounded-lg">
@@ -43,7 +40,7 @@ const can = (permission) => {
                 <span class="font-semibold">Dashboard</span>
             </Link>
 
-            <!-- Registration: view_registration -->
+            <!-- Registration -->
             <Link v-if="can('view_registration')"
                 :href="route('registration')"
                 class="flex items-center space-x-2 hover:bg-gray-200 p-2 rounded-lg">
@@ -51,7 +48,7 @@ const can = (permission) => {
                 <span class="font-semibold">Registration</span>
             </Link>
 
-            <!-- Visitor Records: view_visitor_records -->
+            <!-- Visitor Records -->
             <Link v-if="can('view_visitor_records')"
                 :href="route('visitor-records')"
                 class="flex items-center space-x-2 hover:bg-gray-200 p-2 rounded-lg">
@@ -59,7 +56,7 @@ const can = (permission) => {
                 <span class="font-semibold">Visitor Records</span>
             </Link>
 
-            <!-- Reports: view_reports -->
+            <!-- Reports -->
             <div v-if="can('view_reports')" class="flex flex-col">
                 <button @click="showReports = !showReports"
                     class="w-full flex items-center justify-between hover:bg-gray-200 p-2 rounded-lg">
@@ -73,18 +70,18 @@ const can = (permission) => {
                     </svg>
                 </button>
                 <div v-if="showReports" class="ml-8 mt-2 flex flex-col gap-2">
-                    <Link :href="route('reports')"
+                    <Link :href="route('reports.analytics')"
                         class="font-semibold border-2 border-gray-200 hover:bg-gray-200 p-2 rounded-lg text-sm">
                         Analytics
                     </Link>
-                    <Link :href="route('feerevenue')"
+                    <Link :href="route('reports.fee-revenue')"
                         class="font-semibold border-2 border-gray-200 hover:bg-gray-200 p-2 rounded-lg text-sm">
                         Fee Revenue
                     </Link>
                 </div>
             </div>
 
-            <!-- Settings: view_settings OR view_system_settings OR view_user_management -->
+            <!-- Settings -->
             <Link v-if="can('view_settings') || can('view_system_settings') || can('view_user_management')"
                 :href="route('settings')"
                 class="flex items-center space-x-2 hover:bg-gray-200 p-2 rounded-lg">

@@ -82,7 +82,7 @@
                     </div>
 
                     <!-- ENTER BUTTON -->
-                    <button class="h-10 bg-gray-900 text-white font-bold px-4 text-sm rounded">
+                    <button @click="applyFilters" class="h-10 bg-gray-900 text-white font-bold px-4 text-sm rounded">
                     Enter
                     </button>
 
@@ -109,22 +109,22 @@
                     <th class="p-2 text-black">Place of Origin</th>
                     <th class="p-2 text-black ">Purpose of Visit</th>
                     <th class="p-2 text-black ">Duration of Stay</th>
+                    <th class="p-2 text-black ">Destination</th>
                 </tr>
             </thead>
 
             <tbody>
-                <tr @click="showModal = true" class="cursor-pointer hover:bg-gray-100">
-                    <td class="p-2 border-b">John Doe</td>
-                    <td class="p-2 border-b">Kalibo, Aklan</td>
-                    <td class="p-2 border-b">Vacation</td>
-                    <td class="p-2 border-b">3 days</td>
+                <tr v-for="(row, i) in rows" :key="i"
+                    class="cursor-pointer hover:bg-gray-100">
+                    <td class="p-2 border-b">{{ row.full_name }}</td>
+                    <td class="p-2 border-b">{{ row.place_of_origin }}</td>
+                    <td class="p-2 border-b">{{ row.purpose }}</td>
+                    <td class="p-2 border-b">{{ row.duration_of_stay }}</td>
+                    <td class="p-2 border-b text-left text-sm text-gray-600">{{ row.destinations }}</td>
                 </tr>
 
-                <tr>
-                    <td class="p-2 border-b">John Doe</td>
-                    <td class="p-2 border-b">Kalibo, Aklan</td>
-                    <td class="p-2 border-b">Vacation</td>
-                    <td class="p-2 border-b">3 days</td>
+                <tr v-if="rows.length === 0">
+                    <td colspan="5" class="p-4 text-center text-gray-400 text-sm">No data found.</td>
                 </tr>
             </tbody>
         </table>
@@ -134,49 +134,44 @@
 
 <script>
 import LandingLayout from '@/Layouts/SidebarLayout.vue';
-
-export default {
-  components: { LandingLayout }
-}
+export default { components: { LandingLayout } }
 </script>
 
 <script setup>
-import { Link } from '@inertiajs/vue3'
-import { ref, onMounted } from 'vue';
+import { Link, router } from '@inertiajs/vue3'
+import { ref, onMounted } from 'vue'
 
-const ddreports = ref('');
-const openDdreports = ref(false);
-const dropdownRef = ref(null);
-const brgyRef = ref(null);
-const ddbrgy = ref('')
-const openDdbrgy = ref(false)
+const props = defineProps({
+    rows:    { type: Array,  default: () => [] },
+    filters: { type: Object, default: () => ({}) },
+})
 
-const purposeOptions = [
-  { label: 'Demographics', link: '/demographics' }
-];
+const ddreports     = ref('')
+const openDdreports = ref(false)
+const dropdownRef   = ref(null)
+const brgyRef       = ref(null)
+const ddbrgy        = ref(props.filters.area      ?? '')
+const openDdbrgy    = ref(false)
+const startDate     = ref(props.filters.date_from ?? '')
+const endDate       = ref(props.filters.date_to   ?? '')
 
-const selectBrgy = (val) => {
-  ddbrgy.value = val
-  openDdbrgy.value = false
+const purposeOptions    = [{ label: 'Demographics', link: route('reports.demographics') }]
+const selectbgryOptions = ['Hinugtan', 'Bel-is Cove']
+
+const selectBrgy = (val) => { ddbrgy.value = val; openDdbrgy.value = false }
+
+const applyFilters = () => {
+    router.get(route('reports.analytics'), {
+        date_from: startDate.value || undefined,
+        date_to:   endDate.value   || undefined,
+        area:      ddbrgy.value    || undefined,
+    }, { preserveState: true, replace: true })
 }
 
-const selectbgryOptions = [
-  'Hinugtan', 'Bel-is Cove'
-];
-
-
 onMounted(() => {
-  document.addEventListener('click', (e) => {
-    if (!dropdownRef.value?.contains(e.target)) {
-      openDdreports.value = false;
-    }
-    
-    if (!brgyRef.value?.contains(e.target)) {
-      openDdbrgy.value = false
-    }
-
-  });
-});
-
-
+    document.addEventListener('click', (e) => {
+        if (!dropdownRef.value?.contains(e.target)) openDdreports.value = false
+        if (!brgyRef.value?.contains(e.target))     openDdbrgy.value    = false
+    })
+})
 </script>

@@ -110,4 +110,9 @@ class VisitorVisit extends Model
     {
         return $query->whereNull('synced_at');
     }
+
+    public function destinations()
+    {
+        return $this->hasMany(\App\Models\VisitorDestination::class, 'visit_id');
+    }
 }

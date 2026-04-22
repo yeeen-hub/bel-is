@@ -4,290 +4,197 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\VisitorVisit;
-use App\Models\Receipt;
+use App\Models\VisitorDestination;
+use App\Models\BarangayAttraction;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class ReportController extends Controller
 {
-    // ── Shared: parse date range ──────────────────────────────────────────────
-    private function parseDates(Request $request): array
-    {
-        $from = $request->filled('date_from')
-            ? Carbon::parse($request->date_from)->startOfDay()
-            : Carbon::now()->startOfMonth()->startOfDay();
-
-        $to = $request->filled('date_to')
-            ? Carbon::parse($request->date_to)->endOfDay()
-            : Carbon::now()->endOfDay();
-
-        return [$from, $to];
-    }
-
-    // ── Shared: base confirmed visit query ────────────────────────────────────
-    // source='staff' = confirmed walk-ins + confirmed pre-reg visitors.
-    // Pre-reg pending (not yet arrived) is excluded from all reports.
-    private function visitQuery(Carbon $from, Carbon $to)
-    {
-        return VisitorVisit::whereNull('deleted_at')
-                           ->where('source', 'staff')
-                           ->whereBetween('arrival_at', [$from, $to]);
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // 1. DEMOGRAPHICS
-    //    Columns: snapshot_place_of_origin, snapshot_municipality,
-    //             snapshot_province, arrival_at, deleted_at, source
-    // ══════════════════════════════════════════════════════════════════════════
+    // ── Analytics — AdminRepOvPage ────────────────────────────────────────────
+    // GET /reports/analytics
+    // Individual visitor rows: Name, Origin, Purpose, Duration, Destinations.
+    // ─────────────────────────────────────────────────────────────────────────
     public function analytics(Request $request)
     {
-        [$from, $to] = $this->parseDates($request);
-        $q = $this->visitQuery($from, $to);
+        $query = VisitorVisit::query()
+            ->select(
+                'id',
+                'snapshot_first_name',
+                'snapshot_last_name',
+                'snapshot_place_of_origin',
+                'purpose',
+                'duration_of_stay'
+            )
+            ->orderByDesc('arrival_at');
 
-        $total   = (clone $q)->count();
-        $local   = (clone $q)->where('snapshot_province', 'Aklan')->count();
-        $outside = (clone $q)->where('snapshot_province', '!=', 'Aklan')->count();
+        if ($request->filled('date_from')) {
+            $query->whereDate('arrival_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('arrival_at', '<=', $request->date_to);
+        }
+        if ($request->filled('area')) {
+            $query->where('snapshot_place_of_origin', 'like', "%{$request->area}%");
+        }
 
-        // Top 10 origins grouped by snapshot fields
-        $origins = (clone $q)
-            ->selectRaw('
-                snapshot_place_of_origin as place_of_origin,
-                snapshot_municipality    as municipality,
-                snapshot_province        as province,
-                COUNT(*) as total
-            ')
-            ->whereNotNull('snapshot_place_of_origin')
-            ->where('snapshot_place_of_origin', '!=', '')
-            ->groupBy('snapshot_place_of_origin', 'snapshot_municipality', 'snapshot_province')
-            ->orderByDesc('total')
-            ->limit(10)
+        $visits = $query->get();
+
+        // Bulk-load all destinations in TWO queries (avoids N+1)
+        $visitIds = $visits->pluck('id');
+
+        // Named attractions grouped by visit_id
+        $named = DB::table('visitor_destinations')
+            ->join('barangay_attractions', 'visitor_destinations.attraction_id', '=', 'barangay_attractions.id')
+            ->whereIn('visitor_destinations.visit_id', $visitIds)
+            ->whereNotNull('visitor_destinations.attraction_id')
+            ->select('visitor_destinations.visit_id', 'barangay_attractions.name')
             ->get()
-            ->map(fn($r) => [
-                'place_of_origin' => $r->place_of_origin,
-                'municipality'    => $r->municipality,
-                'province'        => $r->province,
-                'total'           => (int) $r->total,
-            ]);
+            ->groupBy('visit_id');
+
+        // "Other" free-text destinations grouped by visit_id
+        $others = DB::table('visitor_destinations')
+            ->whereIn('visit_id', $visitIds)
+            ->whereNull('attraction_id')
+            ->whereNotNull('other_destination')
+            ->where('other_destination', '!=', '')
+            ->select('visit_id', 'other_destination')
+            ->get()
+            ->groupBy('visit_id');
+
+        $rows = $visits->map(function ($v) use ($named, $others) {
+            $parts = collect();
+
+            if (isset($named[$v->id])) {
+                $parts = $parts->merge(
+                    collect($named[$v->id])->pluck('name')
+                );
+            }
+            if (isset($others[$v->id])) {
+                $parts = $parts->merge(
+                    collect($others[$v->id])->pluck('other_destination')
+                );
+            }
+
+            $firstName = trim($v->snapshot_first_name ?? '');
+            $lastName  = trim($v->snapshot_last_name  ?? '');
+            $fullName  = trim("$firstName $lastName") ?: '—';
+
+            return [
+                'full_name'        => $fullName,
+                'place_of_origin'  => $v->snapshot_place_of_origin ?? '—',
+                'purpose'          => $v->purpose          ?? '—',
+                'duration_of_stay' => $v->duration_of_stay ?? '—',
+                'destinations'     => $parts->isNotEmpty() ? $parts->implode(', ') : '—',
+            ];
+        });
 
         return Inertia::render('AdminRepOvPage', [
-            'tab'          => 'analytics',
-            'totalLocal'   => $local,
-            'totalForeign' => $outside,
-            'total'        => $total,
-            'origins'      => $origins,
-            'filters'      => $request->only(['date_from', 'date_to']),
-        ]);
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // 2. TEMPORAL TRENDS
-    //    Columns: arrival_at, deleted_at, source
-    // ══════════════════════════════════════════════════════════════════════════
-    public function temporal(Request $request)
-    {
-        [$from, $to] = $this->parseDates($request);
-        $q    = $this->visitQuery($from, $to);
-        $total = (clone $q)->count();
-        $days  = max(1, (int) $from->diffInDays($to) + 1);
-
-        // Arrivals by day of week
-        $dowLabels = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-        $rawDow = (clone $q)
-            ->selectRaw('(DAYOFWEEK(arrival_at) - 1) as dow, COUNT(*) as cnt')
-            ->groupBy('dow')
-            ->orderBy('dow')
-            ->pluck('cnt', 'dow')
-            ->toArray();
-
-        $byDow = collect(range(0, 6))->map(fn($i) => [
-            'day'   => $dowLabels[$i],
-            'count' => (int) ($rawDow[$i] ?? 0),
-        ])->values();
-
-        // Monthly arrivals
-        $byMonth = (clone $q)
-            ->selectRaw("DATE_FORMAT(arrival_at, '%Y-%m') as ym, COUNT(*) as cnt")
-            ->groupBy('ym')
-            ->orderBy('ym')
-            ->get()
-            ->map(fn($r) => [
-                'month' => Carbon::createFromFormat('Y-m', $r->ym)->format('F Y'),
-                'count' => (int) $r->cnt,
-            ]);
-
-        // Peak single day
-        $peakRow = (clone $q)
-            ->selectRaw("DATE(arrival_at) as date_only, COUNT(*) as cnt")
-            ->groupBy('date_only')
-            ->orderByDesc('cnt')
-            ->first();
-
-        // Days exceeding capacity threshold
-        $threshold = 50;
-        $alertDays = (clone $q)
-            ->selectRaw("DATE(arrival_at) as date_only, COUNT(*) as cnt")
-            ->groupBy('date_only')
-            ->havingRaw('cnt >= ?', [$threshold])
-            ->orderByDesc('cnt')
-            ->get()
-            ->map(fn($r) => [
-                'date'  => Carbon::parse($r->date_only)->format('M d, Y'),
-                'count' => (int) $r->cnt,
-            ]);
-
-        return Inertia::render('AdminRepOvPage', [
-            'tab'      => 'temporal',
-            'temporal' => [
-                'total'         => $total,
-                'avgPerDay'     => round($total / $days, 1),
-                'peakDay'       => $peakRow
-                    ? Carbon::parse($peakRow->date_only)->format('M d, Y') . " ({$peakRow->cnt})"
-                    : null,
-                'peakAlertDays' => $alertDays->count(),
-                'byDow'         => $byDow,
-                'byMonth'       => $byMonth,
-                'alertDays'     => $alertDays,
+            'rows'    => $rows,
+            'filters' => [
+                'date_from' => $request->date_from ?? '',
+                'date_to'   => $request->date_to   ?? '',
+                'area'      => $request->area       ?? '',
             ],
-            'filters'  => $request->only(['date_from', 'date_to']),
         ]);
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // 3. ECONOMIC TRANSPARENCY
-    //    receipts: fee_type, number_of_visitors, total_amount, collected_at
-    //    visitor_visits cross-audit: fee_status, source='staff'
-    // ══════════════════════════════════════════════════════════════════════════
+    // ── Demographics ──────────────────────────────────────────────────────────
+    // GET /reports/demographics
+    // Grouped by origin: Origin, Total Tourist count.
+    // ─────────────────────────────────────────────────────────────────────────
+    public function demographics(Request $request)
+    {
+        $query = VisitorVisit::query()
+            ->select(
+                'snapshot_place_of_origin as place_of_origin',
+                DB::raw('COUNT(*) as total_tourists')
+            )
+            ->groupBy('snapshot_place_of_origin')
+            ->orderByDesc(DB::raw('COUNT(*)'));
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('arrival_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('arrival_at', '<=', $request->date_to);
+        }
+        if ($request->filled('area')) {
+            $query->where('snapshot_place_of_origin', 'like', "%{$request->area}%");
+        }
+
+        $rows = $query->get()->map(fn($r) => [
+            'place_of_origin' => $r->place_of_origin ?? '—',
+            'total_tourists'  => $r->total_tourists,
+        ]);
+
+        return Inertia::render('AdminRepDemoPage', [
+            'rows'    => $rows,
+            'filters' => [
+                'date_from' => $request->date_from ?? '',
+                'date_to'   => $request->date_to   ?? '',
+                'area'      => $request->area       ?? '',
+            ],
+        ]);
+    }
+
+    // ── Fee Revenue ───────────────────────────────────────────────────────────
+    // GET /reports/fee-revenue
+    // ─────────────────────────────────────────────────────────────────────────
     public function feeRevenue(Request $request)
     {
-        [$from, $to] = $this->parseDates($request);
-        $days = max(1, (int) $from->diffInDays($to) + 1);
+        $query = VisitorVisit::query()
+            ->join('receipts', 'visitor_visits.id', '=', 'receipts.visit_id')
+            ->select(
+                'visitor_visits.visitor_category as visit_category',
+                DB::raw("CONCAT(visitor_visits.snapshot_first_name, ' ', visitor_visits.snapshot_last_name) as full_name"),
+                'receipts.total_amount as revenue',
+                'receipts.fee_type',
+                'receipts.collected_at'
+            );
 
-        // ── Receipts ──────────────────────────────────────────────────────────
-        $rq = Receipt::whereBetween('collected_at', [$from, $to]);
+        if ($request->filled('date_from')) {
+            $query->whereDate('receipts.collected_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('receipts.collected_at', '<=', $request->date_to);
+        }
+        if ($request->filled('area')) {
+            $query->where('visitor_visits.snapshot_place_of_origin', 'like', "%{$request->area}%");
+        }
 
-        $totalVisitorsReceipted = (int)(clone $rq)->sum('number_of_visitors');
-        $charged      = (int)(clone $rq)->where('fee_type', '!=', 'Waived')->sum('number_of_visitors');
-        $waived       = (int)(clone $rq)->where('fee_type', 'Waived')->sum('number_of_visitors');
-        $totalRevenue = (float)(clone $rq)->where('fee_type', '!=', 'Waived')->sum('total_amount');
-        $avgDaily     = round($totalRevenue / $days, 2);
+        $rows = $query->orderByDesc('receipts.collected_at')->get();
 
-        $remainingDays    = max(1, (int) Carbon::now()->diffInDays(Carbon::now()->endOfYear()));
-        $projectedYearEnd = round(($avgDaily * $remainingDays) + $totalRevenue, 2);
+        $totalRevenue = $rows->where('fee_type', '!=', 'Waived')->sum('revenue');
+        $days         = $rows->groupBy(fn($r) => \Carbon\Carbon::parse($r->collected_at)->toDateString())->count();
+        $avgDaily     = $days > 0 ? round($totalRevenue / $days, 2) : 0;
 
-        $collectedPct = $totalVisitorsReceipted > 0
-            ? round($charged / $totalVisitorsReceipted * 100, 1) : 0;
-        $waivedPct = $totalVisitorsReceipted > 0
-            ? round($waived  / $totalVisitorsReceipted * 100, 1) : 0;
-
-        // ── Cross-audit from visitor_visits ───────────────────────────────────
-        // source='staff' only — confirms these are real arrived visitors
-        $vq = $this->visitQuery($from, $to);
-        $visitorCollected = (clone $vq)->where('fee_status', 'Collected')->count();
-        $visitorWaived    = (clone $vq)->where('fee_status', 'Waived')->count();
-        $visitorPending   = (clone $vq)->where('fee_status', 'Pending')->count();
-
-        // Discrepancy: more waived in visitor log than in receipts = red flag
-        $waiverDiscrepancy = max(0, $visitorWaived - $waived);
-
-        $breakdown = [
-            [
-                'category' => 'Standard (Individual)',
-                'visitors' => (int)(clone $rq)->where('fee_type', 'Standard')->sum('number_of_visitors'),
-                'revenue'  => (float)(clone $rq)->where('fee_type', 'Standard')->sum('total_amount'),
+        return Inertia::render('AdminRepFeePage', [
+            'rows'         => $rows->map(fn($r) => [
+                'visit_category' => $r->visit_category ?? '—',
+                'full_name'      => trim($r->full_name) ?: '—',
+                'revenue'        => $r->fee_type === 'Waived' ? 'Waived' : number_format((float) $r->revenue, 2),
+            ]),
+            'totalRevenue' => number_format($totalRevenue, 2),
+            'avgDaily'     => number_format($avgDaily, 2),
+            'filters'      => [
+                'date_from' => $request->date_from ?? '',
+                'date_to'   => $request->date_to   ?? '',
+                'area'      => $request->area       ?? '',
             ],
-            [
-                'category' => 'Group',
-                'visitors' => (int)(clone $rq)->where('fee_type', 'Group')->sum('number_of_visitors'),
-                'revenue'  => (float)(clone $rq)->where('fee_type', 'Group')->sum('total_amount'),
-            ],
-            [
-                'category' => 'Waived',
-                'visitors' => $waived,
-                'revenue'  => 0.00,
-            ],
-        ];
-
-        return Inertia::render('AdminRepOvPage', [
-            'tab'     => 'fee_revenue',
-            'revenue' => [
-                'totalRevenue'          => $totalRevenue,
-                'avgDailyRevenue'       => $avgDaily,
-                'totalVisitorsCharged'  => $charged,
-                'receiptWaivedVisitors' => $waived,
-                'collectedPct'          => $collectedPct,
-                'waivedPct'             => $waivedPct,
-                'projectedYearEnd'      => $projectedYearEnd,
-                'breakdown'             => $breakdown,
-                'auditCollected'        => $visitorCollected,
-                'auditWaived'           => $visitorWaived,
-                'auditPending'          => $visitorPending,
-                'waiverDiscrepancy'     => $waiverDiscrepancy,
-            ],
-            'filters' => $request->only(['date_from', 'date_to']),
         ]);
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // 4. BEHAVIORAL INSIGHTS
-    //    Columns: purpose, purpose_other, duration_of_stay, source
-    // ══════════════════════════════════════════════════════════════════════════
+    // ── Temporal (stub — add logic when page is built) ────────────────────────
+    public function temporal(Request $request)
+    {
+        return Inertia::render('AdminRepTemporalPage', []);
+    }
+
+    // ── Behavioral (stub — add logic when page is built) ─────────────────────
     public function behavioral(Request $request)
     {
-        [$from, $to] = $this->parseDates($request);
-        $q     = $this->visitQuery($from, $to);
-        $total = (clone $q)->count();
-
-        // Purpose distribution — merge purpose_other into display label
-        $byPurpose = (clone $q)
-            ->selectRaw('purpose, purpose_other, COUNT(*) as cnt')
-            ->groupBy('purpose', 'purpose_other')
-            ->orderByDesc('cnt')
-            ->get()
-            ->map(fn($r) => [
-                'purpose' => $r->purpose === 'Other' && $r->purpose_other
-                                ? "Other: {$r->purpose_other}"
-                                : $r->purpose,
-                'count'   => (int) $r->cnt,
-            ]);
-
-        // Duration of stay distribution
-        $byDuration = (clone $q)
-            ->selectRaw('duration_of_stay as duration, COUNT(*) as cnt')
-            ->whereNotNull('duration_of_stay')
-            ->groupBy('duration_of_stay')
-            ->orderByDesc('cnt')
-            ->get()
-            ->map(fn($r) => [
-                'duration' => $r->duration,
-                'count'    => (int) $r->cnt,
-            ]);
-
-        // Short-stay detection
-        $shortStay = (clone $q)
-            ->where(function ($sq) {
-                $sq->where('duration_of_stay', 'like', '%hour%')
-                   ->orWhere('duration_of_stay', 'like', '%hrs%')
-                   ->orWhere('duration_of_stay', 'like', '%half%')
-                   ->orWhere('duration_of_stay', 'like', '%<1%');
-            })
-            ->count();
-        $shortStayPct = $total > 0 ? round($shortStay / $total * 100, 1) : 0;
-
-        // Research flag
-        $researchCount = (clone $q)->where('purpose', 'Research')->count();
-        $researchPct   = $total > 0 ? round($researchCount / $total * 100, 1) : 0;
-
-        return Inertia::render('AdminRepOvPage', [
-            'tab'      => 'behavior',
-            'behavior' => [
-                'totalVisitors' => $total,
-                'byPurpose'     => $byPurpose,
-                'byDuration'    => $byDuration,
-                'shortStayPct'  => $shortStayPct,
-                'researchPct'   => $researchPct,
-                'highResearch'  => $researchPct >= 20,
-            ],
-            'filters'  => $request->only(['date_from', 'date_to']),
-        ]);
+        return Inertia::render('AdminRepBehavioralPage', []);
     }
 }

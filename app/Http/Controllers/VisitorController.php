@@ -6,7 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\VisitorVisit;
 use App\Models\VisitorProfile;
 use App\Models\FeeCategory;
+use App\Models\BarangayAttraction;
 use App\Models\AuditLog;
+use App\Traits\SavesVisitorDestinations;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -14,6 +16,8 @@ use Carbon\Carbon;
 
 class VisitorController extends Controller
 {
+    use SavesVisitorDestinations;
+
     // ── List all visits ───────────────────────────────────────────────────────
     public function index(Request $request)
     {
@@ -29,11 +33,15 @@ class VisitorController extends Controller
                   ->orWhere('snapshot_place_of_origin', 'like', "%{$search}%")
                   ->orWhere('registration_id',          'like', "%{$search}%")
                   ->orWhere('reference_code',           'like', "%{$search}%")
-                  ->orWhereRaw(
-                      "CONCAT(snapshot_first_name, ' ', snapshot_last_name) LIKE ?",
-                      ["%{$search}%"]
-                  );
+                  ->orWhereRaw("CONCAT(snapshot_first_name, ' ', snapshot_last_name) LIKE ?", ["%{$search}%"]);
             });
+        }
+
+        // Filter by destination attraction
+        if ($request->filled('destination_id')) {
+            $query->whereHas('destinations', fn($q) =>
+                $q->where('attraction_id', $request->destination_id)
+            );
         }
 
         if ($request->filled('purpose'))    $query->where('purpose',    $request->purpose);
@@ -63,12 +71,15 @@ class VisitorController extends Controller
                 'registered_by'    => $v->registeredBy->name ?? 'N/A',
             ]),
             'filters' => [
-                'search'     => $request->search     ?? '',
-                'purpose'    => $request->purpose    ?? '',
-                'fee_status' => $request->fee_status ?? '',
-                'date_from'  => $request->date_from  ?? '',
-                'date_to'    => $request->date_to    ?? '',
+                'search'         => $request->search         ?? '',
+                'purpose'        => $request->purpose        ?? '',
+                'fee_status'     => $request->fee_status     ?? '',
+                'date_from'      => $request->date_from      ?? '',
+                'date_to'        => $request->date_to        ?? '',
+                'destination_id' => $request->destination_id ?? '',
             ],
+            'attractionOptions' => BarangayAttraction::where('is_active', true)
+                ->orderBy('name')->get(['id', 'name']),
             'pendingFees' => VisitorVisit::where('source', 'staff')
                                          ->where('fee_status', 'Pending')
                                          ->count(),
@@ -79,8 +90,17 @@ class VisitorController extends Controller
     public function create()
     {
         return Inertia::render('AdminRegPage', [
-            // Pass fee categories so the registration form can show the dropdown
             'feeCategories' => FeeCategory::orderBy('id')->get(['id', 'category', 'age_range', 'fee']),
+            'barangayAttractions' => BarangayAttraction::with('sitio')
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get()
+                ->map(fn($a) => [
+                    'id'         => $a->id,
+                    'name'       => $a->name,
+                    'type'       => $a->type,
+                    'sitio_name' => $a->sitio?->name,
+                ]),
         ]);
     }
 
@@ -97,9 +117,12 @@ class VisitorController extends Controller
             'purpose_other'    => 'required_if:purpose,Other|nullable|string|max:255',
             'duration_of_stay' => 'required|string|max:255',
             'contact_number'   => 'nullable|string|max:20',
-            'visitor_category' => 'required|string|max:100',   // ← NEW
+            'visitor_category' => 'required|string|max:100',
             'profile_id'       => 'nullable|uuid|exists:visitor_profiles,id',
             'visit_id'         => 'nullable|uuid|exists:visitor_visits,id',
+            'destinations'                         => 'nullable|array',
+            'destinations.*.attraction_id'         => 'nullable|integer|exists:barangay_attractions,id',
+            'destinations.*.other_destination'     => 'nullable|string|max:255',
         ]);
 
         DB::beginTransaction();
@@ -130,11 +153,9 @@ class VisitorController extends Controller
                     'source'                   => 'staff',
                     'registered_by'            => Auth::id(),
                     'purpose'                  => $request->purpose,
-                    'purpose_other'            => $request->purpose === 'Other'
-                                                    ? $request->purpose_other
-                                                    : null,
+                    'purpose_other'            => $request->purpose === 'Other' ? $request->purpose_other : null,
                     'duration_of_stay'         => $request->duration_of_stay,
-                    'visitor_category'         => $request->visitor_category,  // ← NEW
+                    'visitor_category'         => $request->visitor_category,
                     'snapshot_first_name'      => $request->first_name,
                     'snapshot_last_name'       => $request->last_name,
                     'snapshot_municipality'    => $request->municipality,
@@ -142,6 +163,8 @@ class VisitorController extends Controller
                     'snapshot_place_of_origin' => $request->place_of_origin,
                     'snapshot_contact_number'  => $request->contact_number,
                 ]);
+
+                $this->saveDestinations($visit->id, $request->destinations ?? []);
 
                 AuditLog::create([
                     'user_id'     => Auth::id(),
@@ -154,7 +177,6 @@ class VisitorController extends Controller
                 ]);
 
                 DB::commit();
-
                 return redirect()->route('adminpay', $visit->id)
                     ->with('success', 'Pre-registration confirmed. Proceed to payment.');
             }
@@ -169,7 +191,6 @@ class VisitorController extends Controller
                     'contact_number'  => $request->contact_number,
                 ]);
             } else {
-                // ── SCENARIO 3: New walk-in ──────────────────────────────────
                 $profile = VisitorProfile::create([
                     'first_name'      => $request->first_name,
                     'last_name'       => $request->last_name,
@@ -189,11 +210,9 @@ class VisitorController extends Controller
                 'registration_id'  => $registrationId,
                 'profile_id'       => $profile->id,
                 'purpose'          => $request->purpose,
-                'purpose_other'    => $request->purpose === 'Other'
-                                        ? $request->purpose_other
-                                        : null,
+                'purpose_other'    => $request->purpose === 'Other' ? $request->purpose_other : null,
                 'duration_of_stay' => $request->duration_of_stay,
-                'visitor_category' => $request->visitor_category,  // ← NEW
+                'visitor_category' => $request->visitor_category,
                 'fee_status'       => 'Pending',
                 'source'           => 'staff',
                 'registered_by'    => Auth::id(),
@@ -201,6 +220,8 @@ class VisitorController extends Controller
 
             $visit->takeSnapshot($profile);
             $visit->save();
+
+            $this->saveDestinations($visit->id, $request->destinations ?? []);
 
             AuditLog::create([
                 'user_id'     => Auth::id(),
@@ -213,9 +234,7 @@ class VisitorController extends Controller
             ]);
 
             DB::commit();
-
-            return redirect()->route('adminpay', $visit->id)
-                ->with('success', 'Visitor registered successfully.');
+            return redirect()->route('adminpay', $visit->id)->with('success', 'Visitor registered successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -223,23 +242,26 @@ class VisitorController extends Controller
         }
     }
 
-    // ── Store a GROUP of walk-in visitors ────────────────────────────────────
+    // ── Store GROUP ───────────────────────────────────────────────────────────
     public function storeGroup(Request $request)
     {
         $request->validate([
-            'members'                      => 'required|array|min:1|max:20',
-            'members.*.first_name'         => 'required|string|max:255',
-            'members.*.last_name'          => 'required|string|max:255',
-            'members.*.municipality'       => 'required|string|max:255',
-            'members.*.province'           => 'required|string|max:255',
-            'members.*.place_of_origin'    => 'required|string|max:255',
-            'members.*.purpose'            => 'required|in:Tourism,Research,Event,Official Visit,Other',
-            'members.*.purpose_other'      => 'required_if:members.*.purpose,Other|nullable|string|max:255',
-            'members.*.duration_of_stay'   => 'required|string|max:255',
-            'members.*.visitor_category'   => 'required|string|max:100',  // ← NEW
-            'members.*.contact_number'     => 'nullable|string|max:20',
-            'members.*.profile_id'         => 'nullable|uuid|exists:visitor_profiles,id',
-            'members.*.visit_id'           => 'nullable|uuid|exists:visitor_visits,id',
+            'members'                                        => 'required|array|min:1|max:20',
+            'members.*.first_name'                           => 'required|string|max:255',
+            'members.*.last_name'                            => 'required|string|max:255',
+            'members.*.municipality'                         => 'required|string|max:255',
+            'members.*.province'                             => 'required|string|max:255',
+            'members.*.place_of_origin'                      => 'required|string|max:255',
+            'members.*.purpose'                              => 'required|in:Tourism,Research,Event,Official Visit,Other',
+            'members.*.purpose_other'                        => 'required_if:members.*.purpose,Other|nullable|string|max:255',
+            'members.*.duration_of_stay'                     => 'required|string|max:255',
+            'members.*.visitor_category'                     => 'required|string|max:100',
+            'members.*.contact_number'                       => 'nullable|string|max:20',
+            'members.*.profile_id'                           => 'nullable|uuid|exists:visitor_profiles,id',
+            'members.*.visit_id'                             => 'nullable|uuid|exists:visitor_visits,id',
+            'members.*.destinations'                         => 'nullable|array',
+            'members.*.destinations.*.attraction_id'         => 'nullable|integer|exists:barangay_attractions,id',
+            'members.*.destinations.*.other_destination'     => 'nullable|string|max:255',
         ]);
 
         DB::beginTransaction();
@@ -255,11 +277,9 @@ class VisitorController extends Controller
                             'source'                   => 'staff',
                             'registered_by'            => Auth::id(),
                             'purpose'                  => $memberData['purpose'],
-                            'purpose_other'            => $memberData['purpose'] === 'Other'
-                                                            ? ($memberData['purpose_other'] ?? null)
-                                                            : null,
+                            'purpose_other'            => $memberData['purpose'] === 'Other' ? ($memberData['purpose_other'] ?? null) : null,
                             'duration_of_stay'         => $memberData['duration_of_stay'],
-                            'visitor_category'         => $memberData['visitor_category'],  // ← NEW
+                            'visitor_category'         => $memberData['visitor_category'],
                             'snapshot_first_name'      => $memberData['first_name'],
                             'snapshot_last_name'       => $memberData['last_name'],
                             'snapshot_municipality'    => $memberData['municipality'],
@@ -267,6 +287,7 @@ class VisitorController extends Controller
                             'snapshot_place_of_origin' => $memberData['place_of_origin'],
                             'snapshot_contact_number'  => $memberData['contact_number'] ?? null,
                         ]);
+                        $this->saveDestinations($visit->id, $memberData['destinations'] ?? []);
                         $visits[] = $visit;
                         continue;
                     }
@@ -277,7 +298,6 @@ class VisitorController extends Controller
             }
 
             DB::commit();
-
             return redirect()->route('adminpay', $visits[0]->id)
                 ->with('success', count($visits) . ' visitors registered. Processing first payment.')
                 ->with('group_visit_ids', collect($visits)->pluck('id')->toArray());
@@ -288,7 +308,6 @@ class VisitorController extends Controller
         }
     }
 
-    // ── Shared helper: create one walk-in profile + visit ────────────────────
     private function createVisitRecord(array $data, int $staffId): array
     {
         if (!empty($data['profile_id'])) {
@@ -319,11 +338,9 @@ class VisitorController extends Controller
             'registration_id'  => $registrationId,
             'profile_id'       => $profile->id,
             'purpose'          => $data['purpose'],
-            'purpose_other'    => $data['purpose'] === 'Other'
-                                    ? ($data['purpose_other'] ?? null)
-                                    : null,
+            'purpose_other'    => $data['purpose'] === 'Other' ? ($data['purpose_other'] ?? null) : null,
             'duration_of_stay' => $data['duration_of_stay'],
-            'visitor_category' => $data['visitor_category'] ?? null,  // ← NEW
+            'visitor_category' => $data['visitor_category'] ?? null,
             'fee_status'       => 'Pending',
             'source'           => 'staff',
             'registered_by'    => $staffId,
@@ -331,6 +348,8 @@ class VisitorController extends Controller
 
         $visit->takeSnapshot($profile);
         $visit->save();
+
+        $this->saveDestinations($visit->id, $data['destinations'] ?? []);
 
         AuditLog::create([
             'user_id'     => $staffId,
@@ -345,10 +364,9 @@ class VisitorController extends Controller
         return [$visit, $profile];
     }
 
-    // ── Show single visit ─────────────────────────────────────────────────────
     public function show(VisitorVisit $visitor)
     {
-        $visitor->load('receipt', 'registeredBy', 'profile');
+        $visitor->load('receipt', 'registeredBy', 'profile', 'destinations.attraction');
 
         return Inertia::render('AdminVRShowPage', [
             'visitor' => [
@@ -364,6 +382,11 @@ class VisitorController extends Controller
                 'province'         => $visitor->snapshot_province,
                 'contact_number'   => $visitor->snapshot_contact_number ?? 'N/A',
                 'visitor_category' => $visitor->visitor_category,
+                'destinations'     => $visitor->destinations->map(fn($d) => [
+                    'id'                => $d->id,
+                    'attraction_name'   => $d->attraction?->name ?? 'Other',
+                    'other_destination' => $d->other_destination,
+                ]),
                 'current_profile'  => $visitor->profile ? [
                     'municipality'    => $visitor->profile->municipality,
                     'province'        => $visitor->profile->province,
@@ -382,11 +405,9 @@ class VisitorController extends Controller
         ]);
     }
 
-    // ── Profile search (returning walk-in) ────────────────────────────────────
     public function searchProfile(Request $request)
     {
         $request->validate(['query' => 'required|string|min:2']);
-
         $q = $request->query('query');
 
         $profiles = VisitorProfile::where('contact_number', 'like', "%{$q}%")

@@ -1,16 +1,22 @@
 <script setup>
+import { ref } from 'vue'
 import LandingLayout from '@/Layouts/SidebarLayout.vue'
 
 const props = defineProps({
-    visitor: Object,
-    receipt: Object,
+    visitor:         Object,
+    receipt:         Object,
+    isGroup:         { type: Boolean, default: false },
 })
 
 const print = () => window.print()
+
+// Notes expand/collapse — collapsed by default so the receipt stays compact
+const notesExpanded = ref(false)
 </script>
 
 <template>
     <LandingLayout>
+        <!-- Top Bar -->
         <div class="container mx-auto">
             <div class="bg-gray-100 p-4 rounded-lg flex items-center gap-4">
                 <div class="relative flex-1">
@@ -47,7 +53,7 @@ const print = () => window.print()
             </div>
 
             <!-- Receipt Card -->
-            <div class="w-full mt-4 bg-white p-6 rounded-lg max-w-lg" id="receipt-content">
+            <div class="w-full mt-4 bg-white p-6 rounded-lg max-w-lg shadow-sm" id="receipt-content">
 
                 <!-- Barangay Header -->
                 <div class="text-center mb-4">
@@ -82,37 +88,77 @@ const print = () => window.print()
 
                 <hr class="my-3 border-dashed border-gray-300">
 
-                <!-- Visitor Details -->
-                <h3 class="text-gray-700 font-bold text-sm uppercase tracking-wide mb-2">Visitor Details</h3>
-                <div class="space-y-1 text-sm mb-4">
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Name</span>
-                        <span class="font-medium text-gray-800">{{ visitor?.full_name ?? '—' }}</span>
+                <!-- ── Individual receipt ─────────────────────────────────── -->
+                <template v-if="!isGroup">
+                    <h3 class="text-gray-700 font-bold text-sm uppercase tracking-wide mb-2">Visitor Details</h3>
+                    <div class="space-y-1 text-sm mb-4">
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Name</span>
+                            <span class="font-medium text-gray-800">{{ visitor?.full_name ?? '—' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Place of Origin</span>
+                            <span class="font-medium text-gray-800">{{ visitor?.place_of_origin ?? '—' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Purpose of Visit</span>
+                            <span class="font-medium text-gray-800">{{ visitor?.purpose ?? '—' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Duration of Stay</span>
+                            <span class="font-medium text-gray-800">{{ visitor?.duration ?? '—' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Date of Arrival</span>
+                            <span class="font-medium text-gray-800">{{ visitor?.arrival_at ?? '—' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Visitor Category</span>
+                            <span class="font-medium text-gray-800">{{ visitor?.visitor_category ?? '—' }}</span>
+                        </div>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Place of Origin</span>
-                        <span class="font-medium text-gray-800">{{ visitor?.place_of_origin ?? '—' }}</span>
+                </template>
+
+                <!-- ── Group receipt — full member breakdown ──────────────── -->
+                <template v-else>
+                    <h3 class="text-gray-700 font-bold text-sm uppercase tracking-wide mb-2">
+                        Group Visitors
+                        <span class="ml-1 text-gray-400 font-normal normal-case">({{ receipt?.member_breakdown?.length ?? 0 }} members)</span>
+                    </h3>
+
+                    <div class="mb-3 text-xs text-gray-500 flex flex-wrap gap-3">
+                        <span><span class="font-semibold text-gray-600">Date of Arrival:</span> {{ visitor?.arrival_at ?? '—' }}</span>
+                        <span><span class="font-semibold text-gray-600">Purpose:</span> {{ visitor?.purpose ?? '—' }}</span>
+                        <span><span class="font-semibold text-gray-600">Duration:</span> {{ visitor?.duration ?? '—' }}</span>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Purpose of Visit</span>
-                        <span class="font-medium text-gray-800">{{ visitor?.purpose ?? '—' }}</span>
+
+                    <!-- Member breakdown table -->
+                    <div class="overflow-hidden rounded-lg border border-gray-100 mb-4">
+                        <table class="w-full text-xs">
+                            <thead class="bg-gray-50 border-b border-gray-100">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-semibold text-gray-600">Name</th>
+                                    <th class="px-3 py-2 text-left font-semibold text-gray-600">Category</th>
+                                    <th class="px-3 py-2 text-right font-semibold text-gray-600">Fee</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(m, i) in (receipt?.member_breakdown ?? [])" :key="i"
+                                    class="border-b border-gray-50 last:border-0">
+                                    <td class="px-3 py-2 text-gray-800 font-medium">
+                                        {{ m.full_name }}
+                                        <span v-if="i === 0" class="ml-1 text-gray-400">(Leader)</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-500">{{ m.visitor_category || '—' }}</td>
+                                    <td class="px-3 py-2 text-right font-semibold"
+                                        :class="receipt?.fee_type === 'Waived' ? 'text-amber-600' : 'text-green-700'">
+                                        {{ receipt?.fee_type === 'Waived' ? 'Waived' : `PHP ${Number(m.fee ?? 0).toFixed(2)}` }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Duration of Stay</span>
-                        <span class="font-medium text-gray-800">{{ visitor?.duration ?? '—' }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Date of Arrival</span>
-                        <span class="font-medium text-gray-800">{{ visitor?.arrival_at ?? '—' }}</span>
-                    </div>
-                    <!-- Visitor Category -->
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Visitor Category</span>
-                        <span class="font-medium text-gray-800">
-                            {{ visitor?.visitor_category ?? receipt?.fee_type ?? '—' }}
-                        </span>
-                    </div>
-                </div>
+                </template>
 
                 <hr class="my-3 border-dashed border-gray-300">
 
@@ -135,21 +181,19 @@ const print = () => window.print()
                             <span class="text-gray-500">No. of Visitors</span>
                             <span class="font-medium text-gray-800">{{ receipt?.number_of_visitors ?? '—' }}</span>
                         </div>
-                        <div class="flex justify-between">
+
+                        <!-- Individual: show per-head fee -->
+                        <div v-if="!isGroup" class="flex justify-between">
                             <span class="text-gray-500">Fee per Visitor</span>
                             <span class="font-medium text-gray-800">
                                 PHP {{ receipt?.amount != null ? Number(receipt.amount).toFixed(2) : '—' }}
                             </span>
                         </div>
-                        <!-- Calculation breakdown -->
-                        <div class="flex justify-between text-xs text-gray-400 italic">
-                            <span>
-                                {{ visitor?.visitor_category ?? receipt?.fee_type }}
-                                × {{ receipt?.number_of_visitors }}
-                            </span>
-                            <span>
-                                = PHP {{ receipt?.total_amount != null ? Number(receipt.total_amount).toFixed(2) : '—' }}
-                            </span>
+
+                        <!-- Calculation line -->
+                        <div v-if="!isGroup" class="flex justify-between text-xs text-gray-400 italic">
+                            <span>{{ visitor?.visitor_category }} × {{ receipt?.number_of_visitors }}</span>
+                            <span>= PHP {{ receipt?.total_amount != null ? Number(receipt.total_amount).toFixed(2) : '—' }}</span>
                         </div>
                     </template>
 
@@ -161,11 +205,38 @@ const print = () => window.print()
                         <span class="text-gray-500">Date Collected</span>
                         <span class="font-medium text-gray-800">{{ receipt?.collected_at ?? '—' }}</span>
                     </div>
+
+                    <!-- Notes — expandable row, only shown when notes exist -->
+                    <div v-if="receipt?.notes" class="pt-1">
+                        <button
+                            type="button"
+                            @click="notesExpanded = !notesExpanded"
+                            class="flex items-center justify-between w-full text-left group">
+                            <span class="text-gray-500">Notes</span>
+                            <div class="flex items-center gap-1.5">
+                                <!-- Preview text when collapsed -->
+                                <span v-if="!notesExpanded"
+                                    class="text-gray-400 text-xs truncate max-w-[140px]">
+                                    {{ receipt.notes }}
+                                </span>
+                                <!-- Chevron icon -->
+                                <svg
+                                    class="w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0"
+                                    :class="notesExpanded ? 'rotate-180' : ''"
+                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </div>
+                        </button>
+                        <!-- Expanded notes content -->
+                        <div v-if="notesExpanded"
+                            class="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">
+                            {{ receipt.notes }}
+                        </div>
+                    </div>
                 </div>
 
                 <hr class="my-3 border-gray-300">
-
-                <!-- Total -->
                 <div class="flex justify-between font-bold text-base mt-2">
                     <span class="text-gray-800">Total Amount</span>
                     <span :class="receipt?.fee_type === 'Waived' ? 'text-amber-600' : 'text-green-700'">
@@ -184,7 +255,7 @@ const print = () => window.print()
                     Thank you for visiting!
                 </p>
 
-                <!-- Action buttons -->
+                <!-- Action buttons (hidden on print) -->
                 <div id="receipt-actions" class="flex justify-center gap-4 mt-6">
                     <button @click="print"
                         class="bg-gray-900 text-white font-bold py-2 px-6 rounded hover:bg-gray-700 text-sm">

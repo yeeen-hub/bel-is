@@ -2,29 +2,26 @@
 import { ref, computed } from 'vue'
 import { useForm, usePage, Link } from '@inertiajs/vue3'
 import PlainLayout from '@/Layouts/PlainLayout.vue'
+import DestinationChecklist from '@/Components/DestinationChecklist.vue'
 
-// ── Props from PublicRegController::create() ──────────────────────────────────
 const props = defineProps({
-    feeCategories: { type: Array, default: () => [] },
+    feeCategories:       { type: Array, default: () => [] },
+    barangayAttractions: { type: Array, default: () => [] },
 })
 
 const purposeOptions  = ['Tourism', 'Research', 'Event', 'Official Visit', 'Other']
 const durationOptions = ['1 day', '2 days', '3 days', '4-7 days', 'More than 1 week']
 
-// ── Mode toggle ───────────────────────────────────────────────────────────────
 const mode = ref('single')
-
 const openPurpose  = ref(false)
 const openDuration = ref(false)
-const openCategory = ref(false)   // ← NEW
+const openCategory = ref(false)
 
-// ── Flash (success screen data) ───────────────────────────────────────────────
+// ── Flash ─────────────────────────────────────────────────────────────────────
 const page          = usePage()
 const flash         = computed(() => page.props.flash ?? {})
-
 const submitted     = computed(() => flash.value.success === true || flash.value.success === 'true')
 const flashMode     = computed(() => flash.value.mode ?? 'single')
-
 const referenceCode = computed(() => flash.value.reference_code ?? '')
 const fullName      = computed(() => flash.value.full_name ?? '')
 const groupMembers  = computed(() => flash.value.members ?? [])
@@ -34,21 +31,22 @@ const qrUrl = (code) =>
     code ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(code)}` : ''
 
 // ── Category helper ───────────────────────────────────────────────────────────
-const categoryLabel = (cat) => cat.age_range
+const categoryLabel = (cat) => cat?.age_range
     ? `${cat.category} (${cat.age_range}) — ₱${cat.fee}`
-    : `${cat.category} — ₱${cat.fee}`
+    : `${cat?.category ?? ''} — ₱${cat?.fee ?? ''}`
 
 // ── Individual form ───────────────────────────────────────────────────────────
 const form = useForm({
-    first_name:        '',
-    last_name:         '',
-    municipality:      '',
-    province:          '',
-    purpose:           '',
-    purpose_other:     '',
-    duration_of_stay:  '',
-    contact_number:    '',
-    visitor_category:  '',   // ← NEW
+    first_name:       '',
+    last_name:        '',
+    municipality:     '',
+    province:         '',
+    purpose:          '',
+    purpose_other:    '',
+    duration_of_stay: '',
+    contact_number:   '',
+    visitor_category: '',
+    destinations:     [],   // ← NEW
 })
 
 const submit = () => {
@@ -60,18 +58,19 @@ const submit = () => {
 
 // ── Group form ────────────────────────────────────────────────────────────────
 const blankMember = () => ({
-    first_name:        '',
-    last_name:         '',
-    municipality:      '',
-    province:          '',
-    purpose:           '',
-    purpose_other:     '',
-    duration_of_stay:  '',
-    contact_number:    '',
-    visitor_category:  '',   // ← NEW
-    openPurpose:       false,
-    openDuration:      false,
-    openCategory:      false,  // ← NEW
+    first_name:       '',
+    last_name:        '',
+    municipality:     '',
+    province:         '',
+    purpose:          '',
+    purpose_other:    '',
+    duration_of_stay: '',
+    contact_number:   '',
+    visitor_category: '',
+    destinations:     [],   // ← NEW
+    openPurpose:      false,
+    openDuration:     false,
+    openCategory:     false,
 })
 
 const members   = ref([blankMember()])
@@ -89,24 +88,22 @@ const cloneFromLeader = (i) => {
     m.purpose          = leader.purpose
     m.purpose_other    = leader.purpose_other
     m.duration_of_stay = leader.duration_of_stay
-    // visitor_category intentionally NOT cloned — each person may differ
+    // destinations intentionally NOT cloned
 }
 
-// ── Client-side validation ────────────────────────────────────────────────────
 const memberErrors = ref([])
-
 const validateMembers = () => {
     memberErrors.value = members.value.map(m => {
         const e = {}
-        if (!m.first_name.trim())    e.first_name        = 'First name is required.'
-        if (!m.last_name.trim())     e.last_name         = 'Last name is required.'
-        if (!m.municipality.trim())  e.municipality      = 'Municipality is required.'
-        if (!m.province.trim())      e.province          = 'Province is required.'
-        if (!m.purpose)              e.purpose           = 'Purpose is required.'
+        if (!m.first_name.trim())   e.first_name        = 'First name is required.'
+        if (!m.last_name.trim())    e.last_name         = 'Last name is required.'
+        if (!m.municipality.trim()) e.municipality      = 'Municipality is required.'
+        if (!m.province.trim())     e.province          = 'Province is required.'
+        if (!m.purpose)             e.purpose           = 'Purpose is required.'
         if (m.purpose === 'Other' && !m.purpose_other?.trim())
-                                     e.purpose_other     = 'Please specify the purpose.'
-        if (!m.duration_of_stay)     e.duration_of_stay  = 'Duration is required.'
-        if (!m.visitor_category)     e.visitor_category  = 'Category is required.'  // ← NEW
+                                    e.purpose_other     = 'Please specify the purpose.'
+        if (!m.duration_of_stay)    e.duration_of_stay  = 'Duration is required.'
+        if (!m.visitor_category)    e.visitor_category  = 'Category is required.'
         return e
     })
     return memberErrors.value.every(e => Object.keys(e).length === 0)
@@ -115,15 +112,16 @@ const validateMembers = () => {
 const submitGroup = () => {
     if (!validateMembers()) return
     groupForm.members = members.value.map(m => ({
-        first_name:        m.first_name,
-        last_name:         m.last_name,
-        municipality:      m.municipality,
-        province:          m.province,
-        purpose:           m.purpose,
-        purpose_other:     m.purpose === 'Other' ? m.purpose_other : '',
-        duration_of_stay:  m.duration_of_stay,
-        contact_number:    m.contact_number || '',
-        visitor_category:  m.visitor_category,   // ← NEW
+        first_name:       m.first_name,
+        last_name:        m.last_name,
+        municipality:     m.municipality,
+        province:         m.province,
+        purpose:          m.purpose,
+        purpose_other:    m.purpose === 'Other' ? m.purpose_other : '',
+        duration_of_stay: m.duration_of_stay,
+        contact_number:   m.contact_number || '',
+        visitor_category: m.visitor_category,
+        destinations:     m.destinations,   // ← NEW
     }))
     groupForm.post(route('pre-register.group'), {
         preserveScroll: true,
@@ -136,19 +134,15 @@ const submitGroup = () => {
     <PlainLayout>
         <div class="min-h-screen bg-gray-50">
 
-            <!-- ══════════════════════════════════════════════════════════════ -->
-            <!-- SUCCESS SCREEN                                                -->
-            <!-- ══════════════════════════════════════════════════════════════ -->
+            <!-- ══════════ SUCCESS SCREEN ══════════ -->
             <div v-if="submitted" class="px-4 py-16">
 
-                <!-- Single success -->
                 <div v-if="flashMode === 'single'" class="flex items-center justify-center">
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 max-w-md w-full text-center">
                         <div class="flex justify-center mb-4">
                             <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
                                 <svg class="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 24 24">
-                                    <path fill-rule="evenodd" clip-rule="evenodd"
-                                        d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12ZM16.0303 8.96967C16.3232 9.26256 16.3232 9.73744 16.0303 10.0303L11.0303 15.0303C10.7374 15.3232 10.2626 15.3232 9.96967 15.0303L7.96967 13.0303C7.67678 12.7374 7.67678 12.2626 7.96967 11.9697C8.26256 11.6768 8.73744 11.6768 9.03033 11.9697L10.5 13.4393L12.7348 11.2045L14.9697 8.96967C15.2626 8.67678 15.7374 8.67678 16.0303 8.96967Z" />
+                                    <path fill-rule="evenodd" clip-rule="evenodd" d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12ZM16.0303 8.96967C16.3232 9.26256 16.3232 9.73744 16.0303 10.0303L11.0303 15.0303C10.7374 15.3232 10.2626 15.3232 9.96967 15.0303L7.96967 13.0303C7.67678 12.7374 7.67678 12.2626 7.96967 11.9697C8.26256 11.6768 8.73744 11.6768 9.03033 11.9697L10.5 13.4393L12.7348 11.2045L14.9697 8.96967C15.2626 8.67678 15.7374 8.67678 16.0303 8.96967Z" />
                                 </svg>
                             </div>
                         </div>
@@ -163,63 +157,49 @@ const submitGroup = () => {
                         </div>
                         <div class="flex flex-col items-center mb-6">
                             <p class="text-xs text-gray-400 mb-3">Or let staff scan this QR code</p>
-                            <img :src="qrUrl(referenceCode)" :alt="referenceCode"
-                                class="w-44 h-44 border border-gray-200 rounded-xl p-2" />
+                            <img :src="qrUrl(referenceCode)" :alt="referenceCode" class="w-44 h-44 border border-gray-200 rounded-xl p-2" />
                         </div>
                         <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-6 text-left">
                             <p class="text-sm font-semibold text-amber-800">📸 Screenshot this screen</p>
-                            <p class="text-xs text-amber-700 mt-1">
-                                Show your reference code or QR at the Bel-is Tourism Hub checkpoint.
-                                Pay the environmental fee based on your selected category to complete your entry.
-                            </p>
+                            <p class="text-xs text-amber-700 mt-1">Show your reference code or QR at the Bel-is Tourism Hub checkpoint. Pay the environmental fee based on your selected category to complete your entry.</p>
                         </div>
-                        <Link :href="route('home')"
-                            class="block w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-gray-700 transition text-sm text-center">
+                        <Link :href="route('home')" class="block w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-gray-700 transition text-sm text-center">
                             Back to Bel-is Website
                         </Link>
                     </div>
                 </div>
 
-                <!-- Group success -->
                 <div v-else-if="flashMode === 'group'" class="flex items-center justify-center">
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 max-w-md w-full text-center">
                         <div class="flex justify-center mb-4">
                             <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
                                 <svg class="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 24 24">
-                                    <path fill-rule="evenodd" clip-rule="evenodd"
-                                        d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12ZM16.0303 8.96967C16.3232 9.26256 16.3232 9.73744 16.0303 10.0303L11.0303 15.0303C10.7374 15.3232 10.2626 15.3232 9.96967 15.0303L7.96967 13.0303C7.67678 12.7374 7.67678 12.2626 7.96967 11.9697C8.26256 11.6768 8.73744 11.6768 9.03033 11.9697L10.5 13.4393L12.7348 11.2045L14.9697 8.96967C15.2626 8.67678 15.7374 8.67678 16.0303 8.96967Z" />
+                                    <path fill-rule="evenodd" clip-rule="evenodd" d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12ZM16.0303 8.96967C16.3232 9.26256 16.3232 9.73744 16.0303 10.0303L11.0303 15.0303C10.7374 15.3232 10.2626 15.3232 9.96967 15.0303L7.96967 13.0303C7.67678 12.7374 7.67678 12.2626 7.96967 11.9697C8.26256 11.6768 8.73744 11.6768 9.03033 11.9697L10.5 13.4393L12.7348 11.2045L14.9697 8.96967C15.2626 8.67678 15.7374 8.67678 16.0303 8.96967Z" />
                                 </svg>
                             </div>
                         </div>
                         <h1 class="text-2xl font-bold text-gray-800 mb-1">Your Group is Pre-Registered!</h1>
-                        <p class="text-gray-500 text-sm mb-6">
-                            {{ groupMembers.length }} member(s) registered.
-                        </p>
+                        <p class="text-gray-500 text-sm mb-6">{{ groupMembers.length }} member(s) registered.</p>
                         <div class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl px-6 py-5 mb-6">
                             <p class="text-xs text-gray-400 uppercase tracking-widest mb-2">Group Reference Code</p>
                             <p class="text-4xl font-mono font-bold text-gray-900 tracking-widest">{{ groupCode }}</p>
                         </div>
                         <div class="flex flex-col items-center mb-6">
-                            <img :src="qrUrl(groupCode)" :alt="groupCode"
-                                class="w-44 h-44 border border-gray-200 rounded-xl p-2" />
+                            <img :src="qrUrl(groupCode)" :alt="groupCode" class="w-44 h-44 border border-gray-200 rounded-xl p-2" />
                         </div>
-                        <Link :href="route('home')"
-                            class="block w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-gray-700 transition text-sm text-center">
+                        <Link :href="route('home')" class="block w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-gray-700 transition text-sm text-center">
                             Back to Bel-is Website
                         </Link>
                     </div>
                 </div>
             </div>
 
-            <!-- ══════════════════════════════════════════════════════════════ -->
-            <!-- REGISTRATION FORM                                             -->
-            <!-- ══════════════════════════════════════════════════════════════ -->
+            <!-- ══════════ REGISTRATION FORM ══════════ -->
             <div v-else class="py-12 px-4">
 
                 <!-- Back link -->
                 <div class="max-w-2xl mx-auto mb-6">
-                    <Link :href="route('home')"
-                        class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition">
+                    <Link :href="route('home')" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                         </svg>
@@ -229,12 +209,10 @@ const submitGroup = () => {
 
                 <!-- Header -->
                 <div class="max-w-2xl mx-auto text-center mb-8">
-                    <img src="/images/brgylogo.png" alt="Barangay Bel-is"
-                        class="w-16 h-16 rounded-full mx-auto mb-4 border border-gray-200" />
+                    <img src="/images/brgylogo.png" alt="Barangay Bel-is" class="w-16 h-16 rounded-full mx-auto mb-4 border border-gray-200" />
                     <h1 class="text-3xl font-bold text-gray-800">Visitor Pre-Registration</h1>
                     <p class="text-gray-500 text-sm mt-2 max-w-md mx-auto">
-                        Fill out this form before arriving at Barangay Bel-is.
-                        You will receive a reference code to show at the checkpoint.
+                        Fill out this form before arriving at Barangay Bel-is. You will receive a reference code to show at the checkpoint.
                     </p>
                 </div>
 
@@ -243,17 +221,12 @@ const submitGroup = () => {
                     <div class="flex gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
                         <button type="button" @click="mode = 'single'"
                             :class="mode === 'single' ? 'bg-gray-900 text-white shadow' : 'text-gray-500 hover:bg-gray-50'"
-                            class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all">
-                            Individual
-                        </button>
+                            class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all">Individual</button>
                         <button type="button" @click="mode = 'group'"
                             :class="mode === 'group' ? 'bg-gray-900 text-white shadow' : 'text-gray-500 hover:bg-gray-50'"
                             class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all">
                             Group
-                            <span v-if="mode === 'group'"
-                                class="ml-1.5 text-xs font-bold bg-white text-gray-900 px-1.5 py-0.5 rounded-full">
-                                {{ memberCount }}
-                            </span>
+                            <span v-if="mode === 'group'" class="ml-1.5 text-xs font-bold bg-white text-gray-900 px-1.5 py-0.5 rounded-full">{{ memberCount }}</span>
                         </button>
                     </div>
                 </div>
@@ -267,10 +240,7 @@ const submitGroup = () => {
                             </svg>
                             <div>
                                 <p class="text-sm font-semibold text-blue-800">Privacy Notice (RA 10173)</p>
-                                <p class="text-xs text-blue-700 mt-1 leading-relaxed">
-                                    Your personal information is collected solely for tourism management and
-                                    environmental fee recording by Barangay Bel-is, Buruanga, Aklan.
-                                </p>
+                                <p class="text-xs text-blue-700 mt-1 leading-relaxed">Your personal information is collected solely for tourism management and environmental fee recording by Barangay Bel-is, Buruanga, Aklan.</p>
                             </div>
                         </div>
                     </div>
@@ -278,8 +248,7 @@ const submitGroup = () => {
 
                 <!-- ── INDIVIDUAL FORM ── -->
                 <div v-if="mode === 'single'" class="max-w-2xl mx-auto">
-                    <form @submit.prevent="submit"
-                        class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-6">
+                    <form @submit.prevent="submit" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-6">
 
                         <!-- Name -->
                         <div class="grid grid-cols-2 gap-5">
@@ -320,24 +289,21 @@ const submitGroup = () => {
                                 class="w-full border border-gray-200 rounded-lg py-2.5 px-4 text-sm focus:ring-2 focus:ring-gray-300 focus:outline-none" />
                         </div>
 
-                        <!-- ── NEW: Visitor Category ─────────────────────────── -->
+                        <!-- Visitor Category -->
                         <div class="relative">
-                            <label class="block text-gray-700 text-sm font-semibold mb-1.5">
-                                Visitor Category *
-                            </label>
+                            <label class="block text-gray-700 text-sm font-semibold mb-1.5">Visitor Category *</label>
                             <button type="button" @mousedown.prevent @click="openCategory = !openCategory"
                                 class="w-full border border-gray-200 rounded-lg py-2.5 px-4 text-left bg-white text-sm flex items-center justify-between">
                                 <span :class="form.visitor_category ? 'text-gray-800' : 'text-gray-400'">
                                     {{ form.visitor_category
-                                        ? categoryLabel(feeCategories.find(c => c.category === form.visitor_category) ?? { category: form.visitor_category, fee: '' })
+                                        ? categoryLabel(feeCategories.find(c => c.category === form.visitor_category))
                                         : 'Select your category' }}
                                 </span>
                                 <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>
-                            <ul v-show="openCategory"
-                                class="absolute z-10 w-full mt-1 border border-gray-200 rounded-lg bg-white shadow-lg">
+                            <ul v-show="openCategory" class="absolute z-10 w-full mt-1 border border-gray-200 rounded-lg bg-white shadow-lg">
                                 <li v-for="cat in feeCategories" :key="cat.id"
                                     @mousedown.prevent @click="form.visitor_category = cat.category; openCategory = false"
                                     class="px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm border-b last:border-0 flex items-center justify-between"
@@ -350,14 +316,23 @@ const submitGroup = () => {
                                 </li>
                             </ul>
                             <p v-if="form.errors.visitor_category" class="text-red-500 text-xs mt-1">{{ form.errors.visitor_category }}</p>
-                            <!-- Fee note for chosen category -->
                             <div v-if="form.visitor_category" class="mt-2">
                                 <span class="inline-flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-full">
-                                    Environmental fee:
-                                    ₱{{ feeCategories.find(c => c.category === form.visitor_category)?.fee ?? '—' }}
-                                    to be paid at the checkpoint
+                                    Environmental fee: ₱{{ feeCategories.find(c => c.category === form.visitor_category)?.fee ?? '—' }} to be paid at the checkpoint
                                 </span>
                             </div>
+                        </div>
+
+                        <!-- ── NEW: Destination ──────────────────────────── -->
+                        <div>
+                            <label class="block text-gray-700 text-sm font-semibold mb-2">
+                                Where are you going?
+                                <span class="text-gray-400 font-normal ml-1">(optional — check all that apply)</span>
+                            </label>
+                            <DestinationChecklist
+                                v-model="form.destinations"
+                                :attractions="barangayAttractions"
+                            />
                         </div>
 
                         <!-- Purpose & Duration -->
@@ -366,12 +341,9 @@ const submitGroup = () => {
                                 <label class="block text-gray-700 text-sm font-semibold mb-1.5">Purpose *</label>
                                 <button type="button" @mousedown.prevent @click="openPurpose = !openPurpose"
                                     class="w-full border border-gray-200 rounded-lg py-2.5 px-4 text-left bg-white text-sm">
-                                    <span :class="form.purpose ? 'text-gray-800' : 'text-gray-400'">
-                                        {{ form.purpose || 'Select purpose' }}
-                                    </span>
+                                    <span :class="form.purpose ? 'text-gray-800' : 'text-gray-400'">{{ form.purpose || 'Select purpose' }}</span>
                                 </button>
-                                <ul v-show="openPurpose"
-                                    class="absolute z-10 w-full mt-1 border border-gray-200 rounded-lg bg-white shadow-lg">
+                                <ul v-show="openPurpose" class="absolute z-10 w-full mt-1 border border-gray-200 rounded-lg bg-white shadow-lg">
                                     <li v-for="opt in purposeOptions" :key="opt"
                                         @mousedown.prevent @click="form.purpose = opt; openPurpose = false"
                                         class="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm">{{ opt }}</li>
@@ -382,12 +354,9 @@ const submitGroup = () => {
                                 <label class="block text-gray-700 text-sm font-semibold mb-1.5">Duration *</label>
                                 <button type="button" @mousedown.prevent @click="openDuration = !openDuration"
                                     class="w-full border border-gray-200 rounded-lg py-2.5 px-4 text-left bg-white text-sm">
-                                    <span :class="form.duration_of_stay ? 'text-gray-800' : 'text-gray-400'">
-                                        {{ form.duration_of_stay || 'Select duration' }}
-                                    </span>
+                                    <span :class="form.duration_of_stay ? 'text-gray-800' : 'text-gray-400'">{{ form.duration_of_stay || 'Select duration' }}</span>
                                 </button>
-                                <ul v-show="openDuration"
-                                    class="absolute z-10 w-full mt-1 border border-gray-200 rounded-lg bg-white shadow-lg">
+                                <ul v-show="openDuration" class="absolute z-10 w-full mt-1 border border-gray-200 rounded-lg bg-white shadow-lg">
                                     <li v-for="opt in durationOptions" :key="opt"
                                         @mousedown.prevent @click="form.duration_of_stay = opt; openDuration = false"
                                         class="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm">{{ opt }}</li>
@@ -396,7 +365,6 @@ const submitGroup = () => {
                             </div>
                         </div>
 
-                        <!-- Purpose Other -->
                         <div v-if="form.purpose === 'Other'">
                             <label class="block text-gray-700 text-sm font-semibold mb-1.5">Please specify *</label>
                             <input v-model="form.purpose_other" type="text"
@@ -420,62 +388,53 @@ const submitGroup = () => {
                         <!-- Card header -->
                         <div class="flex items-center justify-between px-5 py-3 rounded-t-2xl"
                             :class="i === 0 ? 'bg-gray-900 text-white' : 'bg-gray-50'">
-                            <span class="text-xs font-bold uppercase tracking-wider">
-                                {{ i === 0 ? '★ Group Leader' : `Member ${i + 1}` }}
-                            </span>
+                            <span class="text-xs font-bold uppercase tracking-wider">{{ i === 0 ? '★ Group Leader' : `Member ${i + 1}` }}</span>
                             <div class="flex items-center gap-2">
-                                <button v-if="i > 0" type="button" @click="cloneFromLeader(i)"
-                                    class="text-xs text-blue-500 font-bold border border-blue-200 px-2 py-1 rounded">
-                                    Clone Location
-                                </button>
-                                <button v-if="i > 0" type="button" @click="removeMember(i)"
-                                    class="text-xs text-red-400 font-bold px-2 py-1">
-                                    Remove
-                                </button>
+                                <button v-if="i > 0" type="button" @click="cloneFromLeader(i)" class="text-xs text-blue-500 font-bold border border-blue-200 px-2 py-1 rounded">Clone Location</button>
+                                <button v-if="i > 0" type="button" @click="removeMember(i)" class="text-xs text-red-400 font-bold px-2 py-1">Remove</button>
                             </div>
                         </div>
 
                         <!-- Card body -->
-                        <div class="p-6 grid grid-cols-2 gap-4">
-                            <div>
-                                <input v-model="m.first_name" placeholder="First Name"
-                                    class="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-gray-300 focus:outline-none" />
-                                <p v-if="memberErrors[i]?.first_name" class="text-red-500 text-xs mt-1">{{ memberErrors[i].first_name }}</p>
-                            </div>
-                            <div>
-                                <input v-model="m.last_name" placeholder="Last Name"
-                                    class="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-gray-300 focus:outline-none" />
-                                <p v-if="memberErrors[i]?.last_name" class="text-red-500 text-xs mt-1">{{ memberErrors[i].last_name }}</p>
-                            </div>
-                            <div>
-                                <input v-model="m.municipality" placeholder="Municipality"
-                                    class="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-gray-300 focus:outline-none" />
-                                <p v-if="memberErrors[i]?.municipality" class="text-red-500 text-xs mt-1">{{ memberErrors[i].municipality }}</p>
-                            </div>
-                            <div>
-                                <input v-model="m.province" placeholder="Province"
-                                    class="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-gray-300 focus:outline-none" />
-                                <p v-if="memberErrors[i]?.province" class="text-red-500 text-xs mt-1">{{ memberErrors[i].province }}</p>
+                        <div class="p-6 space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <input v-model="m.first_name" placeholder="First Name"
+                                        class="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-gray-300 focus:outline-none" />
+                                    <p v-if="memberErrors[i]?.first_name" class="text-red-500 text-xs mt-1">{{ memberErrors[i].first_name }}</p>
+                                </div>
+                                <div>
+                                    <input v-model="m.last_name" placeholder="Last Name"
+                                        class="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-gray-300 focus:outline-none" />
+                                    <p v-if="memberErrors[i]?.last_name" class="text-red-500 text-xs mt-1">{{ memberErrors[i].last_name }}</p>
+                                </div>
+                                <div>
+                                    <input v-model="m.municipality" placeholder="Municipality"
+                                        class="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-gray-300 focus:outline-none" />
+                                    <p v-if="memberErrors[i]?.municipality" class="text-red-500 text-xs mt-1">{{ memberErrors[i].municipality }}</p>
+                                </div>
+                                <div>
+                                    <input v-model="m.province" placeholder="Province"
+                                        class="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-gray-300 focus:outline-none" />
+                                    <p v-if="memberErrors[i]?.province" class="text-red-500 text-xs mt-1">{{ memberErrors[i].province }}</p>
+                                </div>
                             </div>
 
-                            <!-- ── NEW: Category per member ──────────────────── -->
-                            <div class="col-span-2 relative">
-                                <label class="block text-gray-600 text-xs font-semibold mb-1.5">
-                                    Visitor Category *
-                                </label>
+                            <!-- Visitor Category -->
+                            <div class="relative">
+                                <label class="block text-gray-600 text-xs font-semibold mb-1.5">Visitor Category *</label>
                                 <button type="button" @click="m.openCategory = !m.openCategory"
                                     class="w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-left flex items-center justify-between focus:outline-none">
                                     <span :class="m.visitor_category ? 'text-gray-800' : 'text-gray-400'">
                                         {{ m.visitor_category
-                                            ? categoryLabel(feeCategories.find(c => c.category === m.visitor_category) ?? { category: m.visitor_category, fee: '' })
+                                            ? categoryLabel(feeCategories.find(c => c.category === m.visitor_category))
                                             : 'Select category' }}
                                     </span>
                                     <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                     </svg>
                                 </button>
-                                <ul v-show="m.openCategory"
-                                    class="absolute z-20 w-full mt-1 border border-gray-200 rounded-lg bg-white shadow-lg max-h-44 overflow-auto">
+                                <ul v-show="m.openCategory" class="absolute z-20 w-full mt-1 border border-gray-200 rounded-lg bg-white shadow-lg max-h-44 overflow-auto">
                                     <li v-for="cat in feeCategories" :key="cat.id"
                                         @click="m.visitor_category = cat.category; m.openCategory = false"
                                         class="px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm border-b last:border-0 flex items-center justify-between"
@@ -488,7 +447,6 @@ const submitGroup = () => {
                                     </li>
                                 </ul>
                                 <p v-if="memberErrors[i]?.visitor_category" class="text-red-500 text-xs mt-1">{{ memberErrors[i].visitor_category }}</p>
-                                <!-- Fee pill -->
                                 <div v-if="m.visitor_category" class="mt-1.5">
                                     <span class="inline-flex items-center gap-1 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
                                         ₱{{ feeCategories.find(c => c.category === m.visitor_category)?.fee ?? '—' }} at checkpoint
@@ -496,21 +454,32 @@ const submitGroup = () => {
                                 </div>
                             </div>
 
+                            <!-- ── NEW: Destination per member ── -->
                             <div>
-                                <select v-model="m.purpose"
-                                    class="w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white focus:outline-none">
-                                    <option value="" disabled>Select Purpose</option>
-                                    <option v-for="o in purposeOptions" :key="o">{{ o }}</option>
-                                </select>
-                                <p v-if="memberErrors[i]?.purpose" class="text-red-500 text-xs mt-1">{{ memberErrors[i].purpose }}</p>
+                                <label class="block text-gray-600 text-xs font-semibold mb-2">
+                                    Where are you going? <span class="text-gray-400 font-normal">(optional)</span>
+                                </label>
+                                <DestinationChecklist
+                                    v-model="m.destinations"
+                                    :attractions="barangayAttractions"
+                                />
                             </div>
-                            <div>
-                                <select v-model="m.duration_of_stay"
-                                    class="w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white focus:outline-none">
-                                    <option value="" disabled>Select Duration</option>
-                                    <option v-for="o in durationOptions" :key="o">{{ o }}</option>
-                                </select>
-                                <p v-if="memberErrors[i]?.duration_of_stay" class="text-red-500 text-xs mt-1">{{ memberErrors[i].duration_of_stay }}</p>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <select v-model="m.purpose" class="w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white focus:outline-none">
+                                        <option value="" disabled>Select Purpose</option>
+                                        <option v-for="o in purposeOptions" :key="o">{{ o }}</option>
+                                    </select>
+                                    <p v-if="memberErrors[i]?.purpose" class="text-red-500 text-xs mt-1">{{ memberErrors[i].purpose }}</p>
+                                </div>
+                                <div>
+                                    <select v-model="m.duration_of_stay" class="w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white focus:outline-none">
+                                        <option value="" disabled>Select Duration</option>
+                                        <option v-for="o in durationOptions" :key="o">{{ o }}</option>
+                                    </select>
+                                    <p v-if="memberErrors[i]?.duration_of_stay" class="text-red-500 text-xs mt-1">{{ memberErrors[i].duration_of_stay }}</p>
+                                </div>
                             </div>
 
                             <div v-if="m.purpose === 'Other'" class="col-span-2">
@@ -520,7 +489,7 @@ const submitGroup = () => {
                             </div>
 
                             <input v-model="m.contact_number" placeholder="Phone (optional)"
-                                class="col-span-2 border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-gray-300 focus:outline-none" />
+                                class="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-gray-300 focus:outline-none" />
                         </div>
                     </div>
 

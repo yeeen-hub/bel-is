@@ -15,16 +15,15 @@
         <h1 class="font-heading text-gray-800 font-semibold text-2xl"> Dashboard </h1>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 p-4 gap-4 mt-4">
- 
-                    <div class="bg-white p-4 rounded-lg shadow-md">
-                        <h2 class="text-gray-800 font-medium text-sm"> Total Revenue </h2>
-                        <p class="text-2xl font-bold text-gray-800"> 24, 900 php </p>
-                    </div>
-                    <div class="bg-white p-4 rounded-lg shadow-md">
-                        <h2 class="text-gray-800 font-medium text-sm"> Avereage Daily Revenue </h2>
-                        <p class="text-2xl font-bold text-gray-800"> 803 php </p>
-                    </div>
-                </div>
+            <div class="bg-white p-4 rounded-lg shadow-md">
+                <h2 class="text-gray-800 font-medium text-sm"> Total Revenue </h2>
+                <p class="text-2xl font-bold text-gray-800"> {{ totalRevenue }} php </p>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow-md">
+                <h2 class="text-gray-800 font-medium text-sm"> Avereage Daily Revenue </h2>
+                <p class="text-2xl font-bold text-gray-800"> {{ avgDaily }} php </p>
+            </div>
+        </div>
 
         <div class="mt-5">
             <label class="block text-gray-500 text-sm mb-2">Area</label>
@@ -72,7 +71,7 @@
                     />
                     </div>
 
-                    <button class="h-10 bg-gray-900 text-white font-bold px-4 text-sm rounded">
+                    <button @click="applyFilters" class="h-10 bg-gray-900 text-white font-bold px-4 text-sm rounded">
                     Enter
                     </button>
 
@@ -101,60 +100,58 @@
             </thead>
 
             <tbody>
-                <tr @click="showModal = true" class="cursor-pointer hover:bg-gray-100">
-                    <td class="p-2 border-b">Regular</td>
-                    <td class="p-2 border-b">John Doe</td>
-                    <td class="p-2 border-b"></td>
+                <tr v-for="(row, i) in rows" :key="i"
+                    class="cursor-pointer hover:bg-gray-100">
+                    <td class="p-2 border-b">{{ row.visit_category }}</td>
+                    <td class="p-2 border-b">{{ row.full_name }}</td>
+                    <td class="p-2 border-b">{{ row.revenue }}</td>
+                </tr>
+
+                <tr v-if="rows.length === 0">
+                    <td colspan="3" class="p-4 text-center text-gray-400 text-sm">No data found.</td>
                 </tr>
             </tbody>
         </table>
 
-       
     </LandingLayout>
 </template>
 
 <script>
 import LandingLayout from '@/Layouts/SidebarLayout.vue';
-
-export default {
-  components: { LandingLayout }
-}
+export default { components: { LandingLayout } }
 </script>
 
 <script setup>
-import { Link } from '@inertiajs/vue3'
-import { ref, onMounted } from 'vue';
+import { router } from '@inertiajs/vue3'
+import { ref, onMounted } from 'vue'
 
-const ddreports = ref('');
-const openDdreports = ref(false);
-const dropdownRef = ref(null);
-const brgyRef = ref(null);
-const ddbrgy = ref('')
-const openDdbrgy = ref(false)
+const props = defineProps({
+    rows:         { type: Array,  default: () => [] },
+    totalRevenue: { type: String, default: '0.00' },
+    avgDaily:     { type: String, default: '0.00' },
+    filters:      { type: Object, default: () => ({}) },
+})
 
+const brgyRef           = ref(null)
+const ddbrgy            = ref(props.filters.area      ?? '')
+const openDdbrgy        = ref(false)
+const startDate         = ref(props.filters.date_from ?? '')
+const endDate           = ref(props.filters.date_to   ?? '')
+const selectbgryOptions = ['Hinugtan', 'Bel-is Cove']
 
-const selectBrgy = (val) => {
-  ddbrgy.value = val
-  openDdbrgy.value = false
+const selectBrgy = (val) => { ddbrgy.value = val; openDdbrgy.value = false }
+
+const applyFilters = () => {
+    router.get(route('reports.fee-revenue'), {
+        date_from: startDate.value || undefined,
+        date_to:   endDate.value   || undefined,
+        area:      ddbrgy.value    || undefined,
+    }, { preserveState: true, replace: true })
 }
 
-const selectbgryOptions = [
-  'Hinugtan', 'Bel-is Cove'
-];
-
-
 onMounted(() => {
-  document.addEventListener('click', (e) => {
-    if (!dropdownRef.value?.contains(e.target)) {
-      openDdreports.value = false;
-    }
-    
-    if (!brgyRef.value?.contains(e.target)) {
-      openDdbrgy.value = false
-    }
-
-  });
-});
-
-
+    document.addEventListener('click', (e) => {
+        if (!brgyRef.value?.contains(e.target)) openDdbrgy.value = false
+    })
+})
 </script>

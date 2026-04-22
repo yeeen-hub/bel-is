@@ -18,7 +18,7 @@
                 @click="openDdreports = !openDdreports"
                 class="w-full border py-2 px-3 rounded text-left"
             >
-                {{ ddreports || 'Overview' }}
+                {{ ddreports || 'Demographics' }}
             </button>
 
             <div v-if="openDdreports"
@@ -82,7 +82,7 @@
                     </div>
 
                     <!-- ENTER BUTTON -->
-                    <button class="h-10 bg-gray-900 text-white font-bold px-4 text-sm rounded">
+                    <button @click="applyFilters" class="h-10 bg-gray-900 text-white font-bold px-4 text-sm rounded">
                     Enter
                     </button>
 
@@ -110,18 +110,14 @@
             </thead>
 
             <tbody>
-                <tr @click="showModal = true" class="cursor-pointer hover:bg-gray-100">
-                    <td class="p-2 border-b">Kalibo, Aklan</td>
-                    <td class="p-2 border-b">320</td>
+                <tr v-for="(row, i) in rows" :key="i"
+                    class="cursor-pointer hover:bg-gray-100">
+                    <td class="p-2 border-b">{{ row.place_of_origin }}</td>
+                    <td class="p-2 border-b">{{ row.total_tourists }}</td>
                 </tr>
 
-                <tr>
-                    <td class="p-2 border-b">Iloilo, City</td>
-                    <td class="p-2 border-b">20</td>
-                </tr>
-                <tr>
-                    <td class="p-2 border-b">Manila, City</td>
-                    <td class="p-2 border-b">180</td>
+                <tr v-if="rows.length === 0">
+                    <td colspan="2" class="p-4 text-center text-gray-400 text-sm">No data found.</td>
                 </tr>
             </tbody>
         </table>
@@ -131,34 +127,44 @@
 
 <script>
 import LandingLayout from '@/Layouts/SidebarLayout.vue';
-
-export default {
-  components: { LandingLayout }
-}
+export default { components: { LandingLayout } }
 </script>
 
 <script setup>
-import { Link } from '@inertiajs/vue3'
-import { ref, onMounted } from 'vue';
+import { Link, router } from '@inertiajs/vue3'
+import { ref, onMounted } from 'vue'
 
-const ddreports = ref('');
-const openDdreports = ref(false);
-const dropdownRef = ref(null);
+const props = defineProps({
+    rows:    { type: Array,  default: () => [] },
+    filters: { type: Object, default: () => ({}) },
+})
 
-const purposeOptions = [
-  { label: 'Analytics', link: '/reports' }
-];
+const ddreports     = ref('')
+const openDdreports = ref(false)
+const dropdownRef   = ref(null)
+const brgyRef       = ref(null)
+const ddbrgy        = ref(props.filters.area      ?? '')
+const openDdbrgy    = ref(false)
+const startDate     = ref(props.filters.date_from ?? '')
+const endDate       = ref(props.filters.date_to   ?? '')
 
-const selectDdreports = (val) => {
-  ddreports.value = val;
-  openDdreports.value = false;
-};
+const purposeOptions    = [{ label: 'Overview', link: route('reports.analytics') }]
+const selectbgryOptions = ['Hinugtan', 'Bel-is Cove']
+
+const selectBrgy = (val) => { ddbrgy.value = val; openDdbrgy.value = false }
+
+const applyFilters = () => {
+    router.get(route('reports.demographics'), {
+        date_from: startDate.value || undefined,
+        date_to:   endDate.value   || undefined,
+        area:      ddbrgy.value    || undefined,
+    }, { preserveState: true, replace: true })
+}
 
 onMounted(() => {
-  document.addEventListener('click', (e) => {
-    if (!dropdownRef.value?.contains(e.target)) {
-      openDdreports.value = false;
-    }
-  });
-});
+    document.addEventListener('click', (e) => {
+        if (!dropdownRef.value?.contains(e.target)) openDdreports.value = false
+        if (!brgyRef.value?.contains(e.target))     openDdbrgy.value    = false
+    })
+})
 </script>
