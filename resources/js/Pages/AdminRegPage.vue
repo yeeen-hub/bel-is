@@ -253,14 +253,83 @@ const preRegBannerText = computed(() => {
     <LandingLayout>
 
         <!-- Top Bar -->
-        <div class="container mx-auto">
-            <div class="bg-gray-100 p-4 rounded-lg flex items-center gap-4">
+        <div class="container mx-auto px-2">
+            <div class="bg-gray-100 p-4 rounded-lg flex items-center gap-3">
+
                 <div class="relative flex-1">
-                    <input type="text" placeholder="Search..."
-                        class="w-25 p-2 rounded-lg border-transparent focus:border-gray-300 focus:ring-0" />
+                    <input v-model="search" type="text"
+                        placeholder="Search..."
+                        :class="[
+                            'w-full p-2 pl-8 rounded-lg border text-sm transition-colors duration-200',
+                            search
+                                ? 'border-gray-800 bg-white ring-1 ring-gray-800'
+                                : 'border-gray-300 bg-white focus:border-gray-400'
+                        ]" />
+                    <svg class="absolute left-2.5 top-2.5 w-4 h-4"
+                        :class="search ? 'text-gray-800' : 'text-gray-400'"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <span v-if="search"
+                        class="absolute right-2.5 top-2 text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                        searching...
+                    </span>
                 </div>
-                <FontAwesomeIcon icon="bell" />
-                <FontAwesomeIcon icon="user" />
+
+                <!-- Bell -->
+                <div class="relative" ref="bellRef">
+                    <button @click="toggleNotifications" class="relative focus:outline-none">
+                        <FontAwesomeIcon icon="bell" class="text-gray-700 text-lg" />
+                        <span v-if="pendingFees > 0"
+                            class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                            {{ pendingFees > 9 ? '9+' : pendingFees }}
+                        </span>
+                    </button>
+
+                    <div v-if="showNotifications"
+                        class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                            <h3 class="font-semibold text-gray-800 text-sm">Notifications</h3>
+                            <span v-if="pendingFees > 0"
+                                class="bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">
+                                {{ pendingFees }} new
+                            </span>
+                        </div>
+                        <div class="max-h-72 overflow-y-auto">
+                            <div v-if="pendingFees > 0"
+                                class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 border-b border-gray-50">
+                                <div class="mt-0.5 flex-shrink-0">
+                                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-semibold text-gray-800">
+                                        {{ pendingFees }} unpaid environmental fee(s)
+                                    </p>
+                                    <p class="text-xs text-gray-500 mt-0.5">
+                                        These registrations are incomplete. Please collect payment.
+                                    </p>
+                                    <button
+                                        @click="feeStatus = 'Pending'; showNotifications = false; applyFilters()"
+                                        class="text-xs text-yellow-600 font-semibold mt-1 inline-block hover:underline">
+                                        Show Pending Records →
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-if="pendingFees === 0"
+                                class="px-4 py-8 text-center text-gray-400 text-sm">
+                                <FontAwesomeIcon icon="bell" class="text-gray-300 text-2xl mb-2 block mx-auto" />
+                                <p>No new notifications</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <FontAwesomeIcon icon="user" class="text-gray-700" />
             </div>
         </div>
 
@@ -273,22 +342,45 @@ const preRegBannerText = computed(() => {
             </div>
 
             <!-- Step Indicator -->
-            <div class="flex items-center justify-center mb-8">
-                <div class="flex items-center gap-2">
-                    <span class="bg-gray-800 text-white text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full">1</span>
-                    <span class="text-gray-800 font-medium text-sm">General Details</span>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-center mb-8 gap-4 sm:gap-0 px-2">
+                <!-- Step 1 -->
+                <div class="flex items-center gap-2 justify-center sm:justify-start">
+
+                    <span
+                        class="bg-gray-800 text-white text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full">
+                        1
+                    </span>
+                    <span class="text-gray-800 font-medium text-sm">
+                        General Details
+                    </span>
                 </div>
-                <div class="w-16 h-px bg-gray-300 mx-3"></div>
-                <div class="flex items-center gap-2">
-                    <span class="bg-gray-200 text-gray-500 text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full">2</span>
-                    <span class="text-gray-400 font-medium text-sm">Payment</span>
+
+                <div class="hidden sm:block w-16 h-px bg-gray-300 mx-3"></div>
+                <div class="flex items-center gap-2 justify-center sm:justify-start">
+                    <span
+                        class="bg-gray-200 text-gray-500 text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full">
+                        2
+                    </span>
+                    <span class="text-gray-400 font-medium text-sm">
+                        Payment
+                    </span>
                 </div>
-                <div class="w-16 h-px bg-gray-300 mx-3"></div>
-                <div class="flex items-center gap-2">
-                    <span class="bg-gray-200 text-gray-500 text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full">3</span>
-                    <span class="text-gray-400 font-medium text-sm">Receipt</span>
+
+                <div class="hidden sm:block w-16 h-px bg-gray-300 mx-3"></div>
+
+                <!-- Step 3 -->
+                <div class="flex items-center gap-2 justify-center sm:justify-start">
+                    <span
+                        class="bg-gray-200 text-gray-500 text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full">
+                        3
+                    </span>
+                    <span class="text-gray-400 font-medium text-sm">
+                        Receipt
+                    </span>
                 </div>
+
             </div>
+
 
             <!-- PRE-REGISTRATION LOOKUP -->
             <div class="max-w-2xl mx-auto mb-4">
@@ -322,13 +414,13 @@ const preRegBannerText = computed(() => {
                         <button type="button" @click="clearLookup" class="text-green-400 hover:text-red-500 text-xs font-bold ml-4">✕ Clear</button>
                     </div>
 
-                    <div v-if="!preRegData" class="flex gap-2">
+                    <div v-if="!preRegData" class="flex flex-col sm:flex-row gap-2">
                         <input v-model="refCode" type="text" placeholder="e.g. BEL-482951"
-                            class="flex-1 border border-gray-200 rounded-xl py-2.5 px-4 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-gray-300"
+                            class="flex-1 w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-gray-300"
                             @keyup.enter.prevent="lookupByCode" />
                         <button type="button" @click="lookupByCode"
                             :disabled="lookupLoading || !refCode.trim()"
-                            class="bg-gray-900 text-white text-sm font-bold px-5 py-2.5 rounded-xl disabled:opacity-50 hover:bg-gray-700 transition">
+                            class="w-full sm:w-auto bg-gray-900 text-white text-sm font-bold px-5 py-2.5 rounded-xl disabled:opacity-50 hover:bg-gray-700 transition">
                             {{ lookupLoading ? 'Searching...' : 'Find' }}
                         </button>
                     </div>
@@ -422,7 +514,7 @@ const preRegBannerText = computed(() => {
                     </div>
 
                     <!-- Name -->
-                    <div class="grid grid-cols-2 gap-5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
                             <label class="block text-gray-700 text-sm font-semibold mb-1.5">First Name</label>
                             <input v-model="form.first_name" :disabled="!!singleSearch.selected"
@@ -445,7 +537,7 @@ const preRegBannerText = computed(() => {
                             Place of Origin
                             <span v-if="singleSearch.selected || preRegData" class="text-blue-400 font-normal text-xs ml-1">(pre-filled — edit if changed)</span>
                         </label>
-                        <div class="grid grid-cols-2 gap-5">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <div>
                                 <label class="block text-gray-400 text-xs mb-1">Municipality</label>
                                 <input v-model="form.municipality" class="w-full border border-gray-200 rounded-lg py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" placeholder="Municipality" />
@@ -519,7 +611,7 @@ const preRegBannerText = computed(() => {
                     </div>
 
                     <!-- Purpose & Duration -->
-                    <div class="grid grid-cols-2 gap-5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div class="relative">
                             <label class="block text-gray-700 text-sm font-semibold mb-1.5">Purpose of Visit</label>
                             <button type="button" @click="openPurpose = !openPurpose"
@@ -634,7 +726,7 @@ const preRegBannerText = computed(() => {
                             </div>
 
                             <!-- Name -->
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                 <div>
                                     <label class="block text-gray-600 text-xs font-semibold mb-1.5">First Name</label>
                                     <input v-model="m.first_name" :disabled="!!m.search.selected"
@@ -650,7 +742,7 @@ const preRegBannerText = computed(() => {
                             </div>
 
                             <!-- Origin -->
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                 <div>
                                     <label class="block text-gray-600 text-xs font-semibold mb-1.5">Municipality</label>
                                     <input v-model="m.municipality" class="w-full border border-gray-200 rounded-lg py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" placeholder="Municipality" />
@@ -712,7 +804,7 @@ const preRegBannerText = computed(() => {
                             </div>
 
                             <!-- Purpose & Duration -->
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                 <div class="relative">
                                     <label class="block text-gray-600 text-xs font-semibold mb-1.5">Purpose of Visit</label>
                                     <button type="button" @click="m.openPurpose = !m.openPurpose"
@@ -752,7 +844,7 @@ const preRegBannerText = computed(() => {
                     </button>
 
                     <!-- Summary & Submit -->
-                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-center justify-between">
+                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
                             <p class="text-sm text-gray-800 font-semibold">{{ memberCount }} visitor(s) in this group</p>
                             <p class="text-xs text-gray-400 mt-0.5">Payment will be collected for each member one by one.</p>

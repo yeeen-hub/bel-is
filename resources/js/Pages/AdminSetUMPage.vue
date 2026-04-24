@@ -2,14 +2,78 @@
     <LandingLayout>
         <!-- Top Navigation / Search -->
         <div class="container mx-auto">
-            <div class="bg-gray-100 p-4 rounded-lg flex items-center gap-4">
+            <div class="bg-gray-100 p-4 rounded-lg flex items-center gap-3">
+
                 <div class="relative flex-1">
-                    <input v-model="search" type="text" placeholder="Search..." class="w-25 p-2 rounded-lg border-transparent focus:border-gray-300 focus:ring-0" />
-                </div> 
-                <div class="flex gap-4 text-gray-500">
-                    <button class="hover:text-gray-800">🔔</button>
-                    <button class="hover:text-gray-800">👤</button>
+                    <input v-model="search" type="text" placeholder="Search by name, origin, or registration ID..."
+                        :class="[
+                            'w-full p-2 pl-8 rounded-lg border text-sm transition-colors duration-200',
+                            search
+                                ? 'border-gray-800 bg-white ring-1 ring-gray-800'
+                                : 'border-gray-300 bg-white focus:border-gray-400'
+                        ]" />
+                    <svg class="absolute left-2.5 top-2.5 w-4 h-4" :class="search ? 'text-gray-800' : 'text-gray-400'"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <span v-if="search"
+                        class="absolute right-2.5 top-2 text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                        searching...
+                    </span>
                 </div>
+
+                <!-- Bell -->
+                <div class="relative" ref="bellRef">
+                    <button @click="toggleNotifications" class="relative focus:outline-none">
+                        <FontAwesomeIcon icon="bell" class="text-gray-700 text-lg" />
+                        <span v-if="pendingFees > 0"
+                            class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                            {{ pendingFees > 9 ? '9+' : pendingFees }}
+                        </span>
+                    </button>
+
+                    <div v-if="showNotifications"
+                        class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                            <h3 class="font-semibold text-gray-800 text-sm">Notifications</h3>
+                            <span v-if="pendingFees > 0"
+                                class="bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">
+                                {{ pendingFees }} new
+                            </span>
+                        </div>
+                        <div class="max-h-72 overflow-y-auto">
+                            <div v-if="pendingFees > 0"
+                                class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 border-b border-gray-50">
+                                <div class="mt-0.5 flex-shrink-0">
+                                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-semibold text-gray-800">
+                                        {{ pendingFees }} unpaid environmental fee(s)
+                                    </p>
+                                    <p class="text-xs text-gray-500 mt-0.5">
+                                        These registrations are incomplete. Please collect payment.
+                                    </p>
+                                    <button @click="feeStatus = 'Pending'; showNotifications = false; applyFilters()"
+                                        class="text-xs text-yellow-600 font-semibold mt-1 inline-block hover:underline">
+                                        Show Pending Records →
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-if="pendingFees === 0" class="px-4 py-8 text-center text-gray-400 text-sm">
+                                <FontAwesomeIcon icon="bell" class="text-gray-300 text-2xl mb-2 block mx-auto" />
+                                <p>No new notifications</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <FontAwesomeIcon icon="user" class="text-gray-700" />
             </div>
         </div>
 
@@ -20,193 +84,294 @@
                     <h1 class="text-lg font-semibold text-gray-800">System Setting</h1>
                     <p class="text-sm text-gray-500">Setup and edit system settings and preferences.</p>
                 </div>
-                 <input v-model="search" type="text" placeholder="Search..." class="w-25 p-2 rounded-lg border-2 border-gray-200 focus:border-gray-300 focus:ring-0" />
             </div>
         </div>
 
         <!-- Navigation Tabs -->
-        <div class="border-b border-gray-300 flex justify-center gap-6">
-        <Link v-if="can('view_system_settings')" :href="route('settings')" :class="navClass('settings')">General Settings</Link>
-        <Link v-if="can('view_user_management')" :href="route('usermanagement')" :class="navClass('usermanagement')">User Management</Link>
-        <Link v-if="can('view_audit_logs')" :href="route('auditlogs')" :class="navClass('auditlogs')">Audit Logs</Link>
-        <Link v-if="can('view_website_content')" :href="route('websitecontent')" :class="navClass('websitecontent')">Website Content</Link>
-        <Link v-if="can('view_virtual_tour')" :href="route('virtualtour')" :class="navClass('virtualtour')">Virtual Tour</Link>
-        <Link v-if="can('view_security')" :href="route('securitysettings')" :class="navClass('securitysettings')">Security</Link>
+        <div
+            class="border-b border-gray-300 flex flex-wrap justify-start sm:justify-center gap-3 sm:gap-6 px-3 sm:px-0 overflow-x-auto whitespace-nowrap">
+
+            <Link v-if="can('view_system_settings')" :href="route('settings')" :class="navClass('settings')"
+                class="text-sm sm:text-base">
+                General Settings
+            </Link>
+
+            <Link v-if="can('view_user_management')" :href="route('usermanagement')" :class="navClass('usermanagement')"
+                class="text-sm sm:text-base">
+                User Management
+            </Link>
+
+            <Link v-if="can('view_audit_logs')" :href="route('auditlogs')" :class="navClass('auditlogs')"
+                class="text-sm sm:text-base">
+                Audit Logs
+            </Link>
+
+            <Link v-if="can('view_website_content')" :href="route('websitecontent')" :class="navClass('websitecontent')"
+                class="text-sm sm:text-base">
+                Website Content
+            </Link>
+
+            <Link v-if="can('view_virtual_tour')" :href="route('virtualtour')" :class="navClass('virtualtour')"
+                class="text-sm sm:text-base">
+                Virtual Tour
+            </Link>
+
+            <Link v-if="can('view_security')" :href="route('securitysettings')" :class="navClass('securitysettings')"
+                class="text-sm sm:text-base">
+                Security
+            </Link>
+
         </div>
 
         <!-- Bulk Action Row -->
-        <div class="flex items-center justify-between w-full mt-5 px-4">
-            <div class="flex items-center gap-4">
-                <h1 class="text-lg font-semibold text-gray-800">All Users</h1>
-                
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full mt-5 px-4 gap-3">
+
+            <!-- LEFT SIDE -->
+            <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+
+                <h1 class="text-lg font-semibold text-gray-800">
+                    All Users
+                </h1>
+
+                <!-- Delete Button -->
                 <transition name="fade">
-                    <button
-                        v-if="selectedUsers.length > 0"
-                        @click="openDeleteModal"
-                        type="button"
-                        class="flex items-center gap-2 border border-red-400 text-red-500 text-xs font-bold px-4 py-2 rounded-lg hover:bg-red-500 hover:text-white transition-all shadow-sm"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
+                    <button v-if="selectedUsers.length > 0" @click="openDeleteModal" type="button"
+                        class="flex items-center justify-center gap-2 border border-red-400 text-red-500 text-xs font-bold px-4 py-2 rounded-lg hover:bg-red-500 hover:text-white transition-all shadow-sm w-full sm:w-auto">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
                         </svg>
                         Delete Selected ({{ selectedUsers.length }})
                     </button>
                 </transition>
+
             </div>
 
-            <div class="flex items-center gap-2">
-                <input v-model="search" type="text" placeholder="Search..." class="w-25 p-2 rounded-lg border-transparent focus:border-gray-300 focus:ring-0" />
-                <button @click="openAddModal"
-                :class="[
-                    'text-sm font-bold px-4 py-2 rounded transition-all',
-                    !can('edit_user_management') 
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed pointer-events-none' 
-                        : 'h-10 border bg-blue-500 text-white font-bold px-3 text-sm rounded-lg hover:bg-blue-600'
-                ]"
-                :title="!can('edit_user_management') ? 'Permission Denied: Cannot add users' : ''"
->
+            <!-- RIGHT SIDE -->
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+
+                <!-- Search -->
+                <input v-model="search" type="text" placeholder="Search..."
+                    class="w-full sm:w-48 md:w-56 lg:w-64 p-2 rounded-lg border border-gray-200 focus:border-gray-300 focus:ring-0" />
+
+                <!-- Add User Button -->
+                <button @click="openAddModal" :class="[
+                    'text-sm font-bold px-4 py-2 rounded transition-all w-full sm:w-auto',
+                    !can('edit_user_management')
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed pointer-events-none'
+                        : 'h-10 bg-blue-500 text-white hover:bg-blue-600'
+                ]" :title="!can('edit_user_management') ? 'Permission Denied: Cannot add users' : ''">
                     Add User
                 </button>
+
             </div>
+
         </div>
 
         <!-- User Table -->
-        <div class="p-6 bg-gray-50 min-h-screen">
-            <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                <table class="w-full text-left border-collapse">
+        <div class="p-3 sm:p-6 bg-gray-50 min-h-screen">
+
+            <!-- TABLE WRAPPER (IMPORTANT FOR MOBILE SCROLL) -->
+            <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+
+                <table class="min-w-[900px] w-full text-left border-collapse">
+
+                    <!-- HEADER -->
                     <thead>
                         <tr class="bg-gray-50/50 text-xs font-semibold uppercase tracking-wider text-gray-600">
-                            <th class="px-6 py-4 w-10">
-                                <input type="checkbox" @change="toggleSelectAll" :checked="isAllSelected" class="rounded border-gray-300" />
+
+                            <th class="px-4 sm:px-6 py-4 w-10">
+                                <input type="checkbox" @change="toggleSelectAll" :checked="isAllSelected"
+                                    class="rounded border-gray-300" />
                             </th>
-                            <th class="px-6 py-4">Name</th>
-                            <th class="px-6 py-4">E-mail</th>
-                            <th class="px-6 py-4">Contact No.</th>
-                            <th class="px-6 py-4">Role</th>
-                            <th class="px-6 py-4">Status</th>
-                            <th class="px-6 py-4">Actions</th>
+
+                            <th class="px-4 sm:px-6 py-4">Name</th>
+                            <th class="px-4 sm:px-6 py-4">E-mail</th>
+                            <th class="px-4 sm:px-6 py-4">Contact No.</th>
+                            <th class="px-4 sm:px-6 py-4">Role</th>
+                            <th class="px-4 sm:px-6 py-4">Status</th>
+                            <th class="px-4 sm:px-6 py-4">Actions</th>
+
                         </tr>
                     </thead>
+
+                    <!-- BODY -->
                     <tbody class="divide-y divide-gray-100">
-                        <tr v-for="user in filteredUsers" :key="user.id" 
-                            :class="['hover:bg-gray-50 transition-colors', selectedUsers.includes(user.id) ? 'bg-blue-50/40' : '']">
-                            <td class="px-6 py-4">
-                                <input type="checkbox" v-model="selectedUsers" :value="user.id" class="rounded border-gray-300 text-blue-600" />
+
+                        <tr v-for="user in filteredUsers" :key="user.id" :class="[
+                            'hover:bg-gray-50 transition-colors',
+                            selectedUsers.includes(user.id) ? 'bg-blue-50/40' : ''
+                        ]">
+
+                            <!-- Checkbox -->
+                            <td class="px-4 sm:px-6 py-4">
+                                <input type="checkbox" v-model="selectedUsers" :value="user.id"
+                                    class="rounded border-gray-300 text-blue-600" />
                             </td>
-                            <td class="px-6 py-4">
+
+                            <!-- Name -->
+                            <td class="px-4 sm:px-6 py-4">
                                 <div class="flex items-center gap-3">
-                                    <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+
+                                    <div
+                                        class="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm">
                                         {{ user.name.charAt(0) }}
                                     </div>
-                                    <span class="font-medium text-gray-900">{{ user.name }}</span>
+
+                                    <span class="font-medium text-gray-900 text-sm sm:text-base">
+                                        {{ user.name }}
+                                    </span>
+
                                 </div>
                             </td>
-                            <td class="px-6 py-4 text-gray-600 text-sm">{{ user.email }}</td>
-                            <td class="px-6 py-4 text-gray-600 text-sm">{{ user.contact_no }}</td>
-                            <td class="px-6 py-4">
-                                <span class="px-2 py-1 bg-gray-100 rounded text-[10px] font-bold uppercase tracking-wider">{{ user.role }}</span>
+
+                            <!-- Email -->
+                            <td class="px-4 sm:px-6 py-4 text-gray-600 text-xs sm:text-sm">
+                                {{ user.email }}
                             </td>
-                            <td class="px-6 py-4">
+
+                            <!-- Contact -->
+                            <td class="px-4 sm:px-6 py-4 text-gray-600 text-xs sm:text-sm">
+                                {{ user.contact_no }}
+                            </td>
+
+                            <!-- Role -->
+                            <td class="px-4 sm:px-6 py-4">
+                                <span
+                                    class="px-2 py-1 bg-gray-100 rounded text-[10px] font-bold uppercase tracking-wider">
+                                    {{ user.role }}
+                                </span>
+                            </td>
+
+                            <!-- Status -->
+                            <td class="px-4 sm:px-6 py-4">
                                 <button @click="toggleUserStatus(user)" class="flex items-center gap-2">
-                                    <span :class="['h-2 w-2 rounded-full', user.is_active ? 'bg-emerald-500' : 'bg-red-500']"></span>
-                                    <span :class="['text-sm font-medium', user.is_active ? 'text-emerald-600' : 'text-red-600']">
+
+                                    <span :class="[
+                                        'h-2 w-2 rounded-full',
+                                        user.is_active ? 'bg-emerald-500' : 'bg-red-500'
+                                    ]"></span>
+
+                                    <span :class="[
+                                        'text-xs sm:text-sm font-medium',
+                                        user.is_active ? 'text-emerald-600' : 'text-red-600'
+                                    ]">
                                         {{ user.is_active ? 'Active' : 'Inactive' }}
                                     </span>
+
                                 </button>
                             </td>
-                            <td class="px-6 py-4 text-sm font-semibold">
-                                <button @click="editUser(user)" class="text-blue-500 hover:text-blue-700">Edit</button>
+
+                            <!-- Actions -->
+                            <td class="px-4 sm:px-6 py-4 text-sm font-semibold">
+                                <button class="text-blue-500 hover:text-blue-700">
+                                    Edit
+                                </button>
                             </td>
+
                         </tr>
+
                     </tbody>
+
                 </table>
+
             </div>
         </div>
 
         <!-- ADD/EDIT USER MODAL -->
-        <div v-if="showAddModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div class="bg-white p-6 rounded-xl w-96 shadow-xl max-h-[90vh] overflow-y-auto">
-                <h2 class="text-xl font-bold mb-4">{{ form.id ? 'Edit User' : 'Add New User' }}</h2>
-                <form @submit.prevent="submitForm">
-                    <div class="space-y-3">
-                        <label class="block text-xs font-bold text-gray-400 uppercase">User Information</label>
-                        <input v-model="form.name" type="text" placeholder="Full Name" class="w-full p-2 border rounded" required />
-                        <input v-model="form.email" type="email" placeholder="Email Address" class="w-full p-2 border rounded" required />
-                        
-                        <!-- Contact Number Field -->
-                        <input v-model="form.contact_no" type="text" placeholder="Contact Number (e.g., 0912...)" class="w-full p-2 border rounded" />
-                        
-                        <div class="pt-2">
-                            <label class="block text-xs font-bold text-gray-400 uppercase">
-                                {{ form.id ? 'Security (Update Only if Needed)' : 'Security' }}
-                            </label>
-                            <input v-model="form.password" type="password" placeholder="Password" class="w-full p-2 border rounded mt-1" :required="!form.id" />
-                            <input v-model="form.password_confirmation" type="password" placeholder="Confirm Password" class="w-full p-2 border rounded mt-1" :required="!form.id" />
-                        </div>
+        <div v-if="showAddModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
 
-                        <select v-model="form.role" class="w-full p-2 border rounded" required>
-                            <option value="" disabled>Select Role</option>
-                            <option v-for="role in roles" :key="role.id" :value="role.name">{{ role.name }}</option>
-                        </select>
+            <div class="bg-white p-5 rounded-xl w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
 
-                        <!-- ADMIN CONFIRMATION FOR CREATE/UPDATE -->
-                        <div class="mt-4 pt-4 border-t border-gray-200 bg-blue-50/50 p-3 rounded-lg">
-                            <label class="block text-[10px] font-black text-blue-700 uppercase mb-1">Authorize Action</label>
-                            <p class="text-[10px] text-blue-600 mb-2 font-medium">Please enter YOUR admin password to proceed.</p>
-                            <input v-model="form.admin_password" type="password" placeholder="Your Admin Password" 
-                                class="w-full p-2 border-2 border-blue-100 rounded focus:border-blue-500 outline-none bg-white" 
-                                required />
-                            <div v-if="form.errors.admin_password" class="text-red-500 text-[11px] mt-1 font-bold">{{ form.errors.admin_password }}</div>
-                        </div>
-                    </div>
+                <h2 class="text-lg font-bold mb-4">
+                    {{ form.id ? 'Edit User' : 'Add New User' }}
+                </h2>
 
-                    <div class="flex justify-end gap-2 mt-6">
-                        <button type="button" @click="closeModal" class="px-4 py-2 text-gray-600">Cancel</button>
-                        <button type="submit" :disabled="form.processing" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 shadow-md">
-                            {{ form.id ? 'Save Changes' : 'Create User' }}
+                <form @submit.prevent="submitForm" class="space-y-3">
+
+                    <input v-model="form.name" type="text" placeholder="Full Name" class="w-full p-2 border rounded" />
+
+                    <input v-model="form.email" type="email" placeholder="Email" class="w-full p-2 border rounded" />
+
+                    <input v-model="form.contact_no" type="text" placeholder="Contact"
+                        class="w-full p-2 border rounded" />
+
+                    <input v-model="form.password" type="password" placeholder="Password"
+                        class="w-full p-2 border rounded" />
+
+                    <select v-model="form.role" class="w-full p-2 border rounded">
+                        <option value="">Select Role</option>
+                        <option v-for="role in roles" :value="role.name">{{ role.name }}</option>
+                    </select>
+
+                    <input v-model="form.admin_password" type="password" placeholder="Admin Password"
+                        class="w-full p-2 border rounded" />
+
+                    <div class="flex flex-col sm:flex-row justify-end gap-2 pt-3">
+
+                        <button type="button" @click="closeModal" class="px-4 py-2 text-gray-600">
+                            Cancel
                         </button>
+
+                        <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">
+                            {{ form.id ? 'Save' : 'Create' }}
+                        </button>
+
                     </div>
+
                 </form>
             </div>
         </div>
-
         <!-- DELETE CONFIRMATION MODAL -->
-        <div v-if="showDeleteModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
-            <div class="bg-white p-6 rounded-xl w-96 shadow-2xl border-t-4 border-red-500">
+        <div v-if="showDeleteModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+
+            <div class="bg-white w-full max-w-md rounded-xl shadow-2xl border-t-4 border-red-500 p-5">
+
+                <!-- Header -->
                 <div class="flex items-center gap-3 text-red-600 mb-4">
-                    <h2 class="text-xl font-bold">Verify Identity</h2>
+                    <h2 class="text-lg sm:text-xl font-bold">
+                        Verify Identity
+                    </h2>
                 </div>
-                
-                <p class="text-sm text-gray-600 mb-4">
-                    You are deleting <span class="font-bold text-gray-900">{{ selectedUsers.length }}</span> user(s). Enter your admin password to confirm.
+
+                <!-- Message -->
+                <p class="text-sm text-gray-600 mb-4 leading-relaxed">
+                    You are deleting
+                    <span class="font-bold text-gray-900">
+                        {{ selectedUsers.length }}
+                    </span>
+                    user(s). Enter your admin password to confirm.
                 </p>
 
-                <form @submit.prevent="confirmDelete">
-                    <div class="mb-4">
-                        <input 
-                            v-model="deleteForm.admin_password" 
-                            type="password" 
-                            placeholder="Your Password"
-                            class="w-full p-2 border-2 border-gray-100 rounded focus:border-red-400 outline-none"
-                            required
-                        />
-                        <div v-if="deleteForm.errors.admin_password" class="text-red-500 text-xs mt-1 font-bold">{{ deleteForm.errors.admin_password }}</div>
+                <!-- Form -->
+                <form @submit.prevent="confirmDelete" class="space-y-3">
+
+                    <input v-model="deleteForm.admin_password" type="password" placeholder="Your Password"
+                        class="w-full p-2 border rounded focus:border-red-400 outline-none" required />
+
+                    <div v-if="deleteForm.errors.admin_password" class="text-red-500 text-xs font-bold">
+                        {{ deleteForm.errors.admin_password }}
                     </div>
 
-                    <div class="flex justify-end gap-2">
-                        <button type="button" @click="showDeleteModal = false" class="px-4 py-2 text-gray-500 font-medium">Cancel</button>
+                    <!-- Buttons -->
+                    <div class="flex flex-col sm:flex-row justify-end gap-2 pt-2">
+
+                        <button type="button" @click="showDeleteModal = false"
+                            class="w-full sm:w-auto px-4 py-2 text-gray-500 font-medium border rounded">
+                            Cancel
+                        </button>
+
                         <button type="submit" :disabled="deleteForm.processing"
-                        :class="[
-                            'text-sm font-bold px-4 py-2 rounded transition-all',
-                            !can('edit_user_management') 
-                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed pointer-events-none' 
-                                : 'px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-bold shadow-lg'
-                        ]"
-                        :title="!can('edit_user_management') ? 'Permission Denied: Cannot add users' : ''">
+                            class="w-full sm:w-auto px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-bold disabled:opacity-50">
+
                             Delete Permanently
                         </button>
+
                     </div>
+
                 </form>
+
             </div>
         </div>
     </LandingLayout>
@@ -226,7 +391,7 @@ const userRole = computed(() => (page.props.auth?.user?.role ?? '').toLowerCase(
 
 const can = (permission) => {
     if (userRole.value === 'admin') return true;
-	return permissions.value.includes(permission);
+    return permissions.value.includes(permission);
 };
 
 const props = defineProps({
@@ -249,7 +414,7 @@ const form = useForm({
     password: '',
     password_confirmation: '',
     role: '',
-    admin_password: '', 
+    admin_password: '',
 });
 
 // Delete Form object
@@ -260,15 +425,15 @@ const deleteForm = useForm({
 
 // Navigation UI Helper
 const navClass = (routeName) => [
-  'pb-2 text-sm font-semibold transition border-b-2',
-  route().current(routeName)
-    ? 'text-gray-900 border-gray-900'
-    : 'text-gray-400 border-transparent hover:text-gray-600'
+    'pb-2 text-sm font-semibold transition border-b-2',
+    route().current(routeName)
+        ? 'text-gray-900 border-gray-900'
+        : 'text-gray-400 border-transparent hover:text-gray-600'
 ];
 
 // Table Filter Logic
 const filteredUsers = computed(() => {
-    return props.users.filter(user => 
+    return props.users.filter(user =>
         user.name.toLowerCase().includes(search.value.toLowerCase()) ||
         user.email.toLowerCase().includes(search.value.toLowerCase())
     );
@@ -350,14 +515,21 @@ const confirmDelete = () => {
 const toggleUserStatus = (user) => {
     router.patch(route('usermanagement.toggle', user.id), {}, { preserveScroll: true });
 
-const can = (permission) => {
-    if (userRole.value === 'admin') return true
-    return permissions.value.includes(permission)
-}
+    const can = (permission) => {
+        if (userRole.value === 'admin') return true
+        return permissions.value.includes(permission)
+    }
 };
 </script>
 
 <style scoped>
-.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
 </style>
