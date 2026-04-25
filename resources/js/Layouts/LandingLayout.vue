@@ -162,7 +162,7 @@ function goTo(sectionId) {
 
     <!-- Navigation -->
     <div class="flex justify-center">
-      <ul class="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs sm:text-sm text-gray-300">
+      <ul class="flex flex-wrap justify-center gap-x-2 gap-y-2 text-xs sm:text-sm text-gray-200">
         <li><a @click.prevent="scrollTo('home')" href="#" class="hover:text-white cursor-pointer">Home</a></li>
         <li><a @click.prevent="scrollTo('attractions')" href="#" class="hover:text-white cursor-pointer">Attractions</a></li>
         <li><a @click.prevent="scrollTo('map')" href="#" class="hover:text-white cursor-pointer">Map</a></li>

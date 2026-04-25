@@ -485,13 +485,13 @@
     <!-- overflow-y-auto removed — content fits within h-screen -->
     <section id="contact" data-section="contact" class="snap-start min-h-screen bg-white flex flex-col">
 
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full flex-1">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-12 w-full flex-1 flex flex-col justify-center">
 
-        <p class="text-sm text-gray-500">Get Started</p>
+        <p class="text-sm text-gray-500 mb-3">Get Started</p>
 
         <!-- HEADER -->
-        <div class="flex flex-col md:grid md:grid-cols-2 items-start mt-2 gap-6">
-
+        <div class="flex flex-col md:grid md:grid-cols-2 items-start gap-6 mb-8">
+          
           <!-- TITLE -->
           <div>
             <h2 class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
@@ -500,91 +500,73 @@
             </h2>
           </div>
 
-          <!-- SOCIALS -->
-          <div class="
-        flex flex-row md:flex-col
-        justify-start md:justify-end
-        items-center md:items-end
-        gap-4 md:gap-5
-      ">
-
-            <!-- FB -->
-            <a href="#"
+          <!-- SOCIALS — only shown if URL is set by admin -->
+          <div class="flex flex-row md:flex-col justify-start md:justify-end items-center md:items-end gap-4 md:gap-5">
+            <a v-if="contact.facebook_url" :href="contact.facebook_url" target="_blank" rel="noopener"
               class="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-full hover:bg-blue-600 hover:text-white transition">
-              <svg fill="#000000" width="22px" height="22px" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M21.95 5.005l-3.306-.004c-3.206 0-5.277 2.124-5.277 5.415v2.495H10.05v4.515h3.317l-.004 9.575h4.641l.004-9.575h3.806l-.003-4.514h-3.803v-2.117c0-1.018.241-1.533 1.566-1.533l2.366-.001.01-4.256z" />
+              <svg fill="currentColor" width="22px" height="22px" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21.95 5.005l-3.306-.004c-3.206 0-5.277 2.124-5.277 5.415v2.495H10.05v4.515h3.317l-.004 9.575h4.641l.004-9.575h3.806l-.003-4.514h-3.803v-2.117c0-1.018.241-1.533 1.566-1.533l2.366-.001.01-4.256z"/>
               </svg>
-
             </a>
-
-            <!-- IG -->
-            <a href="#"
+            <a v-if="contact.instagram_url" :href="contact.instagram_url" target="_blank" rel="noopener"
               class="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-full hover:bg-pink-500 hover:text-white transition">
               <svg width="22px" height="22px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path fill-rule="evenodd" clip-rule="evenodd"
-                  d="M12 18C15.3137 18 18 15.3137 18 12C18 8.68629 15.3137 6 12 6C8.68629 6 6 8.68629 6 12C6 15.3137 8.68629 18 12 18ZM12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16Z"
-                  fill="#0F0F0F" />
-                <path
-                  d="M18 5C17.4477 5 17 5.44772 17 6C17 6.55228 17.4477 7 18 7C18.5523 7 19 6.55228 19 6C19 5.44772 18.5523 5 18 5Z"
-                  fill="#0F0F0F" />
-                <path fill-rule="evenodd" clip-rule="evenodd"
-                  d="M1.65396 4.27606C1 5.55953 1 7.23969 1 10.6V13.4C1 16.7603 1 18.4405 1.65396 19.7239C2.2292 20.8529 3.14708 21.7708 4.27606 22.346C5.55953 23 7.23969 23 10.6 23H13.4C16.7603 23 18.4405 23 19.7239 22.346C20.8529 21.7708 21.7708 20.8529 22.346 19.7239C23 18.4405 23 16.7603 23 13.4V10.6C23 7.23969 23 5.55953 22.346 4.27606C21.7708 3.14708 20.8529 2.2292 19.7239 1.65396C18.4405 1 16.7603 1 13.4 1H10.6C7.23969 1 5.55953 1 4.27606 1.65396C3.14708 2.2292 2.2292 3.14708 1.65396 4.27606ZM13.4 3H10.6C8.88684 3 7.72225 3.00156 6.82208 3.0751C5.94524 3.14674 5.49684 3.27659 5.18404 3.43597C4.43139 3.81947 3.81947 4.43139 3.43597 5.18404C3.27659 5.49684 3.14674 5.94524 3.0751 6.82208C3.00156 7.72225 3 8.88684 3 10.6V13.4C3 15.1132 3.00156 16.2777 3.0751 17.1779C3.14674 18.0548 3.27659 18.5032 3.43597 18.816C3.81947 19.5686 4.43139 20.1805 5.18404 20.564C5.49684 20.7234 5.94524 20.8533 6.82208 20.9249C7.72225 20.9984 8.88684 21 10.6 21H13.4C15.1132 21 16.2777 20.9984 17.1779 20.9249C18.0548 20.8533 18.5032 20.7234 18.816 20.564C19.5686 20.1805 20.1805 19.5686 20.564 18.816C20.7234 18.5032 20.8533 18.0548 20.9249 17.1779C20.9984 16.2777 21 15.1132 21 13.4V10.6C21 8.88684 20.9984 7.72225 20.9249 6.82208C20.8533 5.94524 20.7234 5.49684 20.564 5.18404C20.1805 4.43139 19.5686 3.81947 18.816 3.43597C18.5032 3.27659 18.0548 3.14674 17.1779 3.0751C16.2777 3.00156 15.1132 3 13.4 3Z"
-                  fill="#0F0F0F" />
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M12 18C15.3137 18 18 15.3137 18 12C18 8.68629 15.3137 6 12 6C8.68629 6 6 8.68629 6 12C6 15.3137 8.68629 18 12 18ZM12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16Z" fill="currentColor"/>
+                <path d="M18 5C17.4477 5 17 5.44772 17 6C17 6.55228 17.4477 7 18 7C18.5523 7 19 6.55228 19 6C19 5.44772 18.5523 5 18 5Z" fill="currentColor"/>
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M1.65396 4.27606C1 5.55953 1 7.23969 1 10.6V13.4C1 16.7603 1 18.4405 1.65396 19.7239C2.2292 20.8529 3.14708 21.7708 4.27606 22.346C5.55953 23 7.23969 23 10.6 23H13.4C16.7603 23 18.4405 23 19.7239 22.346C20.8529 21.7708 21.7708 20.8529 22.346 19.7239C23 18.4405 23 16.7603 23 13.4V10.6C23 7.23969 23 5.55953 22.346 4.27606C21.7708 3.14708 20.8529 2.2292 19.7239 1.65396C18.4405 1 16.7603 1 13.4 1H10.6C7.23969 1 5.55953 1 4.27606 1.65396C3.14708 2.2292 2.2292 3.14708 1.65396 4.27606ZM13.4 3H10.6C8.88684 3 7.72225 3.00156 6.82208 3.0751C5.94524 3.14674 5.49684 3.27659 5.18404 3.43597C4.43139 3.81947 3.81947 4.43139 3.43597 5.18404C3.27659 5.49684 3.14674 5.94524 3.0751 6.82208C3.00156 7.72225 3 8.88684 3 10.6V13.4C3 15.1132 3.00156 16.2777 3.0751 17.1779C3.14674 18.0548 3.27659 18.5032 3.43597 18.816C3.81947 19.5686 4.43139 20.1805 5.18404 20.564C5.49684 20.7234 5.94524 20.8533 6.82208 20.9249C7.72225 20.9984 8.88684 21 10.6 21H13.4C15.1132 21 16.2777 20.9984 17.1779 20.9249C18.0548 20.8533 18.5032 20.7234 18.816 20.564C19.5686 20.1805 20.1805 19.5686 20.564 18.816C20.7234 18.5032 20.8533 18.0548 20.9249 17.1779C20.9984 16.2777 21 15.1132 21 13.4V10.6C21 8.88684 20.9984 7.72225 20.9249 6.82208C20.8533 5.94524 20.7234 5.49684 20.564 5.18404C20.1805 4.43139 19.5686 3.81947 18.816 3.43597C18.5032 3.27659 18.0548 3.14674 17.1779 3.0751C16.2777 3.00156 15.1132 3 13.4 3Z" fill="currentColor"/>
               </svg>
             </a>
-
-            <!-- X -->
-            <a href="#"
+            <a v-if="contact.twitter_url" :href="contact.twitter_url" target="_blank" rel="noopener"
               class="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-full hover:bg-black hover:text-white transition">
-              <svg width="18px" height="18px" viewBox="0 0 24 24" fill="currentColor"
-                xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.745l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              <svg width="18px" height="18px" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.745l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
               </svg>
-
             </a>
-
           </div>
         </div>
 
+        <!-- Success banner -->
+        <div v-if="messageSent" class="mt-3 px-4 py-3 bg-green-100 border border-green-300 text-green-800 rounded-lg text-sm flex items-center justify-between">
+          <span>Your message has been sent! We'll get back to you soon.</span>
+          <button @click="messageSent = false" class="ml-4 text-green-600 font-bold text-lg leading-none">&times;</button>
+        </div>
+
         <!-- FORM GRID -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           <div>
-            <label class="text-sm text-gray-600">Your Name</label>
-            <input type="text"
-              class="w-full border-0 border-b border-gray-400 focus:ring-0 outline-none py-2 bg-transparent">
+            <label class="text-sm text-gray-600">Your Name <span class="text-red-500">*</span></label>
+            <input v-model="contactForm.name" type="text"
+              :class="['w-full border-0 border-b py-2 bg-transparent outline-none focus:ring-0', contactErrors.name ? 'border-red-400' : 'border-gray-400']">
+            <p v-if="contactErrors.name" class="text-red-500 text-xs mt-1">{{ contactErrors.name }}</p>
           </div>
-
           <div>
-            <label class="text-sm text-gray-600">Email Address</label>
-            <input type="email"
-              class="w-full border-0 border-b border-gray-400 focus:ring-0 outline-none py-2 bg-transparent">
+            <label class="text-sm text-gray-600">Email Address <span class="text-red-500">*</span></label>
+            <input v-model="contactForm.email" type="email"
+              :class="['w-full border-0 border-b py-2 bg-transparent outline-none focus:ring-0', contactErrors.email ? 'border-red-400' : 'border-gray-400']">
+            <p v-if="contactErrors.email" class="text-red-500 text-xs mt-1">{{ contactErrors.email }}</p>
           </div>
-
           <div>
             <label class="text-sm text-gray-600">Phone (optional)</label>
-            <input type="text"
+            <input v-model="contactForm.phone" type="text"
               class="w-full border-0 border-b border-gray-400 focus:ring-0 outline-none py-2 bg-transparent">
           </div>
-
         </div>
 
         <!-- MESSAGE -->
         <div class="mt-5">
-          <label class="text-sm text-gray-600">Message</label>
-          <textarea rows="3"
-            class="w-full border-0 border-b border-gray-400 focus:ring-0  outline-none py-2 bg-transparent resize-none"></textarea>
+          <label class="text-sm text-gray-600">Message <span class="text-red-500">*</span></label>
+          <textarea v-model="contactForm.message" rows="2"
+            :class="['w-full border-0 border-b py-2 bg-transparent resize-none outline-none focus:ring-0', contactErrors.message ? 'border-red-400' : 'border-gray-400']"></textarea>
+          <p v-if="contactErrors.message" class="text-red-500 text-xs mt-1">{{ contactErrors.message }}</p>
         </div>
 
         <!-- BUTTON -->
-        <div class="mt-6">
-          <button
-            class="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700 transition">
-            Leave us a Message
+        <div class="mt-5">
+          <button @click.prevent="submitContactForm" :disabled="contactSubmitting"
+            class="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700 transition disabled:opacity-50">
+            {{ contactSubmitting ? 'Sending…' : 'Leave us a Message' }}
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path d="M5 12h14M13 5l7 7-7 7" />
+              <path d="M5 12h14M13 5l7 7-7 7"/>
             </svg>
           </button>
         </div>
@@ -621,7 +603,8 @@
 <script setup>
 import LandingLayout from '@/Layouts/LandingLayout.vue'
 import { useRoute } from 'vue-router'
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { router } from '@inertiajs/vue3'
 
 const route = useRoute()
 
@@ -643,6 +626,9 @@ const props = defineProps({
       phone: '+63 123 456 7890',
       email_hours: 'Monday – Friday 6 am to 8 pm',
       phone_hours: 'Monday – Friday 6 am to 8 pm',
+      facebook_url: null,
+      instagram_url: null,
+      twitter_url: null,
     }),
   },
   attractions: {
@@ -673,5 +659,30 @@ const pageNumbers = computed(() => {
 const selectedAttraction = ref(null)
 function openAttractionModal(attraction) {
   selectedAttraction.value = attraction
+}
+
+// ── Contact form ──────────────────────────────────────────────────────────────
+const contactForm    = ref({ name: '', email: '', phone: '', message: '' })
+const contactErrors  = ref({})
+const contactSubmitting = ref(false)
+const messageSent    = ref(false)
+
+function submitContactForm() {
+  contactErrors.value = {}
+  contactSubmitting.value = true
+
+  router.post('/contact/send', contactForm.value, {
+    preserveScroll: true,
+    onSuccess: () => {
+      messageSent.value = true
+      contactForm.value = { name: '', email: '', phone: '', message: '' }
+      contactSubmitting.value = false
+      setTimeout(() => { messageSent.value = false }, 6000)
+    },
+    onError: (errors) => {
+      contactErrors.value = errors
+      contactSubmitting.value = false
+    },
+  })
 }
 </script>

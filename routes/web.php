@@ -138,6 +138,9 @@ Route::get('/location/{id}', fn() => inertia('YourMainPageName'));
 // ── Landing page & website content ───────────────────────────────────────────
 Route::get('/', [WebsiteContentController::class, 'landingPage'])->name('home');
 
+// Public: visitor sends a contact message (no auth needed)
+Route::post('/contact/send', [WebsiteContentController::class, 'sendMessage'])->name('contact.send');
+
 Route::middleware(['auth'])->group(function () {
     Route::post('/admin/settings/website-content/hero',    [WebsiteContentController::class, 'updateHero'])->name('websitecontent.hero.update');
     Route::post('/admin/settings/website-content/contact', [WebsiteContentController::class, 'updateContact'])->name('websitecontent.contact.update');
@@ -146,9 +149,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/settings/website-content/attractions/{id}',   [WebsiteContentController::class, 'updateAttraction'])->name('websitecontent.attractions.update');
     Route::delete('/admin/settings/website-content/attractions/{id}', [WebsiteContentController::class, 'destroyAttraction'])->name('websitecontent.attractions.destroy');
 
-    Route::post('/admin/settings/website-content/about',                     [WebsiteContentController::class, 'updateAbout'])->name('websitecontent.about.update');
-    Route::post('/admin/settings/website-content/about/images',              [WebsiteContentController::class, 'storeAboutImage'])->name('websitecontent.about.images.store');
-    Route::delete('/admin/settings/website-content/about/images/{id}',       [WebsiteContentController::class, 'destroyAboutImage'])->name('websitecontent.about.images.destroy');
+    Route::post('/admin/settings/website-content/about',              [WebsiteContentController::class, 'updateAbout'])->name('websitecontent.about.update');
+    Route::post('/admin/settings/website-content/about/images',       [WebsiteContentController::class, 'storeAboutImage'])->name('websitecontent.about.images.store');
+    Route::delete('/admin/settings/website-content/about/images/{id}',[WebsiteContentController::class, 'destroyAboutImage'])->name('websitecontent.about.images.destroy');
+
+    // Message inbox management
+    Route::patch('/admin/messages/{id}/read',  [WebsiteContentController::class, 'markMessageRead'])->name('messages.read');
+    Route::delete('/admin/messages/{id}',      [WebsiteContentController::class, 'deleteMessage'])->name('messages.delete');
 });
 
 require __DIR__.'/auth.php';
