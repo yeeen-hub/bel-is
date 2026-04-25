@@ -163,12 +163,12 @@ function goTo(sectionId) {
     <!-- Navigation -->
     <div class="flex justify-center">
       <ul class="flex flex-wrap justify-center gap-x-2 gap-y-2 text-xs sm:text-sm text-gray-200">
-        <li><a @click.prevent="scrollTo('home')" href="#" class="hover:text-white cursor-pointer">Home</a></li>
-        <li><a @click.prevent="scrollTo('attractions')" href="#" class="hover:text-white cursor-pointer">Attractions</a></li>
-        <li><a @click.prevent="scrollTo('map')" href="#" class="hover:text-white cursor-pointer">Map</a></li>
-        <li><a @click.prevent="scrollTo('about')" href="#" class="hover:text-white cursor-pointer">About</a></li>
-        <li><a @click.prevent="scrollTo('pre-register')" href="#" class="hover:text-white cursor-pointer">Pre-Register</a></li>
-        <li><a @click.prevent="scrollTo('contact')" href="#" class="hover:text-white cursor-pointer">Contact</a></li>
+        <li><a  @click.prevent="goTo('home')" href="#" class="hover:text-white cursor-pointer">Home</a></li>
+        <li><a @click.prevent="goTo('attractions')" href="#" class="hover:text-white cursor-pointer">Attractions</a></li>
+        <li><a @click.prevent="goTo('map')" href="#" class="hover:text-white cursor-pointer">Map</a></li>
+        <li><a @click.prevent="goTo('about')" href="#" class="hover:text-white cursor-pointer">About</a></li>
+        <li><a @click.prevent="goTo('pre-register')" href="#" class="hover:text-white cursor-pointer">Pre-Register</a></li>
+        <li><a @click.prevent="goTo('contact')" href="#" class="hover:text-white cursor-pointer">Contact</a></li>
       </ul>
     </div>
 

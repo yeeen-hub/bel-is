@@ -1,57 +1,149 @@
 <template>
   <LandingLayout v-if="$route.path === '/'">
-
+    <link href="https://fonts.googleapis.com/css2?family=Kaushan+Script&display=swap" rel="stylesheet">
     <!-- ── Hero ─────────────────────────────────────────────────────────────── -->
     <section id="home" data-section="home"
       class="snap-start min-h-screen relative flex items-start pt-24 sm:pt-28 overflow-hidden">
 
+      <!-- BACKGROUND IMAGE -->
       <img :src="heroBackgroundUrl" class="absolute inset-0 w-full h-full object-cover object-center -z-10 animate-pan"
         alt="Hero background" />
+
+      <!-- DARK OVERLAY -->
+      <div class="absolute inset-0 bg-black/50 -z-10"></div>
 
       <div
         class="w-full px-4 sm:px-8 lg:px-16 flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8">
 
-        <div class=" text-center xl:mt-10 lg:text-left w-full">
+        <div class="text-center lg:text-left w-full xl:mt-10">
 
-          <h2 class="text-lg p-4 sm:text-2xl lg:text-3xl text-white font-heading leading-tight">
-            {{ hero.tagline || 'Discover the beauty of' }}
-          </h2>                                                        
+          <!-- TAGLINE FIRST -->
+          <p class="text-sm sm:text-lg md:text-xl lg:text-2xl
+          text-blue-500 font-kaushan italic leading-tight
+          mb-3 lg:ml-4">
+            {{ taglineFirst }}
+          </p>
 
-          <span
-            class="block font-bold leading-none
-                  text-5xl sm:text-7xl md:text-8xl lg:text-[10rem] xl:text-[12rem]
-                  text-white relative"
-            style="
-              text-shadow:
-                1px 1px 0 #0a2a55,
-                2px 2px 0 #082244,
-                3px 3px 0 #061a33,
-                4px 4px 10px rgba(0,0,0,0.25);
-              transform: translateZ(0);
-            "
-          >
+          <!-- TAGLINE REST -->
+          <h2 class="text-base sm:text-xl md:text-2xl lg:text-5xl
+     text-white font-heading leading-tight
+     mb-1 lg:ml-4">
+            {{ taglineRest }}
+          </h2>
+
+          <!-- BARANGAY -->
+          <span class="block font-bold leading-none
+        text-4xl sm:text-6xl md:text-7xl lg:text-[10rem] xl:text-[12rem]
+        text-white relative"
+            style=" text-shadow: 1px 1px 0 #0a2a55, 2px 2px 0 #082244, 3px 3px 0 #061a33, 4px 4px 10px rgba(0,0,0,0.25); transform: translateZ(0); ">
             {{ hero.barangay || 'Bel-is' }}
           </span>
 
-          <h2 v-if="hero.mun_prov" class="text-lg p-4 sm:text-2xl lg:text-3xl text-white font-heading leading-tight">
-            {{ hero.mun_prov }}
-          </h2>
+          <!-- LOCATION (ICON + TEXT) -->
+          <div class="flex items-center justify-center lg:justify-start gap-2 mt-2 lg:ml-4">
+            <svg class="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 flex-shrink-0 text-blue-500"
+              xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="currentColor">
+              <path
+                d="M32,0C18.746,0,8,10.746,8,24c0,5.219,1.711,10.008,4.555,13.93c0.051,0.094,0.059,0.199,0.117,0.289l16,24C29.414,63.332,30.664,64,32,64s2.586-0.668,3.328-1.781l16-24c0.059-0.09,0.066-0.195,0.117-0.289C54.289,34.008,56,29.219,56,24C56,10.746,45.254,0,32,0z M32,32c-4.418,0-8-3.582-8-8s3.582-8,8-8s8,3.582,8,8S36.418,32,32,32z" />
+            </svg>
 
-          <p class="border border-white text-white ml-4 px-3 py-2 text-sm sm:text-base
-             rounded-lg inline-block mt-4 max-w-md">
-            {{ hero.sub || 'Explore nature, culture, and hidden destinations' }}
-          </p>
+            <h2 v-if="hero.mun_prov" class="text-sm sm:text-lg md:text-xl lg:text-3xl
+      text-white font-heading leading-none text-center lg:text-left">
+              {{ hero.mun_prov }}
+            </h2>
+          </div>
+
+          <!-- SUBTEXT -->
+          <div class="flex flex-wrap gap-4 p-5 justify-center lg:justify-start items-stretch">
+
+            <!-- CARD 1 -->
+            <div class="nature-card flex items-center gap-4 w-full sm:w-[200px]
+              px-3 py-3 rounded-[18px]
+              border border-blue-400/40
+              bg-gradient-to-br from-[#0d47a1]/60 via-[#1565c0]/45 to-[#1976d2]/30
+              backdrop-blur-[14px]
+              shadow-[0_8px_32px_rgba(13,71,161,0.3)] shadow-inner">
+
+              <!-- ICON -->
+              <div class="shrink-0 flex items-center justify-center text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-7 sm:h-7" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
+                  <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
+                </svg>
+              </div>
+
+              <!-- TEXT -->
+              <div class="text-center sm:text-left">
+                <h3 class="text-white font-bold text-sm leading-tight">
+                  Nature Beauty
+                </h3>
+                <p class="text-white/80 text-xs leading-snug">
+                  Pristine beaches, clear waters, and lush landscapes.
+                </p>
+              </div>
+            </div>
+
+            <!-- CARD 2 -->
+            <div class="nature-card flex items-center gap-4 w-full sm:w-[200px]
+              px-3 py-3 rounded-[18px]
+              border border-blue-400/40
+              bg-gradient-to-br from-[#0d47a1]/60 via-[#1565c0]/45 to-[#1976d2]/30
+              backdrop-blur-[14px]
+              shadow-[0_8px_32px_rgba(13,71,161,0.3)] shadow-inner">
+
+              <div class="shrink-0 flex items-center justify-center text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-7 sm:h-7" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path
+                    d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                  <circle cx="12" cy="13" r="3" />
+                </svg>
+              </div>
+
+              <div class="text-center sm:text-left">
+                <h3 class="text-white font-bold text-sm leading-tight">
+                  Scenic Spots
+                </h3>
+                <p class="text-white/80 text-xs leading-snug">
+                  Breathtaking views perfect for memories that last.
+                </p>
+              </div>
+            </div>
+
+            <!-- CARD 3 -->
+            <div class="nature-card flex items-center gap-4 w-full sm:w-[200px]
+              px-3 py-3 rounded-[18px]
+              border border-blue-400/40
+              bg-gradient-to-br from-[#0d47a1]/60 via-[#1565c0]/45 to-[#1976d2]/30
+              backdrop-blur-[14px]
+              shadow-[0_8px_32px_rgba(13,71,161,0.3)] shadow-inner">
+
+              <div class="shrink-0 flex items-center justify-center text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-7 sm:h-7" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <polyline points="9 22 9 12 15 12 15 22" />
+                </svg>
+              </div>
+
+              <div class="text-center sm:text-left">
+                <h3 class="text-white font-bold text-sm leading-tight">
+                  Local Culture
+                </h3>
+                <p class="text-white/80 text-xs leading-snug">
+                  Experience warm hospitality and rich local tradition.
+                </p>
+              </div>
+            </div>
+
+          </div>
 
         </div>
 
 
         <div class="relative w-full max-w-[700px] mx-auto text-center">
 
-          <div class="absolute top-5 left-1/2 -translate-x-1/2 
-            w-[60%] h-[95%] 
-            bg-gray-900/18 border-2 border-gray-900/5 rounded-3xl shadow-2xl 
-            ">
-          </div>
 
           <!-- CONTENT -->
           <div class="relative p-4 sm:p-6">
@@ -67,12 +159,6 @@
               clip-path: polygon(90% 10%, 100% 75%, 0% 75%);"></div>
 
             </div>
-
-            <!-- BUTTON -->
-            <button @click="$router.push('/VTHome')"
-              class="mt-4 bg-green-700 text-white px-6 py-3 rounded-lg bg-opacity-90 font-semibold shadow-md ">
-              Start your virtual tour >>
-            </button>
 
           </div>
         </div>
@@ -491,7 +577,7 @@
 
         <!-- HEADER -->
         <div class="flex flex-col md:grid md:grid-cols-2 items-start gap-6 mb-8">
-          
+
           <!-- TITLE -->
           <div>
             <h2 class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
@@ -504,31 +590,43 @@
           <div class="flex flex-row md:flex-col justify-start md:justify-end items-center md:items-end gap-4 md:gap-5">
             <a v-if="contact.facebook_url" :href="contact.facebook_url" target="_blank" rel="noopener"
               class="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-full hover:bg-blue-600 hover:text-white transition">
-              <svg fill="currentColor" width="22px" height="22px" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                <path d="M21.95 5.005l-3.306-.004c-3.206 0-5.277 2.124-5.277 5.415v2.495H10.05v4.515h3.317l-.004 9.575h4.641l.004-9.575h3.806l-.003-4.514h-3.803v-2.117c0-1.018.241-1.533 1.566-1.533l2.366-.001.01-4.256z"/>
+              <svg fill="currentColor" width="22px" height="22px" viewBox="0 0 32 32"
+                xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M21.95 5.005l-3.306-.004c-3.206 0-5.277 2.124-5.277 5.415v2.495H10.05v4.515h3.317l-.004 9.575h4.641l.004-9.575h3.806l-.003-4.514h-3.803v-2.117c0-1.018.241-1.533 1.566-1.533l2.366-.001.01-4.256z" />
               </svg>
             </a>
             <a v-if="contact.instagram_url" :href="contact.instagram_url" target="_blank" rel="noopener"
               class="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-full hover:bg-pink-500 hover:text-white transition">
               <svg width="22px" height="22px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path fill-rule="evenodd" clip-rule="evenodd" d="M12 18C15.3137 18 18 15.3137 18 12C18 8.68629 15.3137 6 12 6C8.68629 6 6 8.68629 6 12C6 15.3137 8.68629 18 12 18ZM12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16Z" fill="currentColor"/>
-                <path d="M18 5C17.4477 5 17 5.44772 17 6C17 6.55228 17.4477 7 18 7C18.5523 7 19 6.55228 19 6C19 5.44772 18.5523 5 18 5Z" fill="currentColor"/>
-                <path fill-rule="evenodd" clip-rule="evenodd" d="M1.65396 4.27606C1 5.55953 1 7.23969 1 10.6V13.4C1 16.7603 1 18.4405 1.65396 19.7239C2.2292 20.8529 3.14708 21.7708 4.27606 22.346C5.55953 23 7.23969 23 10.6 23H13.4C16.7603 23 18.4405 23 19.7239 22.346C20.8529 21.7708 21.7708 20.8529 22.346 19.7239C23 18.4405 23 16.7603 23 13.4V10.6C23 7.23969 23 5.55953 22.346 4.27606C21.7708 3.14708 20.8529 2.2292 19.7239 1.65396C18.4405 1 16.7603 1 13.4 1H10.6C7.23969 1 5.55953 1 4.27606 1.65396C3.14708 2.2292 2.2292 3.14708 1.65396 4.27606ZM13.4 3H10.6C8.88684 3 7.72225 3.00156 6.82208 3.0751C5.94524 3.14674 5.49684 3.27659 5.18404 3.43597C4.43139 3.81947 3.81947 4.43139 3.43597 5.18404C3.27659 5.49684 3.14674 5.94524 3.0751 6.82208C3.00156 7.72225 3 8.88684 3 10.6V13.4C3 15.1132 3.00156 16.2777 3.0751 17.1779C3.14674 18.0548 3.27659 18.5032 3.43597 18.816C3.81947 19.5686 4.43139 20.1805 5.18404 20.564C5.49684 20.7234 5.94524 20.8533 6.82208 20.9249C7.72225 20.9984 8.88684 21 10.6 21H13.4C15.1132 21 16.2777 20.9984 17.1779 20.9249C18.0548 20.8533 18.5032 20.7234 18.816 20.564C19.5686 20.1805 20.1805 19.5686 20.564 18.816C20.7234 18.5032 20.8533 18.0548 20.9249 17.1779C20.9984 16.2777 21 15.1132 21 13.4V10.6C21 8.88684 20.9984 7.72225 20.9249 6.82208C20.8533 5.94524 20.7234 5.49684 20.564 5.18404C20.1805 4.43139 19.5686 3.81947 18.816 3.43597C18.5032 3.27659 18.0548 3.14674 17.1779 3.0751C16.2777 3.00156 15.1132 3 13.4 3Z" fill="currentColor"/>
+                <path fill-rule="evenodd" clip-rule="evenodd"
+                  d="M12 18C15.3137 18 18 15.3137 18 12C18 8.68629 15.3137 6 12 6C8.68629 6 6 8.68629 6 12C6 15.3137 8.68629 18 12 18ZM12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16Z"
+                  fill="currentColor" />
+                <path
+                  d="M18 5C17.4477 5 17 5.44772 17 6C17 6.55228 17.4477 7 18 7C18.5523 7 19 6.55228 19 6C19 5.44772 18.5523 5 18 5Z"
+                  fill="currentColor" />
+                <path fill-rule="evenodd" clip-rule="evenodd"
+                  d="M1.65396 4.27606C1 5.55953 1 7.23969 1 10.6V13.4C1 16.7603 1 18.4405 1.65396 19.7239C2.2292 20.8529 3.14708 21.7708 4.27606 22.346C5.55953 23 7.23969 23 10.6 23H13.4C16.7603 23 18.4405 23 19.7239 22.346C20.8529 21.7708 21.7708 20.8529 22.346 19.7239C23 18.4405 23 16.7603 23 13.4V10.6C23 7.23969 23 5.55953 22.346 4.27606C21.7708 3.14708 20.8529 2.2292 19.7239 1.65396C18.4405 1 16.7603 1 13.4 1H10.6C7.23969 1 5.55953 1 4.27606 1.65396C3.14708 2.2292 2.2292 3.14708 1.65396 4.27606ZM13.4 3H10.6C8.88684 3 7.72225 3.00156 6.82208 3.0751C5.94524 3.14674 5.49684 3.27659 5.18404 3.43597C4.43139 3.81947 3.81947 4.43139 3.43597 5.18404C3.27659 5.49684 3.14674 5.94524 3.0751 6.82208C3.00156 7.72225 3 8.88684 3 10.6V13.4C3 15.1132 3.00156 16.2777 3.0751 17.1779C3.14674 18.0548 3.27659 18.5032 3.43597 18.816C3.81947 19.5686 4.43139 20.1805 5.18404 20.564C5.49684 20.7234 5.94524 20.8533 6.82208 20.9249C7.72225 20.9984 8.88684 21 10.6 21H13.4C15.1132 21 16.2777 20.9984 17.1779 20.9249C18.0548 20.8533 18.5032 20.7234 18.816 20.564C19.5686 20.1805 20.1805 19.5686 20.564 18.816C20.7234 18.5032 20.8533 18.0548 20.9249 17.1779C20.9984 16.2777 21 15.1132 21 13.4V10.6C21 8.88684 20.9984 7.72225 20.9249 6.82208C20.8533 5.94524 20.7234 5.49684 20.564 5.18404C20.1805 4.43139 19.5686 3.81947 18.816 3.43597C18.5032 3.27659 18.0548 3.14674 17.1779 3.0751C16.2777 3.00156 15.1132 3 13.4 3Z"
+                  fill="currentColor" />
               </svg>
             </a>
             <a v-if="contact.twitter_url" :href="contact.twitter_url" target="_blank" rel="noopener"
               class="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-full hover:bg-black hover:text-white transition">
-              <svg width="18px" height="18px" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.745l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              <svg width="18px" height="18px" viewBox="0 0 24 24" fill="currentColor"
+                xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.745l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
               </svg>
             </a>
           </div>
         </div>
 
         <!-- Success banner -->
-        <div v-if="messageSent" class="mt-3 px-4 py-3 bg-green-100 border border-green-300 text-green-800 rounded-lg text-sm flex items-center justify-between">
+        <div v-if="messageSent"
+          class="mt-3 px-4 py-3 bg-green-100 border border-green-300 text-green-800 rounded-lg text-sm flex items-center justify-between">
           <span>Your message has been sent! We'll get back to you soon.</span>
-          <button @click="messageSent = false" class="ml-4 text-green-600 font-bold text-lg leading-none">&times;</button>
+          <button @click="messageSent = false"
+            class="ml-4 text-green-600 font-bold text-lg leading-none">&times;</button>
         </div>
 
         <!-- FORM GRID -->
@@ -566,7 +664,7 @@
             class="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700 transition disabled:opacity-50">
             {{ contactSubmitting ? 'Sending…' : 'Leave us a Message' }}
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path d="M5 12h14M13 5l7 7-7 7"/>
+              <path d="M5 12h14M13 5l7 7-7 7" />
             </svg>
           </button>
         </div>
@@ -637,8 +735,15 @@ const props = defineProps({
   },
 })
 
+const taglineParts = computed(() =>
+  (props.hero.tagline || 'Discover the|beauty of').split('|')
+)
+
+const taglineFirst = computed(() => taglineParts.value[0] || '')
+const taglineRest = computed(() => taglineParts.value[1] || '')
+
 const heroBackgroundUrl = computed(() =>
-  props.hero.background_image_url ?? '/images/bg1.jpg'
+  props.hero.background_image_url ?? '/images/bg3.jpeg'
 )
 
 // Attractions pagination
@@ -662,10 +767,10 @@ function openAttractionModal(attraction) {
 }
 
 // ── Contact form ──────────────────────────────────────────────────────────────
-const contactForm    = ref({ name: '', email: '', phone: '', message: '' })
-const contactErrors  = ref({})
+const contactForm = ref({ name: '', email: '', phone: '', message: '' })
+const contactErrors = ref({})
 const contactSubmitting = ref(false)
-const messageSent    = ref(false)
+const messageSent = ref(false)
 
 function submitContactForm() {
   contactErrors.value = {}
