@@ -167,22 +167,21 @@
     </section>
 
     <!-- ── Attractions ──────────────────────────────────────────────────────── -->
-    <!-- overflow-y-auto moved to inner div so the section itself is not a scroll container -->
     <section id="attractions" data-section="attractions" class="snap-start bg-white">
 
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 lg:pt-24 pb-10">
 
         <!-- Title -->
-        <h2 class="text-2xl sm:text-3xl lg:text-4xl text-center font-semibold leading-tight">
+        <h2 class="reveal text-2xl sm:text-3xl lg:text-4xl text-center font-semibold leading-tight">
           Discover places you're going to love
         </h2>
 
-        <p class="text-center text-gray-500 mt-2 text-sm sm:text-base max-w-2xl mx-auto">
+        <p class="reveal text-center text-gray-500 mt-2 text-sm sm:text-base max-w-2xl mx-auto">
           From cultural wonders to nature escapes, let what you love point you toward Bel-is' most amazing experiences.
         </p>
 
         <!-- Filters -->
-        <div class="flex justify-center mt-6">
+        <div class="reveal flex justify-center mt-6">
           <div
             class="flex flex-wrap justify-center gap-2 sm:gap-4 p-2 rounded-lg bg-white border border-gray-100 shadow-sm">
 
@@ -210,7 +209,7 @@
         </div>
 
         <!-- Grid -->
-        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mt-8">
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mt-8 reveal-stagger">
 
           <div v-for="attraction in visibleAttractions" :key="attraction.id"
             class="relative rounded-xl overflow-hidden shadow-md group cursor-pointer h-56 sm:h-64 lg:h-72"
@@ -312,12 +311,12 @@
           <!-- LEFT: LIST -->
           <div class="flex flex-col">
 
-            <h2 class="text-xl sm:text-2xl font-bold mb-4">
+            <h2 class="reveal text-xl sm:text-2xl font-bold mb-4">
               Where do you want to go?
             </h2>
 
             <!-- SEARCH -->
-            <div class="flex items-center bg-gray-100 rounded-lg px-3 py-2 mb-4">
+            <div class="reveal flex items-center bg-gray-100 rounded-lg px-3 py-2 mb-4">
               <svg class="mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="20px" height="20px"
                 viewBox="0 0 64 64">
                 <path fill="#4f4f4f"
@@ -325,7 +324,7 @@
               </svg>
 
               <input type="text" placeholder="Pick a location..."
-                class="flex-1 bg-gray-100 text-sm outline-none border-none focus:ring-0" />
+                class="reveal flex-1 bg-gray-100 text-sm outline-none border-none focus:ring-0" />
 
               <div class="p-2 bg-blue-700 rounded-full flex-shrink-0">
                 <svg width="20px" height="20px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -346,7 +345,7 @@
             </div>
 
             <!-- FILTERS -->
-            <div class="flex flex-wrap gap-2 mb-5">
+            <div class="reveal-stagger flex flex-wrap gap-2 mb-5">
               <button
                 class="px-3 py-1 border rounded-full text-xs sm:text-sm hover:bg-blue-600 hover:text-white transition">
                 Top Rated
@@ -362,7 +361,7 @@
             </div>
 
             <!-- LIST -->
-            <div class="grid gap-4">
+            <div class="reveal-stagger grid gap-4">
 
               <div v-for="n in 2" :key="n" class="flex gap-3 sm:gap-4 border rounded-lg p-3">
 
@@ -411,7 +410,7 @@
           </div>
 
           <!-- RIGHT: MAP -->
-          <div class="w-full h-[300px] sm:h-[400px] lg:h-full min-h-[400px]">
+          <div class="reveal-stagger w-full h-[300px] sm:h-[400px] lg:h-full min-h-[400px]">
             <iframe src="https://www.google.com/maps?q=Bel-is,Buruanga,Aklan&output=embed"
               class="w-full h-full rounded-lg border-0" loading="lazy">
             </iframe>
@@ -424,7 +423,7 @@
     <!-- ── About ────────────────────────────────────────────────────────────── -->
     <!-- overflow-y-auto moved to inner div -->
     <section id="about" data-section="about"
-      class="snap-start min-h-screen w-full relative bg-cover bg-center bg-no-repeat"
+      class="snap-start min-h-screen w-full relative bg-cover bg-center bg-no-repeat reveal"
       style="background-image: url('/images/abstractbg.jpg')">
 
       <!-- overlay -->
@@ -434,41 +433,40 @@
       <div
         class="relative z-10 flex flex-col items-center justify-center px-4 sm:px-8 text-center py-16 sm:py-20 lg:py-24">
 
-        <p class="text-xs sm:text-sm uppercase tracking-wider mb-2 text-white/90">About Us</p>
+        <p class="reveal text-xs sm:text-sm uppercase tracking-wider mb-2 text-white/90">About Us</p>
 
-        <h2 class="font-bold text-2xl sm:text-4xl md:text-5xl leading-tight text-white">
+        <h2 class="reveal font-bold text-2xl sm:text-4xl md:text-5xl leading-tight text-white">
           What is Bel-is?
         </h2>
 
         <!-- GRID -->
-        <div class="mt-8 w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-center">
+        <div class="mt-8 w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-center reveal-stagger">
 
           <!-- IMAGE -->
-          <div class="w-full">
+          <div class="w-full reveal">
             <img src="/images/h-resort.jpg" alt="Bel-is Resort"
               class="w-full h-52 sm:h-64 md:h-80 object-cover rounded-lg shadow-lg" />
           </div>
 
           <!-- TEXT -->
-          <div class="flex flex-col justify-center text-left space-y-6">
+          <div class="flex flex-col justify-center text-left space-y-6 reveal-stagger">
 
             <div class="flex gap-3 sm:gap-4 items-start">
               <p class="text-base sm:text-lg font-bold text-gray-300 flex-shrink-0">01</p>
               <div>
-                <p class="font-semibold text-lg sm:text-xl text-white">Our History</p>
-                <p class="text-xs sm:text-sm mt-2 text-white/80">
-                  Experience the beautiful resorts of Bel-is with breathtaking views, serene ambiance, and world-class
-                  amenities.
+                <p class="font-semibold text-lg sm:text-xl text-white reveal">{{ about.feature1_title }}</p>
+                <p class="text-xs sm:text-sm mt-2 text-white/80 reveal">
+                  {{ about.feature1_desc }}
                 </p>
               </div>
             </div>
 
             <div class="flex gap-3 sm:gap-4 items-start">
-              <p class="text-base sm:text-lg font-bold text-gray-300 flex-shrink-0">02</p>
+              <p class="text-base sm:text-lg font-bold text-gray-300 flex-shrink-0 ">02</p>
               <div>
-                <p class="font-semibold text-lg sm:text-xl text-white">Culture & Traditions</p>
-                <p class="text-xs sm:text-sm mt-2 text-white/80">
-                  Immerse yourself in Bel-is' local traditions, festivals, and culinary delights.
+                <p class="font-semibold text-lg sm:text-xl text-white reveal">{{ about.feature2_title }}</p>
+                <p class="text-xs sm:text-sm mt-2 text-white/80 reveal">
+                  {{ about.feature2_desc }}
                 </p>
               </div>
             </div>
@@ -476,9 +474,9 @@
             <div class="flex gap-3 sm:gap-4 items-start">
               <p class="text-base sm:text-lg font-bold text-gray-300 flex-shrink-0">03</p>
               <div>
-                <p class="font-semibold text-lg sm:text-xl text-white">Nature & Environment</p>
-                <p class="text-xs sm:text-sm mt-2 text-white/80">
-                  Discover pristine beaches, lush landscapes, and rich biodiversity.
+                <p class="font-semibold text-lg sm:text-xl text-white reveal">{{ about.feature3_title }}</p>
+                <p class="text-xs sm:text-sm mt-2 text-white/80 reveal">
+                  {{ about.feature3_desc }}
                 </p>
               </div>
             </div>
@@ -491,12 +489,12 @@
 
     <!-- ── Pre-Registration ─────────────────────────────────────────────────── -->
     <!-- overflow-y-auto removed — content fits within h-screen -->
-    <section id="pre-register" data-section="pre-register" class="snap-start h-screen bg-white flex items-center">
+    <section id="pre-register" data-section="pre-register" class="snap-start h-screen bg-white flex items-center reveal">
       <div class="max-w-6xl mx-auto px-6 py-8 w-full">
         <div class="bg-gray-900 rounded-2xl overflow-hidden">
-          <div class="grid grid-cols-1 md:grid-cols-2 items-center">
+          <div class="grid grid-cols-1 md:grid-cols-2 items-center reveal-stagger">
 
-            <div class="px-10 py-12">
+            <div class="px-10 py-12 reveal">
               <span
                 class="inline-block bg-white/10 text-white text-xs font-semibold px-3 py-1 rounded-full mb-4 tracking-wide uppercase">
                 Skip the Queue
@@ -509,7 +507,7 @@
                 Show it at the Bel-is Tourism Hub checkpoint for a faster entry experience.
               </p>
 
-              <div class="space-y-3 mb-8">
+              <div class="space-y-3 mb-8 reveal-stagger">
                 <div class="flex items-center gap-3">
                   <span
                     class="w-6 h-6 bg-white text-gray-900 text-xs font-bold rounded-full flex items-center justify-center shrink-0">1</span>
@@ -528,7 +526,7 @@
               </div>
 
               <a href="/pre-register"
-                class="inline-flex items-center gap-2 bg-white text-gray-900 font-bold py-3 px-7 rounded-xl hover:bg-gray-100 transition text-sm">
+                class="reveal inline-flex items-center gap-2 bg-white text-gray-900 font-bold py-3 px-7 rounded-xl hover:bg-gray-100 transition text-sm">
                 Pre-Register Now
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -536,7 +534,7 @@
               </a>
             </div>
 
-            <div class="hidden md:flex items-center justify-center px-10 py-12">
+            <div class="hidden md:flex items-center justify-center px-10 py-12 reveal-stagger">
               <div class="bg-white rounded-2xl shadow-2xl p-6 w-64">
                 <div class="text-center mb-4">
                   <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -569,25 +567,25 @@
 
     <!-- ── Contact Form ─────────────────────────────────────────────────────── -->
     <!-- overflow-y-auto removed — content fits within h-screen -->
-    <section id="contact" data-section="contact" class="snap-start min-h-screen bg-white flex flex-col">
+    <section id="contact" data-section="contact" class="snap-start bg-white flex flex-col reveal">
 
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-12 w-full flex-1 flex flex-col justify-center">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-12 w-full flex-1 flex flex-col justify-center reveal-stagger">
 
         <p class="text-sm text-gray-500 mb-3">Get Started</p>
 
         <!-- HEADER -->
-        <div class="flex flex-col md:grid md:grid-cols-2 items-start gap-6 mb-8">
+        <div class="flex flex-col md:grid md:grid-cols-2 items-start gap-6 mb-8 reveal">
 
           <!-- TITLE -->
           <div>
-            <h2 class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
+            <h2 class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight reveal">
               Get in touch with us. <br />
               We're here to assist you.
             </h2>
           </div>
 
           <!-- SOCIALS — only shown if URL is set by admin -->
-          <div class="flex flex-row md:flex-col justify-start md:justify-end items-center md:items-end gap-4 md:gap-5">
+          <div class="flex flex-row md:flex-col justify-start md:justify-end items-center md:items-end gap-4 md:gap-5 reveal">
             <a v-if="contact.facebook_url" :href="contact.facebook_url" target="_blank" rel="noopener"
               class="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-full hover:bg-blue-600 hover:text-white transition">
               <svg fill="currentColor" width="22px" height="22px" viewBox="0 0 32 32"
@@ -631,19 +629,19 @@
 
         <!-- FORM GRID -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-          <div>
+          <div class="reveal">
             <label class="text-sm text-gray-600">Your Name <span class="text-red-500">*</span></label>
             <input v-model="contactForm.name" type="text"
               :class="['w-full border-0 border-b py-2 bg-transparent outline-none focus:ring-0', contactErrors.name ? 'border-red-400' : 'border-gray-400']">
             <p v-if="contactErrors.name" class="text-red-500 text-xs mt-1">{{ contactErrors.name }}</p>
           </div>
-          <div>
+          <div class="reveal">
             <label class="text-sm text-gray-600">Email Address <span class="text-red-500">*</span></label>
             <input v-model="contactForm.email" type="email"
               :class="['w-full border-0 border-b py-2 bg-transparent outline-none focus:ring-0', contactErrors.email ? 'border-red-400' : 'border-gray-400']">
             <p v-if="contactErrors.email" class="text-red-500 text-xs mt-1">{{ contactErrors.email }}</p>
           </div>
-          <div>
+          <div class="reveal">
             <label class="text-sm text-gray-600">Phone (optional)</label>
             <input v-model="contactForm.phone" type="text"
               class="w-full border-0 border-b border-gray-400 focus:ring-0 outline-none py-2 bg-transparent">
@@ -652,16 +650,16 @@
 
         <!-- MESSAGE -->
         <div class="mt-5">
-          <label class="text-sm text-gray-600">Message <span class="text-red-500">*</span></label>
+          <label class="text-sm text-gray-600 reveal">Message <span class="text-red-500">*</span></label>
           <textarea v-model="contactForm.message" rows="2"
-            :class="['w-full border-0 border-b py-2 bg-transparent resize-none outline-none focus:ring-0', contactErrors.message ? 'border-red-400' : 'border-gray-400']"></textarea>
+            :class="['w-full border-0 border-b py-2 bg-transparent resize-none outline-none focus:ring-0 reveal', contactErrors.message ? 'border-red-400' : 'border-gray-400']"></textarea>
           <p v-if="contactErrors.message" class="text-red-500 text-xs mt-1">{{ contactErrors.message }}</p>
         </div>
 
         <!-- BUTTON -->
         <div class="mt-5">
           <button @click.prevent="submitContactForm" :disabled="contactSubmitting"
-            class="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700 transition disabled:opacity-50">
+            class="reveal flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700 transition disabled:opacity-50">
             {{ contactSubmitting ? 'Sending…' : 'Leave us a Message' }}
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path d="M5 12h14M13 5l7 7-7 7" />
@@ -704,6 +702,23 @@ import { useRoute } from 'vue-router'
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { router } from '@inertiajs/vue3'
 
+onMounted(() => {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible')
+        observer.unobserve(entry.target) // animate once only
+      }
+    })
+  }, {
+    threshold: 0.15  // trigger when 15% of element is visible
+  })
+
+  document.querySelectorAll('.reveal, .reveal-stagger').forEach(el => {
+    observer.observe(el)
+  })
+})
+
 const route = useRoute()
 
 const props = defineProps({
@@ -733,6 +748,17 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  about: {
+    type: Object,
+    default: () => ({
+      feature1_title: '',
+      feature1_desc: '',
+      feature2_title: '',
+      feature2_desc: '',
+      feature3_title: '',
+      feature3_desc: '',
+    }),
+  },
 })
 
 const taglineParts = computed(() =>
@@ -745,6 +771,7 @@ const taglineRest = computed(() => taglineParts.value[1] || '')
 const heroBackgroundUrl = computed(() =>
   props.hero.background_image_url ?? '/images/bg3.jpeg'
 )
+
 
 // Attractions pagination
 const PER_PAGE = 6
