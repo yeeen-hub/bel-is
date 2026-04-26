@@ -3,168 +3,165 @@
     <link href="https://fonts.googleapis.com/css2?family=Kaushan+Script&display=swap" rel="stylesheet">
     <!-- ── Hero ─────────────────────────────────────────────────────────────── -->
     <section id="home" data-section="home"
-      class="snap-start min-h-screen relative flex items-start pt-24 sm:pt-28 overflow-hidden">
+  class="snap-start min-h-screen relative flex items-start pt-24 sm:pt-28 overflow-hidden">
 
-      <!-- BACKGROUND IMAGE -->
-      <img :src="heroBackgroundUrl" class="absolute inset-0 w-full h-full object-cover object-center -z-10 animate-pan"
-        alt="Hero background" />
+  <!-- BACKGROUND IMAGE -->
+  <img :src="heroBackgroundUrl"
+    class="absolute inset-0 w-full h-full object-cover object-center -z-10 animate-pan"
+    alt="Hero background" />
 
-      <!-- DARK OVERLAY -->
-      <div class="absolute inset-0 bg-black/50 -z-10"></div>
+  <!-- DARK OVERLAY -->
+  <div class="absolute inset-0 bg-black/50 -z-10"></div>
 
-      <div
-        class="w-full px-4 sm:px-8 lg:px-16 flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8">
+  <!-- MAIN CONTAINER -->
+  <div
+    class="w-full px-4 sm:px-8 lg:px-16 3xl:px-24 4xl:px-32 mt-20 flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8">
 
-        <div class="text-center lg:text-left w-full xl:mt-10">
+    <!-- LEFT CONTENT -->
+    <div class="text-center lg:text-left w-full xl:mt-10">
 
-          <!-- TAGLINE FIRST -->
-          <p class="text-sm sm:text-lg md:text-xl lg:text-2xl
-          text-blue-500 font-kaushan italic leading-tight
-          mb-3 lg:ml-4">
-            {{ taglineFirst }}
-          </p>
+      <!-- TAGLINE FIRST -->
+      <p class="text-sm sm:text-lg md:text-xl lg:text-2xl 3xl:text-3xl 4xl:text-4xl
+        text-blue-500 font-kaushan italic leading-tight mb-3 lg:ml-4">
+        {{ taglineFirst }}
+      </p>
 
-          <!-- TAGLINE REST -->
-          <h2 class="text-base sm:text-xl md:text-2xl lg:text-5xl
-     text-white font-heading leading-tight
-     mb-1 lg:ml-4">
-            {{ taglineRest }}
-          </h2>
+      <!-- TAGLINE REST -->
+      <h2 class="text-base sm:text-xl md:text-2xl lg:text-5xl 3xl:text-6xl 4xl:text-7xl
+        text-white font-heading leading-tight mb-1 lg:ml-4">
+        {{ taglineRest }}
+      </h2>
 
-          <!-- BARANGAY -->
-          <span class="block font-bold leading-none
-        text-4xl sm:text-6xl md:text-7xl lg:text-[10rem] xl:text-[12rem]
+      <!-- BARANGAY -->
+      <span class="block font-bold leading-none
+        text-4xl sm:text-6xl md:text-7xl lg:text-[10rem] xl:text-[12rem] 3xl:text-[14rem] 4xl:text-[18rem]
         text-white relative"
-            style=" text-shadow: 1px 1px 0 #0a2a55, 2px 2px 0 #082244, 3px 3px 0 #061a33, 4px 4px 10px rgba(0,0,0,0.25); transform: translateZ(0); ">
-            {{ hero.barangay || 'Bel-is' }}
-          </span>
+        style="text-shadow: 1px 1px 0 #0a2a55, 2px 2px 0 #082244, 3px 3px 0 #061a33, 4px 4px 10px rgba(0,0,0,0.25);">
+        {{ hero.barangay || 'Bel-is' }}
+      </span>
 
-          <!-- LOCATION (ICON + TEXT) -->
-          <div class="flex items-center justify-center lg:justify-start gap-2 mt-2 lg:ml-4">
-            <svg class="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 flex-shrink-0 text-blue-500"
-              xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="currentColor">
-              <path
-                d="M32,0C18.746,0,8,10.746,8,24c0,5.219,1.711,10.008,4.555,13.93c0.051,0.094,0.059,0.199,0.117,0.289l16,24C29.414,63.332,30.664,64,32,64s2.586-0.668,3.328-1.781l16-24c0.059-0.09,0.066-0.195,0.117-0.289C54.289,34.008,56,29.219,56,24C56,10.746,45.254,0,32,0z M32,32c-4.418,0-8-3.582-8-8s3.582-8,8-8s8,3.582,8,8S36.418,32,32,32z" />
+      <!-- LOCATION -->
+      <div class="flex items-center justify-center lg:justify-start gap-2 mt-2 lg:ml-4">
+
+        <svg class="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 3xl:w-7 3xl:h-7 4xl:w-8 4xl:h-8 flex-shrink-0 text-blue-500"
+          xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="currentColor">
+          <path
+            d="M32,0C18.746,0,8,10.746,8,24c0,5.219,1.711,10.008,4.555,13.93l16,24C29.414,63.332,30.664,64,32,64s2.586-0.668,3.328-1.781l16-24C54.289,34.008,56,29.219,56,24C56,10.746,45.254,0,32,0z M32,32c-4.418,0-8-3.582-8-8s3.582-8,8-8s8,3.582,8,8S36.418,32,32,32z" />
+        </svg>
+
+        <h2 v-if="hero.mun_prov"
+          class="text-sm sm:text-lg md:text-xl lg:text-3xl 3xl:text-4xl 4xl:text-5xl text-white font-heading leading-none text-center lg:text-left">
+          {{ hero.mun_prov }}
+        </h2>
+
+      </div>
+
+      <!-- CARDS -->
+      <div class="flex flex-wrap gap-4 p-5 justify-center lg:justify-start items-stretch">
+
+        <!-- CARD 1 -->
+        <div class="nature-card flex items-center gap-4 w-full sm:w-[200px] lg:w-[220px] xl:w-[260px] 3xl:w-[320px] 4xl:w-[400px]
+          px-6 py-6 rounded-[18px]
+          border border-blue-400/40
+          bg-gradient-to-br from-[#0d47a1]/60 via-[#1565c0]/45 to-[#1976d2]/30
+          backdrop-blur-[14px]
+          shadow-[0_8px_32px_rgba(13,71,161,0.3)] shadow-inner">
+
+          <div class="shrink-0 flex items-center justify-center text-white">
+            <svg xmlns="http://www.w3.org/2000/svg"
+              class="w-6 h-6 sm:w-7 sm:h-7 3xl:w-8 3xl:h-8 4xl:w-9 4xl:h-14"
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"> <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" /> <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
             </svg>
-
-            <h2 v-if="hero.mun_prov" class="text-sm sm:text-lg md:text-xl lg:text-3xl
-      text-white font-heading leading-none text-center lg:text-left">
-              {{ hero.mun_prov }}
-            </h2>
           </div>
 
-          <!-- SUBTEXT -->
-          <div class="flex flex-wrap gap-4 p-5 justify-center lg:justify-start items-stretch">
-
-            <!-- CARD 1 -->
-            <div class="nature-card flex items-center gap-4 w-full sm:w-[200px]
-              px-3 py-3 rounded-[18px]
-              border border-blue-400/40
-              bg-gradient-to-br from-[#0d47a1]/60 via-[#1565c0]/45 to-[#1976d2]/30
-              backdrop-blur-[14px]
-              shadow-[0_8px_32px_rgba(13,71,161,0.3)] shadow-inner">
-
-              <!-- ICON -->
-              <div class="shrink-0 flex items-center justify-center text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-7 sm:h-7" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
-                  <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
-                </svg>
-              </div>
-
-              <!-- TEXT -->
-              <div class="text-center sm:text-left">
-                <h3 class="text-white font-bold text-sm leading-tight">
-                  Nature Beauty
-                </h3>
-                <p class="text-white/80 text-xs leading-snug">
-                  Pristine beaches, clear waters, and lush landscapes.
-                </p>
-              </div>
-            </div>
-
-            <!-- CARD 2 -->
-            <div class="nature-card flex items-center gap-4 w-full sm:w-[200px]
-              px-3 py-3 rounded-[18px]
-              border border-blue-400/40
-              bg-gradient-to-br from-[#0d47a1]/60 via-[#1565c0]/45 to-[#1976d2]/30
-              backdrop-blur-[14px]
-              shadow-[0_8px_32px_rgba(13,71,161,0.3)] shadow-inner">
-
-              <div class="shrink-0 flex items-center justify-center text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-7 sm:h-7" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path
-                    d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
-                  <circle cx="12" cy="13" r="3" />
-                </svg>
-              </div>
-
-              <div class="text-center sm:text-left">
-                <h3 class="text-white font-bold text-sm leading-tight">
-                  Scenic Spots
-                </h3>
-                <p class="text-white/80 text-xs leading-snug">
-                  Breathtaking views perfect for memories that last.
-                </p>
-              </div>
-            </div>
-
-            <!-- CARD 3 -->
-            <div class="nature-card flex items-center gap-4 w-full sm:w-[200px]
-              px-3 py-3 rounded-[18px]
-              border border-blue-400/40
-              bg-gradient-to-br from-[#0d47a1]/60 via-[#1565c0]/45 to-[#1976d2]/30
-              backdrop-blur-[14px]
-              shadow-[0_8px_32px_rgba(13,71,161,0.3)] shadow-inner">
-
-              <div class="shrink-0 flex items-center justify-center text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-7 sm:h-7" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                  <polyline points="9 22 9 12 15 12 15 22" />
-                </svg>
-              </div>
-
-              <div class="text-center sm:text-left">
-                <h3 class="text-white font-bold text-sm leading-tight">
-                  Local Culture
-                </h3>
-                <p class="text-white/80 text-xs leading-snug">
-                  Experience warm hospitality and rich local tradition.
-                </p>
-              </div>
-            </div>
-
+          <div>
+            <h3 class="text-white font-bold text-sm 3xl:text-base 4xl:text-3xl">
+              Nature Beauty
+            </h3>
+            <p class="text-white/80 text-xs 3xl:text-sm 4xl:text-2xl">
+              Pristine beaches, clear waters, and lush landscapes.
+            </p>
           </div>
 
         </div>
 
+        <!-- CARD 2 -->
+        <div class="nature-card flex items-center gap-4 w-full sm:w-[200px] lg:w-[220px] xl:w-[260px] 3xl:w-[320px] 4xl:w-[400px]
+          px-3 py-3 rounded-[18px]
+          border border-blue-400/40
+          bg-gradient-to-br from-[#0d47a1]/60 via-[#1565c0]/45 to-[#1976d2]/30
+          backdrop-blur-[14px]">
 
-        <div class="relative w-full max-w-[700px] mx-auto text-center">
-
-
-          <!-- CONTENT -->
-          <div class="relative p-4 sm:p-6">
-
-            <!-- IMAGE -->
-            <div class="relative w-full max-w-[700px]">
-
-              <!-- IMAGE -->
-              <img src="/images/virtualmap.png" class="w-full" />
-
-              <!-- 🔵 SKEWED CLICK AREA -->
-              <div @click="$router.push('/VTHome')" class="absolute top-0 left-5 w-full h-full cursor-pointer " style="
-              clip-path: polygon(90% 10%, 100% 75%, 0% 75%);"></div>
-
-            </div>
-
+          <div class="text-white">
+            <svg class="w-6 h-6 sm:w-7 sm:h-7 3xl:w-8 3xl:h-8 4xl:w-9 4xl:h-14"
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"> <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /> <circle cx="12" cy="13" r="3" />
+            </svg>
           </div>
+
+          <div>
+            <h3 class="text-white font-bold text-sm 3xl:text-base 4xl:text-3xl">
+              Scenic Spots
+            </h3>
+            <p class="text-white/80 text-xs 3xl:text-sm 4xl:text-2xl">
+              Breathtaking views perfect for memories that last.
+            </p>
+          </div>
+
+        </div>
+
+        <!-- CARD 3 -->
+        <div class="nature-card flex items-center gap-4 w-full sm:w-[200px] lg:w-[220px] xl:w-[260px] 3xl:w-[320px] 4xl:w-[400px]
+          px-6 py-6 rounded-[18px]
+          border border-blue-400/40
+          bg-gradient-to-br from-[#0d47a1]/60 via-[#1565c0]/45 to-[#1976d2]/30
+          backdrop-blur-[14px]">
+
+          <div class="text-white">
+            <svg class="w-6 h-6 sm:w-7 sm:h-7 3xl:w-8 3xl:h-8 4xl:w-9 4xl:h-14"
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"> <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /> <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </div>
+
+          <div>
+            <h3 class="text-white font-bold text-sm 3xl:text-base 4xl:text-3xl">
+              Local Culture
+            </h3>
+            <p class="text-white/80 text-xs 3xl:text-sm 4xl:text-2xl">
+              Experience warm hospitality and rich local tradition.
+            </p>
+          </div>
+
         </div>
 
       </div>
-    </section>
+
+    </div>
+
+    <!-- RIGHT SIDE -->
+    <div class="relative w-full max-w-[700px] 3xl:max-w-[900px] 4xl:max-w-[1200px] mx-auto text-center">
+
+      <div class="relative p-4 sm:p-6">
+
+        <div class="relative w-full">
+
+          <!-- IMAGE -->
+          <img src="/images/virtualmap.png"
+            class="w-full h-auto object-contain 3xl:scale-110 4xl:scale-125" />
+
+          <!-- CLICK AREA -->
+          <div @click="$router.push('/VTHome')"
+            class="absolute top-0 left-5 w-full h-full cursor-pointer"
+            style="clip-path: polygon(90% 10%, 100% 75%, 0% 75%);">
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</section>
 
     <!-- ── Attractions ──────────────────────────────────────────────────────── -->
     <section id="attractions" data-section="attractions" class="snap-start bg-white">

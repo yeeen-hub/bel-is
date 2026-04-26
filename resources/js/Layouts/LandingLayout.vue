@@ -68,56 +68,70 @@ function goTo(sectionId) {
   <div class="min-h-screen flex flex-col">
 
     <!-- Fixed Header -->
-    <header class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-7 py-4 sm:py-5">
+    <header class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-7 lg:px-10 3xl:px-16 4xl:px-24 py-4 sm:py-5 3xl:py-6 4xl:py-8">
 
-      <!-- Logo -->
-      <h1 class="font-heading text-lg sm:text-xl text-white pointer-events-auto">
-        BEL-IS
-      </h1>
+  <!-- Logo -->
+  <h1 class="font-heading text-lg sm:text-xl 3xl:text-2xl 4xl:text-3xl text-white pointer-events-auto">
+    BEL-IS
+  </h1>
 
-      <!-- Desktop Navigation -->
-      <nav class="hidden lg:block pointer-events-auto">
-        <div class="inline-flex bg-white/20 backdrop-blur-sm px-6 py-3 rounded-md space-x-4 font-paragraph text-sm lg:text-base text-black">
-          <a @click.prevent="goTo('home')"         href="#" :class="navClass('home')">Home</a>
-          <a @click.prevent="goTo('attractions')"  href="#" :class="navClass('attractions')">Attractions</a>
-          <a @click.prevent="goTo('map')"          href="#" :class="navClass('map')">Map</a>
-          <a @click.prevent="goTo('about')"        href="#" :class="navClass('about')">About</a>
-          <a @click.prevent="goTo('pre-register')" href="#" :class="navClass('pre-register')">Pre-Register</a>
-          <a @click.prevent="goTo('contact')"      href="#" :class="navClass('contact')">Contact</a>
-        </div>
-      </nav>
+  <!-- Desktop Navigation -->
+  <nav class="hidden lg:block pointer-events-auto">
+    <div class="inline-flex bg-white/20 backdrop-blur-sm px-6 py-3 3xl:px-10 3xl:py-4 4xl:px-12 4xl:py-5 rounded-md space-x-4 3xl:space-x-6 font-paragraph text-sm lg:text-base 3xl:text-lg 4xl:text-xl text-black">
 
-      <!-- Right side -->
-      <div class="flex items-center gap-3 pointer-events-auto">
-        <Link :href="route('login')">
-          <img src="/images/brgylogo.png" alt="Barangay Logo"
-            class="h-10 sm:h-14 object-cover" />
-        </Link>
-        <button @click="mobileMenu = !mobileMenu" class="lg:hidden text-black text-2xl">
-          <i class="fa fa-bars"></i>
-        </button>
-      </div>
+      <a @click.prevent="goTo('home')" href="#" :class="navClass('home')">Home</a>
+      <a @click.prevent="goTo('attractions')" href="#" :class="navClass('attractions')">Attractions</a>
+      <a @click.prevent="goTo('map')" href="#" :class="navClass('map')">Map</a>
+      <a @click.prevent="goTo('about')" href="#" :class="navClass('about')">About</a>
+      <a @click.prevent="goTo('pre-register')" href="#" :class="navClass('pre-register')">Pre-Register</a>
+      <a @click.prevent="goTo('contact')" href="#" :class="navClass('contact')">Contact</a>
 
-      <!-- Mobile Menu -->
-      <div v-if="mobileMenu"
-        class="absolute top-full right-4 mt-3 w-52
-               bg-black/40 backdrop-blur-lg
-               border border-white/20
-               rounded-xl shadow-xl lg:hidden">
-        <div class="flex flex-col p-4 space-y-3 text-sm font-medium text-white">
-          <a @click.prevent="goTo('home')"         href="#" class="hover:text-blue-400 transition">Home</a>
-          <a @click.prevent="goTo('attractions')"  href="#" class="hover:text-blue-400 transition">Attractions</a>
-          <a @click.prevent="goTo('map')"          href="#" class="hover:text-blue-400 transition">Map</a>
-          <a @click.prevent="goTo('about')"        href="#" class="hover:text-blue-400 transition">About</a>
-          <a @click.prevent="goTo('pre-register')" href="#"
-            :class="activeSection === 'pre-register' ? 'text-blue-400 font-bold' : 'hover:text-blue-400 transition'">
-            Pre-Register
-          </a>
-          <a @click.prevent="goTo('contact')"      href="#" class="hover:text-blue-400 transition">Contact</a>
-        </div>
-      </div>
+    </div>
+  </nav>
 
-    </header>
+  <!-- Right side -->
+  <div class="flex items-center gap-3 3xl:gap-5 4xl:gap-6 pointer-events-auto">
+
+    <Link :href="route('login')">
+      <img src="/images/brgylogo.png" alt="Barangay Logo"
+        class="h-10 sm:h-14 3xl:h-16 4xl:h-20 object-cover" />
+    </Link>
+
+    <button @click="mobileMenu = !mobileMenu"
+      class="lg:hidden text-black text-2xl 3xl:text-3xl 4xl:text-4xl">
+      <i class="fa fa-bars"></i>
+    </button>
+
+  </div>
+
+  <!-- Mobile Menu -->
+  <div v-if="mobileMenu"
+    class="absolute top-full right-4 mt-3 w-52 3xl:w-64 4xl:w-72
+           bg-black/40 backdrop-blur-lg
+           border border-white/20
+           rounded-xl shadow-xl lg:hidden">
+
+    <div class="flex flex-col p-4 3xl:p-6 space-y-3 text-sm 3xl:text-base font-medium text-white">
+
+      <a @click.prevent="goTo('home')" href="#" class="hover:text-blue-400 transition">Home</a>
+      <a @click.prevent="goTo('attractions')" href="#" class="hover:text-blue-400 transition">Attractions</a>
+      <a @click.prevent="goTo('map')" href="#" class="hover:text-blue-400 transition">Map</a>
+      <a @click.prevent="goTo('about')" href="#" class="hover:text-blue-400 transition">About</a>
+
+      <a @click.prevent="goTo('pre-register')" href="#"
+        :class="activeSection === 'pre-register'
+          ? 'text-blue-400 font-bold'
+          : 'hover:text-blue-400 transition'">
+        Pre-Register
+      </a>
+
+      <a @click.prevent="goTo('contact')" href="#" class="hover:text-blue-400 transition">Contact</a>
+
+    </div>
+
+  </div>
+
+</header>
 
     <!-- Page content -->
     <main class="flex-1">
