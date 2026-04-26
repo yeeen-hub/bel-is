@@ -18,6 +18,11 @@ export default {
                 paragraph: ['Poppins', 'sans-serif'],
                 kaushan: ['"Kaushan Script"', 'cursive'],
             },
+
+            screens: {
+                '3xl': '1920px',
+                '4xl': '2560px',
+            },
         },
     },
 
