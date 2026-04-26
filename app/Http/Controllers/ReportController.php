@@ -14,9 +14,6 @@ use Carbon\Carbon;
 class ReportController extends Controller
 {
     // ── Analytics — AdminRepOvPage ────────────────────────────────────────────
-    // GET /reports/analytics
-    // Individual visitor rows: Name, Origin, Purpose, Duration, Destinations.
-    // ─────────────────────────────────────────────────────────────────────────
     public function analytics(Request $request)
     {
         $query = VisitorVisit::query()
@@ -36,7 +33,6 @@ class ReportController extends Controller
         if ($request->filled('date_to')) {
             $query->whereDate('arrival_at', '<=', $request->date_to);
         }
-        // Area = sitio name → filter visits whose selected destinations belong to that sitio
         if ($request->filled('area')) {
             $query->whereHas('destinations', function ($q) use ($request) {
                 $q->whereHas('attraction', function ($q2) use ($request) {
@@ -56,19 +52,15 @@ class ReportController extends Controller
                   ->orWhere('snapshot_place_of_origin', 'like', "%{$s}%");
             });
         }
-        // Attraction filter — only visits that include this attraction
         if ($request->filled('attraction_id')) {
             $query->whereHas('destinations', fn($q) =>
                 $q->where('attraction_id', $request->attraction_id)
             );
         }
 
-        $visits = $query->get();
-
-        // Bulk-load all destinations in TWO queries (avoids N+1)
+        $visits   = $query->get();
         $visitIds = $visits->pluck('id');
 
-        // Named attractions grouped by visit_id
         $named = DB::table('visitor_destinations')
             ->join('barangay_attractions', 'visitor_destinations.attraction_id', '=', 'barangay_attractions.id')
             ->whereIn('visitor_destinations.visit_id', $visitIds)
@@ -77,7 +69,6 @@ class ReportController extends Controller
             ->get()
             ->groupBy('visit_id');
 
-        // "Other" free-text destinations grouped by visit_id
         $others = DB::table('visitor_destinations')
             ->whereIn('visit_id', $visitIds)
             ->whereNull('attraction_id')
@@ -89,22 +80,13 @@ class ReportController extends Controller
 
         $rows = $visits->map(function ($v) use ($named, $others) {
             $parts = collect();
-
             if (isset($named[$v->id])) {
-                $parts = $parts->merge(
-                    collect($named[$v->id])->pluck('name')
-                );
+                $parts = $parts->merge(collect($named[$v->id])->pluck('name'));
             }
             if (isset($others[$v->id])) {
-                $parts = $parts->merge(
-                    collect($others[$v->id])->pluck('other_destination')
-                );
+                $parts = $parts->merge(collect($others[$v->id])->pluck('other_destination'));
             }
-
-            $firstName = trim($v->snapshot_first_name ?? '');
-            $lastName  = trim($v->snapshot_last_name  ?? '');
-            $fullName  = trim("$firstName $lastName") ?: '—';
-
+            $fullName = trim(($v->snapshot_first_name ?? '') . ' ' . ($v->snapshot_last_name ?? '')) ?: '—';
             return [
                 'full_name'        => $fullName,
                 'place_of_origin'  => $v->snapshot_place_of_origin ?? '—',
@@ -115,10 +97,10 @@ class ReportController extends Controller
         });
 
         return Inertia::render('AdminRepOvPage', [
-            'rows'    => $rows,
-            'sitios'  => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'rows'        => $rows,
+            'sitios'      => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'attractions' => BarangayAttraction::where('is_active', true)->orderBy('name')->get(['id', 'name']),
-            'filters' => [
+            'filters'     => [
                 'search'        => $request->search        ?? '',
                 'purpose'       => $request->purpose       ?? '',
                 'area'          => $request->area          ?? '',
@@ -129,9 +111,15 @@ class ReportController extends Controller
         ]);
     }
 
-    // ── Demographics ──────────────────────────────────────────────────────────
+    // ── Demographics — AdminRepDemoPage ───────────────────────────────────────
     // GET /reports/demographics
     // Grouped by origin: Origin, Total Tourist count.
+    //
+    // Area filter: same logic as analytics — visitors whose destinations
+    // belong to the selected sitio, NOT a LIKE on place_of_origin.
+    // The previous version had the area filter applied TWICE:
+    //   1. Incorrectly as LIKE on snapshot_place_of_origin  ← removed
+    //   2. Correctly via whereHas destinations→attraction→sitio
     // ─────────────────────────────────────────────────────────────────────────
     public function demographics(Request $request)
     {
@@ -149,13 +137,13 @@ class ReportController extends Controller
         if ($request->filled('date_to')) {
             $query->whereDate('arrival_at', '<=', $request->date_to);
         }
-        if ($request->filled('area')) {
-            $query->where('snapshot_place_of_origin', 'like', "%{$request->area}%");
-        }
         if ($request->filled('search')) {
             $query->where('snapshot_place_of_origin', 'like', "%{$request->search}%");
         }
-        // Area = sitio name → filter visits whose destinations belong to that sitio
+
+        // Area = sitio name → filter visits whose destinations belong to that sitio.
+        // Identical logic to analytics() — do NOT use LIKE on snapshot_place_of_origin
+        // because area/sitio is where they VISITED, not where they came FROM.
         if ($request->filled('area')) {
             $query->whereHas('destinations', function ($q) use ($request) {
                 $q->whereHas('attraction', function ($q2) use ($request) {
@@ -172,8 +160,8 @@ class ReportController extends Controller
         ])->values();
 
         return Inertia::render('AdminRepDemoPage', [
-            'rows'   => $rows,
-            'sitios' => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'rows'    => $rows,
+            'sitios'  => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'filters' => [
                 'search'    => $request->search    ?? '',
                 'area'      => $request->area      ?? '',
@@ -184,13 +172,10 @@ class ReportController extends Controller
     }
 
     // ── Fee Revenue ───────────────────────────────────────────────────────────
-    // GET /reports/fee-revenue
-    // ─────────────────────────────────────────────────────────────────────────
     public function feeRevenue(Request $request)
     {
         $feeTypeFilter = $request->fee_type ?? '';
 
-        // ── No Show — no receipt, query visitor_visits directly ──────────────────
         if ($feeTypeFilter === 'No Show') {
             $noShowQuery = DB::table('visitor_visits')
                 ->select(
@@ -202,19 +187,13 @@ class ReportController extends Controller
                 ->where('fee_status', 'No Show')
                 ->orderByDesc('arrival_at');
 
-            if ($request->filled('date_from')) {
-                $noShowQuery->whereDate('arrival_at', '>=', $request->date_from);
-            }
-            if ($request->filled('date_to')) {
-                $noShowQuery->whereDate('arrival_at', '<=', $request->date_to);
-            }
+            if ($request->filled('date_from'))  $noShowQuery->whereDate('arrival_at', '>=', $request->date_from);
+            if ($request->filled('date_to'))    $noShowQuery->whereDate('arrival_at', '<=', $request->date_to);
             if ($request->filled('search')) {
                 $s = $request->search;
                 $noShowQuery->whereRaw("TRIM(CONCAT(IFNULL(snapshot_first_name,''), ' ', IFNULL(snapshot_last_name,''))) LIKE ?", ["%{$s}%"]);
             }
-            if ($request->filled('category')) {
-                $noShowQuery->where('visitor_category', $request->category);
-            }
+            if ($request->filled('category'))   $noShowQuery->where('visitor_category', $request->category);
             if ($request->filled('area')) {
                 $visitIdsInSitio = DB::table('visitor_destinations')
                     ->join('barangay_attractions', 'visitor_destinations.attraction_id', '=', 'barangay_attractions.id')
@@ -227,7 +206,7 @@ class ReportController extends Controller
             $rows = $noShowQuery->get();
 
             return Inertia::render('AdminRepFeePage', [
-                'rows' => $rows->map(fn($r) => [
+                'rows'         => $rows->map(fn($r) => [
                     'visit_category' => $r->visit_category ?: '—',
                     'full_name'      => trim($r->full_name) ?: '—',
                     'revenue'        => 'No Show',
@@ -246,7 +225,6 @@ class ReportController extends Controller
             ]);
         }
 
-        // ── Pending — no receipt, query visitor_visits directly ───────────────
         if ($feeTypeFilter === 'Pending') {
             $pendingQuery = DB::table('visitor_visits')
                 ->select(
@@ -258,19 +236,13 @@ class ReportController extends Controller
                 ->where('fee_status', 'Pending')
                 ->orderByDesc('arrival_at');
 
-            if ($request->filled('date_from')) {
-                $pendingQuery->whereDate('arrival_at', '>=', $request->date_from);
-            }
-            if ($request->filled('date_to')) {
-                $pendingQuery->whereDate('arrival_at', '<=', $request->date_to);
-            }
+            if ($request->filled('date_from'))  $pendingQuery->whereDate('arrival_at', '>=', $request->date_from);
+            if ($request->filled('date_to'))    $pendingQuery->whereDate('arrival_at', '<=', $request->date_to);
             if ($request->filled('search')) {
                 $s = $request->search;
                 $pendingQuery->whereRaw("TRIM(CONCAT(IFNULL(snapshot_first_name,''), ' ', IFNULL(snapshot_last_name,''))) LIKE ?", ["%{$s}%"]);
             }
-            if ($request->filled('category')) {
-                $pendingQuery->where('visitor_category', $request->category);
-            }
+            if ($request->filled('category'))   $pendingQuery->where('visitor_category', $request->category);
             if ($request->filled('area')) {
                 $visitIdsInSitio = DB::table('visitor_destinations')
                     ->join('barangay_attractions', 'visitor_destinations.attraction_id', '=', 'barangay_attractions.id')
@@ -283,7 +255,7 @@ class ReportController extends Controller
             $rows = $pendingQuery->get();
 
             return Inertia::render('AdminRepFeePage', [
-                'rows' => $rows->map(fn($r) => [
+                'rows'         => $rows->map(fn($r) => [
                     'visit_category' => $r->visit_category ?: '—',
                     'full_name'      => trim($r->full_name) ?: '—',
                     'revenue'        => 'Pending',
@@ -302,7 +274,6 @@ class ReportController extends Controller
             ]);
         }
 
-        // ── Standard / Waived / All — join with receipts as before ───────────
         $query = DB::table('visitor_visits')
             ->join('receipts', 'visitor_visits.id', '=', 'receipts.visit_id')
             ->select(
@@ -315,12 +286,8 @@ class ReportController extends Controller
             )
             ->orderByDesc('receipts.collected_at');
 
-        if ($request->filled('date_from')) {
-            $query->whereDate('receipts.collected_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('receipts.collected_at', '<=', $request->date_to);
-        }
+        if ($request->filled('date_from'))  $query->whereDate('receipts.collected_at', '>=', $request->date_from);
+        if ($request->filled('date_to'))    $query->whereDate('receipts.collected_at', '<=', $request->date_to);
         if ($request->filled('area')) {
             $visitIdsInSitio = DB::table('visitor_destinations')
                 ->join('barangay_attractions', 'visitor_destinations.attraction_id', '=', 'barangay_attractions.id')
@@ -333,21 +300,16 @@ class ReportController extends Controller
             $s = $request->search;
             $query->whereRaw("TRIM(CONCAT(IFNULL(visitor_visits.snapshot_first_name,''), ' ', IFNULL(visitor_visits.snapshot_last_name,''))) LIKE ?", ["%{$s}%"]);
         }
-        if ($request->filled('category')) {
-            $query->where('visitor_visits.visitor_category', $request->category);
-        }
-        if ($feeTypeFilter) {
-            $query->where('receipts.fee_type', $feeTypeFilter);
-        }
+        if ($request->filled('category'))   $query->where('visitor_visits.visitor_category', $request->category);
+        if ($feeTypeFilter)                 $query->where('receipts.fee_type', $feeTypeFilter);
 
-        $rows = $query->get();
-
+        $rows         = $query->get();
         $totalRevenue = $rows->where('fee_type', '!=', 'Waived')->sum('revenue');
         $days         = $rows->groupBy(fn($r) => Carbon::parse($r->collected_at)->toDateString())->count();
         $avgDaily     = $days > 0 ? round($totalRevenue / $days, 2) : 0;
 
         return Inertia::render('AdminRepFeePage', [
-            'rows' => $rows->map(fn($r) => [
+            'rows'         => $rows->map(fn($r) => [
                 'visit_category' => $r->visit_category ?: '—',
                 'full_name'      => trim($r->full_name) ?: '—',
                 'revenue'        => $r->fee_type === 'Waived'
@@ -368,13 +330,13 @@ class ReportController extends Controller
         ]);
     }
 
-    // ── Temporal (stub — add logic when page is built) ────────────────────────
+    // ── Temporal ──────────────────────────────────────────────────────────────
     public function temporal(Request $request)
     {
         return Inertia::render('AdminRepTemporalPage', []);
     }
 
-    // ── Behavioral (stub — add logic when page is built) ─────────────────────
+    // ── Behavioral ────────────────────────────────────────────────────────────
     public function behavioral(Request $request)
     {
         return Inertia::render('AdminRepBehavioralPage', []);

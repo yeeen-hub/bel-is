@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\HeroSetting;
 use App\Models\ContactSetting;
+use App\Models\ContactMessage;
 use App\Models\Attraction;
 use App\Models\AboutSetting;
 use App\Models\AboutImage;
@@ -30,9 +31,20 @@ class WebsiteContentController extends Controller
             ]);
         $about       = AboutSetting::instance();
 
-        $about       = AboutSetting::instance();
         $aboutImages = AboutImage::orderBy('sort_order')->orderBy('id')->get()
             ->map(fn($i) => ['id' => $i->id, 'image_url' => $i->image_url, 'sort_order' => $i->sort_order]);
+
+        $messages    = ContactMessage::latest()->get()
+            ->map(fn($m) => [
+                'id'         => $m->id,
+                'name'       => $m->name,
+                'email'      => $m->email,
+                'phone'      => $m->phone,
+                'message'    => $m->message,
+                'is_read'    => $m->is_read,
+                'created_at' => $m->created_at->format('M j, Y g:i A'),
+            ]);
+        $unreadCount = ContactMessage::where('is_read', false)->count();
 
         return Inertia::render('AdminSetWCPage', [
             'hero' => [
@@ -43,10 +55,13 @@ class WebsiteContentController extends Controller
                 'background_image_url' => $hero->background_image_url,
             ],
             'contact' => [
-                'email'       => $contact->email,
-                'phone'       => $contact->phone,
-                'email_hours' => $contact->email_hours,
-                'phone_hours' => $contact->phone_hours,
+                'email'         => $contact->email,
+                'phone'         => $contact->phone,
+                'email_hours'   => $contact->email_hours,
+                'phone_hours'   => $contact->phone_hours,
+                'facebook_url'  => $contact->facebook_url,
+                'instagram_url' => $contact->instagram_url,
+                'twitter_url'   => $contact->twitter_url,
             ],
             'attractions' => $attractions,
             'about' => [
@@ -59,7 +74,9 @@ class WebsiteContentController extends Controller
                 'feature3_title' => $about->feature3_title,
                 'feature3_desc'  => $about->feature3_desc,
             ],
-            'about_images' => $aboutImages,
+            'about_images'  => $aboutImages,
+            'messages'      => $messages,
+            'unread_count'  => $unreadCount,
         ]);
     }
 
@@ -98,20 +115,60 @@ class WebsiteContentController extends Controller
     public function updateContact(Request $request)
     {
         $request->validate([
-            'email'       => 'required|email|max:255',
-            'phone'       => 'required|string|max:50',
-            'email_hours' => 'nullable|string|max:255',
-            'phone_hours' => 'nullable|string|max:255',
+            'email'         => 'required|email|max:255',
+            'phone'         => 'required|string|max:50',
+            'email_hours'   => 'nullable|string|max:255',
+            'phone_hours'   => 'nullable|string|max:255',
+            'facebook_url'  => 'nullable|url|max:255',
+            'instagram_url' => 'nullable|url|max:255',
+            'twitter_url'   => 'nullable|url|max:255',
         ]);
 
-        $contact              = ContactSetting::instance();
-        $contact->email       = $request->email;
-        $contact->phone       = $request->phone;
-        $contact->email_hours = $request->email_hours;
-        $contact->phone_hours = $request->phone_hours;
+        $contact                = ContactSetting::instance();
+        $contact->email         = $request->email;
+        $contact->phone         = $request->phone;
+        $contact->email_hours   = $request->email_hours;
+        $contact->phone_hours   = $request->phone_hours;
+        $contact->facebook_url  = $request->facebook_url  ?: null;
+        $contact->instagram_url = $request->instagram_url ?: null;
+        $contact->twitter_url   = $request->twitter_url   ?: null;
         $contact->save();
 
         return redirect()->route('websitecontent')->with('success', 'Contact info updated successfully!');
+    }
+
+    // ── Contact Messages ──────────────────────────────────────────────────────
+
+    public function sendMessage(Request $request)
+    {
+        $request->validate([
+            'name'    => 'required|string|max:255',
+            'email'   => 'required|email|max:255',
+            'phone'   => 'nullable|string|max:50',
+            'message' => 'required|string|max:2000',
+        ]);
+
+        ContactMessage::create([
+            'name'    => $request->name,
+            'email'   => $request->email,
+            'phone'   => $request->phone,
+            'message' => $request->message,
+            'is_read' => false,
+        ]);
+
+        return back()->with('contact_success', true);
+    }
+
+    public function markMessageRead($id)
+    {
+        ContactMessage::findOrFail($id)->update(['is_read' => true]);
+        return redirect()->back();
+    }
+
+    public function deleteMessage($id)
+    {
+        ContactMessage::findOrFail($id)->delete();
+        return redirect()->back()->with('success', 'Message deleted.');
     }
 
     // ── Attractions ───────────────────────────────────────────────────────────
@@ -261,10 +318,13 @@ class WebsiteContentController extends Controller
                 'background_image_url' => $hero->background_image_url,
             ],
             'contact' => [
-                'email'       => $contact->email,
-                'phone'       => $contact->phone,
-                'email_hours' => $contact->email_hours,
-                'phone_hours' => $contact->phone_hours,
+                'email'         => $contact->email,
+                'phone'         => $contact->phone,
+                'email_hours'   => $contact->email_hours,
+                'phone_hours'   => $contact->phone_hours,
+                'facebook_url'  => $contact->facebook_url,
+                'instagram_url' => $contact->instagram_url,
+                'twitter_url'   => $contact->twitter_url,
             ],
             'attractions'  => $attractions,
             'about' => [

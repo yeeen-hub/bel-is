@@ -1,6 +1,5 @@
 import defaultTheme from 'tailwindcss/defaultTheme';
 import forms from '@tailwindcss/forms';
-import { faParagraph } from '@fortawesome/free-solid-svg-icons';
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -17,6 +16,7 @@ export default {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
                 heading: ['Agrandir', 'sans-serif'],
                 paragraph: ['Poppins', 'sans-serif'],
+                kaushan: ['"Kaushan Script"', 'cursive'],
             },
         },
     },

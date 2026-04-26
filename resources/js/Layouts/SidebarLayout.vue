@@ -32,6 +32,19 @@ const doLogout = () => {
     logoutForm.post(route('logout'))
 }
 
+const isActive = (href) => {
+  return page.url.startsWith(href)
+}
+
+const navClass = (href) => {
+  return [
+    'flex items-center space-x-2 p-2 rounded-lg transition',
+    isActive(href)
+      ? 'bg-gray-200 text-gray-900 font-bold'
+      : 'hover:bg-gray-200 text-gray-800'
+  ]
+}
+
 </script>
 
 <template>
@@ -53,17 +66,21 @@ const doLogout = () => {
                 <Link :href="route('home')">
                     <img src="/images/brgylogo.png" class="h-14 w-14 rounded-full" />
                 </Link>
-                <div>
-                    <h1 class="font-heading text-xl">BEL-IS</h1>
-                    <span class="text-gray-400 text-sm">System</span>
-                </div>
+               <div class="leading-none">
+  <h1 class="font-heading text-xl font-bold text-gray-900">
+    BEL-IS
+  </h1>
+  <span class="text-[11px] text-gray-400 tracking-[0.2em] uppercase">
+    System
+  </span>
+</div>
             </div>
             <hr class="border-black mb-4" />
-            <nav class="flex flex-col space-y-3 text-gray-600 text-base">
+            <nav class="flex flex-col space-y-3 text-gray-800 text-base">
 
                 <!-- Dashboard: view_dashboard -->
                 <Link v-if="can('view_dashboard')" href="/admindb"
-                    class="flex items-center space-x-2 hover:bg-gray-200 p-2 rounded-lg"
+                    :class="navClass('/admindb')"
                     @click="showSidebar = false">
                     <FontAwesomeIcon icon="gauge" />
                     <span class="font-semibold">Dashboard</span>
@@ -71,14 +88,16 @@ const doLogout = () => {
 
                 <!-- Registration: view_registration -->
                 <Link v-if="can('view_registration')" :href="route('registration')"
-                    class="flex items-center space-x-2 hover:bg-gray-200 p-2 rounded-lg">
+                    :class="navClass('/registration')"
+                    @click="showSidebar = false">
                     <FontAwesomeIcon icon="user-plus" />
                     <span class="font-semibold">Registration</span>
                 </Link>
 
                 <!-- Visitor Records: view_visitor_records -->
                 <Link v-if="can('view_visitor_records')" :href="route('visitor-records')"
-                    class="flex items-center space-x-2 hover:bg-gray-200 p-2 rounded-lg">
+                    :class="navClass('/visitor-records')"
+                    @click="showSidebar = false">
                     <FontAwesomeIcon icon="users" />
                     <span class="font-semibold">Visitor Records</span>
                 </Link>
@@ -98,11 +117,13 @@ const doLogout = () => {
                     </button>
                     <div v-if="showReports" class="ml-8 mt-2 flex flex-col gap-2">
                         <Link :href="route('reports')"
-                            class="font-semibold border-2 border-gray-200 hover:bg-gray-200 p-2 rounded-lg text-sm">
+                            :class="navClass('/reports')"
+                            @click="showSidebar = false">
                             Analytics
                         </Link>
                         <Link :href="route('feerevenue')"
-                            class="font-semibold border-2 border-gray-200 hover:bg-gray-200 p-2 rounded-lg text-sm">
+                            :class="navClass('/feerevenue')"
+                            @click="showSidebar = false">
                             Fee Revenue
                         </Link>
                     </div>
@@ -110,7 +131,7 @@ const doLogout = () => {
 
                 <!-- Settings: view_settings OR view_system_settings OR view_user_management -->
                 <Link v-if="can('view_settings') || can('view_system_settings') || can('view_user_management')"
-                    :href="route('settings')" class="flex items-center space-x-2 hover:bg-gray-200 p-2 rounded-lg">
+                    :href="route('settings')" :class="navClass('/settings')" @click="showSidebar = false">
                     <FontAwesomeIcon icon="cog" />
                     <span class="font-semibold">Settings</span>
                 </Link>

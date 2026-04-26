@@ -594,14 +594,14 @@
             </div>
 
             <div v-else-if="activeTab === 'contact'">
-                <div class="max-w-6xl mx-auto mt-5">
-                    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 mb-5">
+                <div class="max-w-6xl mx-auto mt-5 space-y-5">
 
-                        <div class="flex items-center justify-between">
+                    <!-- Contact Info Card -->
+                    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
+                        <div class="flex items-center justify-between mb-1">
                             <div>
-                                <p class="text-md font-semibold text-gray-700">Contact Information Section</p>
-                                <p class="text-sm text-gray-500">Edit the contact information band on the landing page.
-                                </p>
+                                <p class="text-md font-semibold text-gray-700">Contact Information</p>
+                                <p class="text-sm text-gray-500">Edit the contact info band on the landing page.</p>
                             </div>
                             <button type="button" @click="contactEditing = !contactEditing"
                                 class="border border-blue-500 text-blue-500 text-sm font-bold px-5 py-2 rounded-xl hover:bg-gray-900 hover:text-white transition">
@@ -610,51 +610,117 @@
                         </div>
 
                         <form @submit.prevent="submitContact">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 p-4">
-
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 p-2">
                                 <div>
-                                    <label class="block text-gray-700 text-sm font-bold">Email Address</label>
+                                    <label class="block text-gray-700 text-sm font-bold mb-1">Email Address</label>
                                     <input v-model="contactForm.email" :disabled="!contactEditing" type="email"
                                         class="border border-gray-300 rounded w-full py-2 px-3 disabled:bg-gray-50 disabled:text-gray-400" />
-                                    <p v-if="contactForm.errors.email" class="text-red-500 text-xs mt-1">
-                                        {{ contactForm.errors.email }}
-                                    </p>
+                                    <p v-if="contactForm.errors.email" class="text-red-500 text-xs mt-1">{{ contactForm.errors.email }}</p>
                                 </div>
-
                                 <div>
-                                    <label class="block text-gray-700 text-sm font-bold">Phone Number</label>
+                                    <label class="block text-gray-700 text-sm font-bold mb-1">Phone Number</label>
                                     <input v-model="contactForm.phone" :disabled="!contactEditing" type="text"
                                         class="border border-gray-300 rounded w-full py-2 px-3 disabled:bg-gray-50 disabled:text-gray-400" />
-                                    <p v-if="contactForm.errors.phone" class="text-red-500 text-xs mt-1">
-                                        {{ contactForm.errors.phone }}
-                                    </p>
+                                    <p v-if="contactForm.errors.phone" class="text-red-500 text-xs mt-1">{{ contactForm.errors.phone }}</p>
                                 </div>
-
                                 <div>
-                                    <label class="block text-gray-700 text-sm font-bold">Email Assistance Hours</label>
-                                    <p class="text-sm text-gray-500 mb-2">e.g. Monday – Friday 6 am to 8 pm</p>
+                                    <label class="block text-gray-700 text-sm font-bold mb-1">Email Assistance Hours</label>
+                                    <p class="text-xs text-gray-500 mb-1">e.g. Monday – Friday 6 am to 8 pm</p>
                                     <input v-model="contactForm.email_hours" :disabled="!contactEditing" type="text"
                                         class="border border-gray-300 rounded w-full py-2 px-3 disabled:bg-gray-50 disabled:text-gray-400" />
                                 </div>
-
                                 <div>
-                                    <label class="block text-gray-700 text-sm font-bold">Phone Assistance Hours</label>
-                                    <p class="text-sm text-gray-500 mb-2">e.g. Monday – Friday 6 am to 8 pm</p>
+                                    <label class="block text-gray-700 text-sm font-bold mb-1">Phone Assistance Hours</label>
+                                    <p class="text-xs text-gray-500 mb-1">e.g. Monday – Friday 6 am to 8 pm</p>
                                     <input v-model="contactForm.phone_hours" :disabled="!contactEditing" type="text"
                                         class="border border-gray-300 rounded w-full py-2 px-3 disabled:bg-gray-50 disabled:text-gray-400" />
                                 </div>
-
                             </div>
 
-                            <div v-if="contactEditing" class="flex justify-end mt-5 gap-5">
+                            <!-- Social Links -->
+                            <div class="px-2 pt-2 pb-1">
+                                <p class="text-sm font-bold text-gray-600 uppercase tracking-wide mb-3">Social Links</p>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-gray-700 text-sm font-bold mb-1">Facebook URL</label>
+                                        <input v-model="contactForm.facebook_url" :disabled="!contactEditing" type="url"
+                                            placeholder="https://facebook.com/..."
+                                            class="border border-gray-300 rounded w-full py-2 px-3 disabled:bg-gray-50 disabled:text-gray-400" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-gray-700 text-sm font-bold mb-1">Instagram URL</label>
+                                        <input v-model="contactForm.instagram_url" :disabled="!contactEditing" type="url"
+                                            placeholder="https://instagram.com/..."
+                                            class="border border-gray-300 rounded w-full py-2 px-3 disabled:bg-gray-50 disabled:text-gray-400" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-gray-700 text-sm font-bold mb-1">X / Twitter URL</label>
+                                        <input v-model="contactForm.twitter_url" :disabled="!contactEditing" type="url"
+                                            placeholder="https://x.com/..."
+                                            class="border border-gray-300 rounded w-full py-2 px-3 disabled:bg-gray-50 disabled:text-gray-400" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="contactEditing" class="flex justify-end mt-4 gap-3 px-2">
                                 <button type="submit" :disabled="contactForm.processing"
                                     class="bg-gray-900 text-white text-sm font-bold px-5 py-2 rounded-xl disabled:opacity-50 hover:bg-gray-800 transition">
                                     {{ contactForm.processing ? 'Saving…' : 'Save Changes' }}
                                 </button>
+                                <button type="button" @click="contactEditing = false"
+                                    class="border border-gray-300 text-gray-600 text-sm font-bold px-5 py-2 rounded-xl hover:bg-gray-100 transition">
+                                    Cancel
+                                </button>
                             </div>
                         </form>
-
                     </div>
+
+                    <!-- Messages Inbox Card -->
+                    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
+                        <div class="flex items-center gap-2 mb-1">
+                            <p class="text-md font-semibold text-gray-700">Messages Inbox</p>
+                            <span v-if="unread_count > 0"
+                                class="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                                {{ unread_count }} new
+                            </span>
+                        </div>
+                        <p class="text-sm text-gray-500 mb-4">Messages sent by visitors from the landing page.</p>
+
+                        <div v-if="messages.length === 0" class="text-center py-10 text-gray-400 text-sm">
+                            No messages yet.
+                        </div>
+
+                        <div v-else class="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                            <div v-for="msg in messages" :key="msg.id"
+                                :class="['border rounded-xl p-4 transition', msg.is_read ? 'border-gray-200 bg-white' : 'border-blue-200 bg-blue-50']">
+                                <div class="flex items-start justify-between gap-4">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <p class="font-semibold text-gray-800 text-sm">{{ msg.name }}</p>
+                                            <span v-if="!msg.is_read" class="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">New</span>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-0.5">
+                                            {{ msg.email }}{{ msg.phone ? ' · ' + msg.phone : '' }}
+                                        </p>
+                                        <p class="text-sm text-gray-700 mt-2 leading-relaxed">{{ msg.message }}</p>
+                                        <p class="text-xs text-gray-400 mt-2">{{ msg.created_at }}</p>
+                                    </div>
+                                    <div class="flex flex-col gap-2 flex-shrink-0">
+                                        <button v-if="!msg.is_read"
+                                            @click="useForm({}).patch(route('messages.read', msg.id))"
+                                            class="text-xs border border-gray-300 text-gray-600 px-3 py-1 rounded-lg hover:bg-gray-100 transition whitespace-nowrap">
+                                            Mark Read
+                                        </button>
+                                        <button @click="deleteMsg(msg.id)"
+                                            class="text-xs border border-red-300 text-red-500 px-3 py-1 rounded-lg hover:bg-red-50 transition">
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -718,6 +784,9 @@ const props = defineProps({
             phone: '',
             email_hours: '',
             phone_hours: '',
+            facebook_url: '',
+            instagram_url: '',
+            twitter_url: '',
         }),
     },
     attractions: {
@@ -736,6 +805,14 @@ const props = defineProps({
     about_images: {
         type: Array,
         default: () => [],
+    },
+    messages: {
+        type: Array,
+        default: () => [],
+    },
+    unread_count: {
+        type: Number,
+        default: 0,
     },
 })
 
@@ -788,19 +865,25 @@ function submitHero() {
 const contactEditing = ref(false)
 
 const contactForm = useForm({
-    email: props.contact.email,
-    phone: props.contact.phone,
-    email_hours: props.contact.email_hours,
-    phone_hours: props.contact.phone_hours,
+    email:         props.contact.email,
+    phone:         props.contact.phone,
+    email_hours:   props.contact.email_hours,
+    phone_hours:   props.contact.phone_hours,
+    facebook_url:  props.contact.facebook_url  ?? '',
+    instagram_url: props.contact.instagram_url ?? '',
+    twitter_url:   props.contact.twitter_url   ?? '',
 })
 
 watch(
     () => props.contact,
     (c) => {
-        contactForm.email = c.email
-        contactForm.phone = c.phone
-        contactForm.email_hours = c.email_hours
-        contactForm.phone_hours = c.phone_hours
+        contactForm.email         = c.email
+        contactForm.phone         = c.phone
+        contactForm.email_hours   = c.email_hours
+        contactForm.phone_hours   = c.phone_hours
+        contactForm.facebook_url  = c.facebook_url  ?? ''
+        contactForm.instagram_url = c.instagram_url ?? ''
+        contactForm.twitter_url   = c.twitter_url   ?? ''
     },
     { immediate: true }
 )
@@ -809,6 +892,11 @@ function submitContact() {
     contactForm.post(route('websitecontent.contact.update'), {
         onSuccess: () => { contactEditing.value = false },
     })
+}
+
+function deleteMsg(id) {
+    if (!confirm('Delete this message?')) return
+    useForm({}).delete(route('messages.delete', id))
 }
 
 // ── Attractions ───────────────────────────────────────────────────────────────

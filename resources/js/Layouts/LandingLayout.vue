@@ -8,28 +8,21 @@ const activeSection = ref('home')
 let observer = null
 const mobileMenu = ref(false)
 
-// ── Detect if we are on the landing page or a sub-page ───────────────────────
-// On /pre-register (or any non-home page), the landing sections don't exist.
-// Clicking a nav tab should navigate to /#section instead of scrollIntoView.
 const isLandingPage = computed(() => {
     const path = window.location.pathname
     return path === '/' || path === ''
 })
 
-// ── Highlight "pre-register" tab when on /pre-register ───────────────────────
 onMounted(() => {
     if (!isLandingPage.value) {
-        // Mark the correct tab active based on current URL
         const path = window.location.pathname
         if (path.startsWith('/pre-register')) {
             activeSection.value = 'pre-register'
         }
     }
 
-    // Only observe sections when on the landing page
     if (isLandingPage.value) {
         const sections = document.querySelectorAll('[data-section]')
-
         observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach(entry => {
@@ -40,7 +33,6 @@ onMounted(() => {
             },
             { threshold: 0.4 }
         )
-
         sections.forEach(s => observer.observe(s))
     }
 })
@@ -59,20 +51,14 @@ function goTo(sectionId) {
     mobileMenu.value = false
 
     if (sectionId === 'pre-register') {
-        // Always navigate to the dedicated pre-register page
         router.visit('/pre-register')
         return
     }
 
     if (isLandingPage.value) {
-        // Already on landing page — just scroll
         const el = document.getElementById(sectionId)
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     } else {
-        // On a sub-page — navigate to landing page with hash
-        // The browser will auto-scroll to the section after load
         window.location.href = `/#${sectionId}`
     }
 }
@@ -107,10 +93,7 @@ function goTo(sectionId) {
           <img src="/images/brgylogo.png" alt="Barangay Logo"
             class="h-10 sm:h-14 object-cover" />
         </Link>
-
-        <!-- Mobile Hamburger -->
-        <button @click="mobileMenu = !mobileMenu"
-          class="lg:hidden text-black text-2xl">
+        <button @click="mobileMenu = !mobileMenu" class="lg:hidden text-black text-2xl">
           <i class="fa fa-bars"></i>
         </button>
       </div>
@@ -141,7 +124,7 @@ function goTo(sectionId) {
       <slot />
     </main>
 
-    <!-- ── Contact Info Band ── -->
+    <!-- Contact Info Band -->
     <div class="w-full relative bg-cover bg-center bg-no-repeat"
       style="background-image: url('/images/abstractbg.jpg')">
       <div class="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
@@ -177,12 +160,12 @@ function goTo(sectionId) {
         </div>
         <div class="flex justify-center">
           <ul class="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs sm:text-sm text-gray-300">
-            <li><a @click.prevent="goTo('home')"        href="#" class="hover:text-white cursor-pointer">Home</a></li>
-            <li><a @click.prevent="goTo('attractions')" href="#" class="hover:text-white cursor-pointer">Attractions</a></li>
-            <li><a @click.prevent="goTo('map')"         href="#" class="hover:text-white cursor-pointer">Map</a></li>
-            <li><a @click.prevent="goTo('about')"       href="#" class="hover:text-white cursor-pointer">About</a></li>
+            <li><a @click.prevent="goTo('home')"         href="#" class="hover:text-white cursor-pointer">Home</a></li>
+            <li><a @click.prevent="goTo('attractions')"  href="#" class="hover:text-white cursor-pointer">Attractions</a></li>
+            <li><a @click.prevent="goTo('map')"          href="#" class="hover:text-white cursor-pointer">Map</a></li>
+            <li><a @click.prevent="goTo('about')"        href="#" class="hover:text-white cursor-pointer">About</a></li>
             <li><a @click.prevent="goTo('pre-register')" href="#" class="hover:text-white cursor-pointer">Pre-Register</a></li>
-            <li><a @click.prevent="goTo('contact')"     href="#" class="hover:text-white cursor-pointer">Contact</a></li>
+            <li><a @click.prevent="goTo('contact')"      href="#" class="hover:text-white cursor-pointer">Contact</a></li>
           </ul>
         </div>
         <div class="flex justify-center md:justify-end">

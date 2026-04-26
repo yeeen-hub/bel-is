@@ -19,34 +19,24 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 // ── Route Model Binding ───────────────────────────────────────────────────────
-// {visitor} in any route resolves to VisitorVisit (UUID primary key).
-// Placed at the top, outside all middleware groups.
 Route::bind('visitor', fn($value) => VisitorVisit::findOrFail($value));
 
 // ═════════════════════════════════════════════════════════════════════════════
 // PUBLIC ROUTES — no auth required
 // ═════════════════════════════════════════════════════════════════════════════
 
-// Landing page — served by WebsiteContentController so CMS content is dynamic
 Route::get('/', [WebsiteContentController::class, 'landingPage'])->name('home');
 
+// Contact form — public, no auth needed
+Route::post('/contact/send', [WebsiteContentController::class, 'sendMessage'])->name('contact.send');
+
 // ── Pre-registration ──────────────────────────────────────────────────────────
-// Accessible by any visitor via the website or Hub captive portal Wi-Fi.
-// Creates a VisitorVisit(source='pre_registration') with a unique reference_code.
-// Staff resolves the visit later by entering the code at the checkpoint.
 Route::get('/pre-register',        [PublicRegController::class, 'create'])->name('pre-register');
 Route::post('/pre-register',       [PublicRegController::class, 'store'])->name('pre-register.store');
 Route::post('/pre-register/group', [PublicRegController::class, 'storeGroup'])->name('pre-register.group');
-
-// Reference code lookup — called via axios from AdminRegPage.vue
-// Returns single visit or full group if code belongs to a group pre-registration
-// GET /pre-register/lookup?code=BEL-482951
 Route::get('/pre-register/lookup', [PublicRegController::class, 'lookup'])->name('pre-register.lookup');
 
 // ── Captive portal detection probes ──────────────────────────────────────────
-// iOS, Android, and Windows probe these URLs when connecting to Wi-Fi.
-// Returning a redirect (instead of the expected response) tells the device
-// it's behind a captive portal → "Sign in to network" prompt appears.
 Route::get('/hotspot-detect.html',         fn() => redirect('http://192.168.137.1/pre-register', 302));
 Route::get('/library/test/success.html',   fn() => redirect('http://192.168.137.1/pre-register', 302));
 Route::get('/generate_204',                fn() => redirect('http://192.168.137.1/pre-register', 302));
@@ -54,7 +44,7 @@ Route::get('/gen_204',                     fn() => redirect('http://192.168.137.
 Route::get('/connecttest.txt',             fn() => redirect('http://192.168.137.1/pre-register', 302));
 Route::get('/redirect',                    fn() => redirect('http://192.168.137.1/pre-register', 302));
 
-// ── Public JSON endpoints for registration form dropdowns ─────────────────────
+// ── Public JSON endpoints ─────────────────────────────────────────────────────
 Route::get('/api/barangay-attractions', [BarangayAttractionController::class, 'list'])->name('api.barangay-attractions');
 Route::get('/api/sitios',               [SitioController::class, 'list'])->name('api.sitios');
 
@@ -74,22 +64,17 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/registration',       [VisitorController::class, 'store'])->name('registration.store');
         Route::post('/registration/group', [VisitorController::class, 'storeGroup'])->name('registration.group');
 
-        // Returning visitor profile search — JSON response, called via axios
         Route::get('/visitors/search-profile', [VisitorController::class, 'searchProfile'])
             ->name('visitors.search-profile');
 
-        // Payment — Step 2 of registration flow
         Route::get('/adminpay/{visitor}',  [ReceiptController::class, 'showPayment'])->name('adminpay');
         Route::post('/adminpay/{visitor}', [ReceiptController::class, 'store'])->name('adminpay.store');
 
-        // Receipt — Step 3 of registration flow
         Route::get('/adminreceipt/{visitor}', [ReceiptController::class, 'showReceipt'])->name('adminreceipt');
 
-        // Visitor records
         Route::get('/visitor-records',           [VisitorController::class, 'index'])->name('visitor-records');
         Route::get('/visitor-records/{visitor}', [VisitorController::class, 'show'])->name('visitor-records.show');
 
-        // Mark a pending visit as No Show — requires edit_payment permission
         Route::post('/adminpay/{visitor}/no-show', [ReceiptController::class, 'markNoShow'])
             ->middleware('permission:edit_payment')
             ->name('adminpay.no-show');
@@ -104,7 +89,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/reports/temporal',     [ReportController::class, 'temporal'])->name('reports.temporal');
         Route::get('/reports/behavioral',   [ReportController::class, 'behavioral'])->name('reports.behavioral');
 
-        // Legacy aliases — redirect to canonical routes
         Route::get('/feerevenue',   fn() => redirect()->route('reports.fee-revenue'))->name('feerevenue');
         Route::get('/demographics', fn() => redirect()->route('reports.demographics'))->name('demographics');
     });
@@ -122,36 +106,25 @@ Route::middleware(['auth'])->group(function () {
     // ── System Settings ───────────────────────────────────────────────────────
     Route::middleware(['permission:view_security|view_system_settings'])->group(function () {
 
-        // Security & RBAC
         Route::get('/securitysettings',                 [SecurityController::class, 'index'])->name('securitysettings');
         Route::post('/security/rbac/update',            [SecurityController::class, 'updateRBAC'])->name('security.rbac.update');
         Route::post('/security/password',               [SecurityController::class, 'updatePassword'])->name('security.password.update');
         Route::post('/security/settings',               [SecurityController::class, 'updateSecuritySettings'])->name('security.settings.update');
         Route::post('/security/sessions/logout-others', [SecurityController::class, 'logoutOthers'])->name('security.sessions.logout_others');
 
-        // Settings sub-pages
         Route::get('/websitecontent', [WebsiteContentController::class, 'index'])->name('websitecontent');
         Route::get('/auditlogs',      [AuditLogController::class, 'index'])->name('auditlogs');
         Route::get('/virtualtour',    fn() => Inertia::render('AdminSetVTPage'))->name('virtualtour');
 
-        // System Settings — fee categories, sitios, attractions
-        // Both /settings and /systemsettings use FeeCategoryController@index
-        // so the page always receives all required props (sitios, attractions, etc.)
         Route::get('/systemsettings', [FeeCategoryController::class, 'index'])->name('systemsettings');
 
-        // Fee categories
         Route::post('/admin/settings/fee-categories', [FeeCategoryController::class, 'update'])
             ->name('fee-categories.update');
-
-        // Sitio management
         Route::post('/admin/settings/sitios', [FeeCategoryController::class, 'updateSitios'])
             ->name('sitios.update');
-
-        // Attraction management
         Route::post('/admin/settings/attractions', [FeeCategoryController::class, 'updateAttractions'])
             ->name('barangay-attractions.update-all');
 
-        // Unrecognized destination reports
         Route::patch('/admin/settings/unrecognized/{id}/review',
             [FeeCategoryController::class, 'reviewUnrecognized'])
             ->name('fee-categories.review-unrecognized');
@@ -161,8 +134,6 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ── General Settings & Profile ────────────────────────────────────────────
-    // /settings uses FeeCategoryController@index so all props are available
-    // when the user navigates via the "General Settings" nav tab
     Route::get('/settings',           [FeeCategoryController::class, 'index'])->name('settings');
     Route::post('/settings/password', [SettingsController::class, 'updatePassword'])->name('settings.password');
 
@@ -181,11 +152,14 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/settings/website-content/about',               [WebsiteContentController::class, 'updateAbout'])->name('websitecontent.about.update');
     Route::post('/admin/settings/website-content/about/images',        [WebsiteContentController::class, 'storeAboutImage'])->name('websitecontent.about.images.store');
     Route::delete('/admin/settings/website-content/about/images/{id}', [WebsiteContentController::class, 'destroyAboutImage'])->name('websitecontent.about.images.destroy');
+
+    // ── Message Inbox Management ──────────────────────────────────────────────
+    // From the other branch — admin can mark messages read and delete them
+    Route::patch('/admin/messages/{id}/read',  [WebsiteContentController::class, 'markMessageRead'])->name('messages.read');
+    Route::delete('/admin/messages/{id}',      [WebsiteContentController::class, 'deleteMessage'])->name('messages.delete');
 });
 
 // ── Virtual Tour ──────────────────────────────────────────────────────────────
-// These routes are handled by Vue Router on the client side.
-// Laravel just serves the Inertia shell — Vue Router takes over from there.
 Route::get('/VTHome',        fn() => inertia('YourMainPageName'));
 Route::get('/location/{id}', fn() => inertia('YourMainPageName'));
 
