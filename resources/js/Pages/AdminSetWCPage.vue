@@ -4,13 +4,12 @@
             <div class="bg-gray-100 p-4 rounded-lg flex items-center gap-3">
 
                 <div class="relative flex-1">
-                    <input v-model="search" type="text" placeholder="Search by name, origin, or registration ID..."
-                        :class="[
-                            'w-full p-2 pl-8 rounded-lg border text-sm transition-colors duration-200',
-                            search
-                                ? 'border-gray-800 bg-white ring-1 ring-gray-800'
-                                : 'border-gray-300 bg-white focus:border-gray-400'
-                        ]" />
+                    <input v-model="search" type="text" placeholder="Search..." :class="[
+                        'w-full p-2 pl-8 rounded-lg border text-sm transition-colors duration-200',
+                        search
+                            ? 'border-gray-800 bg-white ring-1 ring-gray-800'
+                            : 'border-gray-300 bg-white focus:border-gray-400'
+                    ]" />
                     <svg class="absolute left-2.5 top-2.5 w-4 h-4" :class="search ? 'text-gray-800' : 'text-gray-400'"
                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -72,7 +71,21 @@
                     </div>
                 </div>
 
-                <FontAwesomeIcon icon="user" class="text-gray-700" />
+                <div class="relative">
+                    <button @click="showUser = !showUser">
+                        <FontAwesomeIcon icon="user" class="text-gray-700 text-lg" />
+                    </button>
+                    <!-- dropdown -->
+                    <div v-if="showUser"
+                        class="absolute right-0 mt-3 w-52 bg-white/90 backdrop-blur-md border border-gray-200 rounded-xl shadow-xl p-4 z-50 text-center">
+
+                        <!-- User Name -->
+                        <p class="text-sm font-semibold text-gray-800 truncate">
+                            {{ authUser?.name }}
+                        </p>
+
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -735,6 +748,8 @@ import { route } from 'ziggy-js'
 import LandingLayout from '@/Layouts/SidebarLayout.vue'
 
 const page = usePage();
+const authUser = computed(() => page.props.auth?.user)
+const showUser = ref(false)
 
 const permissions = computed(() => page.props.auth?.permissions ?? []);
 const userRole = computed(() => (page.props.auth?.user?.role ?? '').toLowerCase());

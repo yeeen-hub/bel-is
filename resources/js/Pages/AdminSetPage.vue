@@ -5,7 +5,7 @@
       <div class="bg-gray-100 p-4 rounded-lg flex items-center gap-3">
 
         <div class="relative flex-1">
-          <input v-model="search" type="text" placeholder="Search by name, origin, or registration ID..." :class="[
+          <input v-model="search" type="text" placeholder="Search..." :class="[
             'w-full p-2 pl-8 rounded-lg border text-sm transition-colors duration-200',
             search
               ? 'border-gray-800 bg-white ring-1 ring-gray-800'
@@ -56,7 +56,7 @@
                   <p class="text-xs text-gray-500 mt-0.5">
                     These registrations are incomplete. Please collect payment.
                   </p>
-                  <button @click="feeStatus = 'Pending'; showNotifications = false;"
+                  <button @click="feeStatus = 'Pending'; showNotifications = false; applyFilters()"
                     class="text-xs text-yellow-600 font-semibold mt-1 inline-block hover:underline">
                     Show Pending Records →
                   </button>
@@ -70,7 +70,21 @@
           </div>
         </div>
 
-        <FontAwesomeIcon icon="user" class="text-gray-700" />
+        <div class="relative">
+          <button @click="showUser = !showUser">
+            <FontAwesomeIcon icon="user" class="text-gray-700 text-lg" />
+          </button>
+          <!-- dropdown -->
+          <div v-if="showUser"
+            class="absolute right-0 mt-3 w-52 bg-white/90 backdrop-blur-md border border-gray-200 rounded-xl shadow-xl p-4 z-50 text-center">
+
+            <!-- User Name -->
+            <p class="text-sm font-semibold text-gray-800 truncate">
+              {{ authUser?.name }}
+            </p>
+
+          </div>
+        </div>
       </div>
     </div>
 
@@ -167,9 +181,11 @@
               <tr v-if="feeAddingNew" class="bg-blue-50/50">
                 <td v-if="feeEditing" class="p-3"></td>
                 <td class="p-3"><input v-model="feeNewRow.category" type="text" placeholder="New Category"
-                    class="w-full border border-blue-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-400 focus:outline-none"></td>
+                    class="w-full border border-blue-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-400 focus:outline-none">
+                </td>
                 <td class="p-3"><input v-model="feeNewRow.age_range" type="text" placeholder="Age Range"
-                    class="w-full border border-blue-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-400 focus:outline-none"></td>
+                    class="w-full border border-blue-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-400 focus:outline-none">
+                </td>
                 <td class="p-3">
                   <div class="flex items-center gap-2">
                     <input v-model.number="feeNewRow.fee" type="number" placeholder="0"
@@ -193,7 +209,8 @@
         <div class="flex items-center justify-between mt-6">
           <button v-if="feeEditing && feeSelected.length > 0" @click="feeDeleteSelected" type="button"
             class="flex items-center gap-2 border border-red-400 text-red-500 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-red-500 hover:text-white transition-all duration-200">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
             </svg>
@@ -286,8 +303,10 @@
                   </select>
                 </td>
                 <td class="p-3 whitespace-nowrap">
-                  <button @click="sitioConfirmAdd" class="text-green-600 hover:text-green-800 font-bold text-base mr-2">✓</button>
-                  <button @click="sitioAddingNew = false" class="text-red-500 hover:text-red-700 font-bold text-base">✕</button>
+                  <button @click="sitioConfirmAdd"
+                    class="text-green-600 hover:text-green-800 font-bold text-base mr-2">✓</button>
+                  <button @click="sitioAddingNew = false"
+                    class="text-red-500 hover:text-red-700 font-bold text-base">✕</button>
                 </td>
               </tr>
             </tbody>
@@ -304,14 +323,16 @@
         <div class="flex items-center justify-between mt-6">
           <button v-if="sitioEditing && sitioSelected.length > 0" @click="sitioDeleteSelected" type="button"
             class="flex items-center gap-2 border border-red-400 text-red-500 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-red-500 hover:text-white transition-all duration-200">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
             </svg>
             Delete Selected ({{ sitioSelected.length }})
           </button>
           <div v-else></div>
-          <button v-if="sitioEditing && can('edit_system_settings')" @click="saveSitios" :disabled="sitioForm.processing"
+          <button v-if="sitioEditing && can('edit_system_settings')" @click="saveSitios"
+            :disabled="sitioForm.processing"
             class="bg-gray-900 text-white text-sm font-bold px-5 py-2 rounded-xl hover:bg-black transition disabled:opacity-50">
             {{ sitioForm.processing ? 'Saving...' : 'Save Changes' }}
           </button>
@@ -423,8 +444,10 @@
                   </select>
                 </td>
                 <td class="p-3 whitespace-nowrap">
-                  <button @click="attrConfirmAdd" class="text-green-600 hover:text-green-800 font-bold text-base mr-2">✓</button>
-                  <button @click="attrAddingNew = false" class="text-red-500 hover:text-red-700 font-bold text-base">✕</button>
+                  <button @click="attrConfirmAdd"
+                    class="text-green-600 hover:text-green-800 font-bold text-base mr-2">✓</button>
+                  <button @click="attrAddingNew = false"
+                    class="text-red-500 hover:text-red-700 font-bold text-base">✕</button>
                 </td>
               </tr>
             </tbody>
@@ -441,14 +464,16 @@
         <div class="flex items-center justify-between mt-6">
           <button v-if="attrEditing && attrSelected.length > 0" @click="attrDeleteSelected" type="button"
             class="flex items-center gap-2 border border-red-400 text-red-500 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-red-500 hover:text-white transition-all duration-200">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
             </svg>
             Delete Selected ({{ attrSelected.length }})
           </button>
           <div v-else></div>
-          <button v-if="attrEditing && can('edit_system_settings')" @click="saveAttractions" :disabled="attrForm.processing"
+          <button v-if="attrEditing && can('edit_system_settings')" @click="saveAttractions"
+            :disabled="attrForm.processing"
             class="bg-gray-900 text-white text-sm font-bold px-5 py-2 rounded-xl hover:bg-black transition disabled:opacity-50">
             {{ attrForm.processing ? 'Saving...' : 'Save Changes' }}
           </button>
@@ -468,7 +493,8 @@
           <div>
             <p class="text-sm font-semibold text-gray-800">
               New Destination Discoveries
-              <span class="ml-2 inline-flex items-center justify-center w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full">
+              <span
+                class="ml-2 inline-flex items-center justify-center w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full">
                 {{ unreviewed.length }}
               </span>
             </p>
@@ -485,7 +511,8 @@
               <div class="flex items-center gap-3 min-w-0">
                 <div class="min-w-0">
                   <span class="font-semibold text-gray-800 text-sm">{{ u.name }}</span>
-                  <span class="ml-2 text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold align-middle">New</span>
+                  <span
+                    class="ml-2 text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold align-middle">New</span>
                   <p class="text-xs text-gray-400 mt-0.5">
                     Reported by
                     <span class="text-gray-600 font-medium">{{ u.visitor_name || 'Unknown' }}</span>
@@ -561,186 +588,189 @@ import { ref, computed, watch } from 'vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
 import LandingLayout from '@/Layouts/SidebarLayout.vue';
 
+const authUser = computed(() => page.props.auth?.user)
+const showUser = ref(false)
+
 const props = defineProps({
-  feeCategories:        { type: Array, default: () => [] },
-  sitios:               { type: Array, default: () => [] },
-  barangayAttractions:  { type: Array, default: () => [] },
-  unreviewedCount:      { type: Number, default: 0 },
-  unreviewed:           { type: Array, default: () => [] },
+  feeCategories: { type: Array, default: () => [] },
+  sitios: { type: Array, default: () => [] },
+  barangayAttractions: { type: Array, default: () => [] },
+  unreviewedCount: { type: Number, default: 0 },
+  unreviewed: { type: Array, default: () => [] },
 });
 
-const page        = usePage();
+const page = usePage();
 const permissions = computed(() => page.props.auth?.permissions ?? []);
-const userRole    = computed(() => (page.props.auth?.user?.role ?? '').toLowerCase());
-const can         = (p) => userRole.value === 'admin' || permissions.value.includes(p);
+const userRole = computed(() => (page.props.auth?.user?.role ?? '').toLowerCase());
+const can = (p) => userRole.value === 'admin' || permissions.value.includes(p);
 
 const attractionTypes = ['Resort', 'Beach', 'Falls', 'Landmark', 'Hiking Trail', 'Park', 'Cave', 'Viewpoint', 'General'];
 
 let tempCounter = 0;
 const newTempKey = () => `new-${++tempCounter}`;
 
-const toFeeRow   = (r) => ({ ...r, _key: `db-${r.id}` });
+const toFeeRow = (r) => ({ ...r, _key: `db-${r.id}` });
 const toSitioRow = (r) => ({ ...r, _key: `db-${r.id}`, is_active: Boolean(r.is_active) });
-const toAttrRow  = (r) => ({
-    ...r,
-    _key:      `db-${r.id}`,
-    sitio_id:  r.sitio_id != null ? Number(r.sitio_id) : null,
-    is_active: Boolean(r.is_active),
+const toAttrRow = (r) => ({
+  ...r,
+  _key: `db-${r.id}`,
+  sitio_id: r.sitio_id != null ? Number(r.sitio_id) : null,
+  is_active: Boolean(r.is_active),
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CARD 1 — Fee Categories
 // ─────────────────────────────────────────────────────────────────────────────
-const feeEditing   = ref(false);
+const feeEditing = ref(false);
 const feeAddingNew = ref(false);
-const feeSelected  = ref([]);
-const feeRows      = ref(props.feeCategories.map(toFeeRow));
-const feeNewRow    = ref({ category: '', age_range: '', fee: '' });
-const feeForm      = useForm({ rows: [] });
+const feeSelected = ref([]);
+const feeRows = ref(props.feeCategories.map(toFeeRow));
+const feeNewRow = ref({ category: '', age_range: '', fee: '' });
+const feeForm = useForm({ rows: [] });
 
 // Watch always syncs from props — no guard needed.
 // Cancel uses a saved snapshot instead of re-reading props.
 // This ensures the table always shows the latest DB data after save.
 watch(() => props.feeCategories, (v) => {
-    feeRows.value = v.map(toFeeRow);
+  feeRows.value = v.map(toFeeRow);
 }, { deep: true });
 
 const feeAllSelected = computed(() =>
-    feeRows.value.length > 0 && feeSelected.value.length === feeRows.value.length);
+  feeRows.value.length > 0 && feeSelected.value.length === feeRows.value.length);
 
 // Snapshot taken at Edit click — used to restore on Cancel
 let feeSnapshot = [];
 function startFeeEdit() {
-    feeSnapshot    = feeRows.value.map(r => ({ ...r }));
-    feeEditing.value = true;
+  feeSnapshot = feeRows.value.map(r => ({ ...r }));
+  feeEditing.value = true;
 }
 function cancelFeeEdit() {
-    feeEditing.value = false; feeAddingNew.value = false; feeSelected.value = [];
-    feeRows.value    = feeSnapshot.map(r => ({ ...r })); // restore snapshot, not props
+  feeEditing.value = false; feeAddingNew.value = false; feeSelected.value = [];
+  feeRows.value = feeSnapshot.map(r => ({ ...r })); // restore snapshot, not props
 }
 function feeToggleAll(e) { feeSelected.value = e.target.checked ? feeRows.value.map(r => r._key) : []; }
-function feeStartAdd()   { feeAddingNew.value = true; feeNewRow.value = { category: '', age_range: '', fee: '' }; }
+function feeStartAdd() { feeAddingNew.value = true; feeNewRow.value = { category: '', age_range: '', fee: '' }; }
 function feeConfirmAdd() {
-    if (!feeNewRow.value.category) return;
-    feeRows.value.push({ ...feeNewRow.value, id: null, _key: newTempKey() });
-    feeAddingNew.value = false;
+  if (!feeNewRow.value.category) return;
+  feeRows.value.push({ ...feeNewRow.value, id: null, _key: newTempKey() });
+  feeAddingNew.value = false;
 }
 function feeDeleteSelected() {
-    if (!confirm(`Delete ${feeSelected.value.length} item(s)?`)) return;
-    feeRows.value = feeRows.value.filter(r => !feeSelected.value.includes(r._key));
-    feeSelected.value = [];
+  if (!confirm(`Delete ${feeSelected.value.length} item(s)?`)) return;
+  feeRows.value = feeRows.value.filter(r => !feeSelected.value.includes(r._key));
+  feeSelected.value = [];
 }
 function saveFee() {
-    if (feeAddingNew.value && feeNewRow.value.category) feeConfirmAdd();
-    feeForm.rows = feeRows.value;
-    feeForm.post(route('fee-categories.update'), {
-        preserveScroll: true,
-        // Inertia updates props reactively after success — the watch picks it up
-        onSuccess: () => { feeEditing.value = false; feeSelected.value = []; },
-    });
+  if (feeAddingNew.value && feeNewRow.value.category) feeConfirmAdd();
+  feeForm.rows = feeRows.value;
+  feeForm.post(route('fee-categories.update'), {
+    preserveScroll: true,
+    // Inertia updates props reactively after success — the watch picks it up
+    onSuccess: () => { feeEditing.value = false; feeSelected.value = []; },
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CARD 2 — Sitio Management
 // ─────────────────────────────────────────────────────────────────────────────
-const sitioEditing   = ref(false);
+const sitioEditing = ref(false);
 const sitioAddingNew = ref(false);
-const sitioSelected  = ref([]);
-const sitioRows      = ref(props.sitios.map(toSitioRow));
-const sitioNewRow    = ref({ name: '', description: '', is_active: true });
-const sitioForm      = useForm({ rows: [] });
+const sitioSelected = ref([]);
+const sitioRows = ref(props.sitios.map(toSitioRow));
+const sitioNewRow = ref({ name: '', description: '', is_active: true });
+const sitioForm = useForm({ rows: [] });
 
 watch(() => props.sitios, (v) => {
-    sitioRows.value = v.map(toSitioRow);
+  sitioRows.value = v.map(toSitioRow);
 }, { deep: true });
 
 const sitioAllSelected = computed(() =>
-    sitioRows.value.length > 0 && sitioSelected.value.length === sitioRows.value.length);
+  sitioRows.value.length > 0 && sitioSelected.value.length === sitioRows.value.length);
 
 let sitioSnapshot = [];
 function startSitioEdit() {
-    sitioSnapshot      = sitioRows.value.map(r => ({ ...r }));
-    sitioEditing.value = true;
+  sitioSnapshot = sitioRows.value.map(r => ({ ...r }));
+  sitioEditing.value = true;
 }
 function cancelSitioEdit() {
-    sitioEditing.value = false; sitioAddingNew.value = false; sitioSelected.value = [];
-    sitioRows.value    = sitioSnapshot.map(r => ({ ...r }));
+  sitioEditing.value = false; sitioAddingNew.value = false; sitioSelected.value = [];
+  sitioRows.value = sitioSnapshot.map(r => ({ ...r }));
 }
 function sitioToggleAll(e) { sitioSelected.value = e.target.checked ? sitioRows.value.map(r => r._key) : []; }
-function sitioStartAdd()   { sitioAddingNew.value = true; sitioNewRow.value = { name: '', description: '', is_active: true }; }
+function sitioStartAdd() { sitioAddingNew.value = true; sitioNewRow.value = { name: '', description: '', is_active: true }; }
 function sitioConfirmAdd() {
-    if (!sitioNewRow.value.name.trim()) return;
-    sitioRows.value.push({ ...sitioNewRow.value, id: null, _key: newTempKey() });
-    sitioAddingNew.value = false;
+  if (!sitioNewRow.value.name.trim()) return;
+  sitioRows.value.push({ ...sitioNewRow.value, id: null, _key: newTempKey() });
+  sitioAddingNew.value = false;
 }
 function sitioDeleteSelected() {
-    if (!confirm(`Delete ${sitioSelected.value.length} sitio(s)? Attractions linked to them will lose their sitio.`)) return;
-    sitioRows.value = sitioRows.value.filter(r => !sitioSelected.value.includes(r._key));
-    sitioSelected.value = [];
+  if (!confirm(`Delete ${sitioSelected.value.length} sitio(s)? Attractions linked to them will lose their sitio.`)) return;
+  sitioRows.value = sitioRows.value.filter(r => !sitioSelected.value.includes(r._key));
+  sitioSelected.value = [];
 }
 function saveSitios() {
-    if (sitioAddingNew.value && sitioNewRow.value.name.trim()) sitioConfirmAdd();
-    sitioForm.rows = sitioRows.value;
-    sitioForm.post(route('sitios.update'), {
-        preserveScroll: true,
-        onSuccess: () => { sitioEditing.value = false; sitioSelected.value = []; },
-    });
+  if (sitioAddingNew.value && sitioNewRow.value.name.trim()) sitioConfirmAdd();
+  sitioForm.rows = sitioRows.value;
+  sitioForm.post(route('sitios.update'), {
+    preserveScroll: true,
+    onSuccess: () => { sitioEditing.value = false; sitioSelected.value = []; },
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CARD 3 — Attraction Management
 // ─────────────────────────────────────────────────────────────────────────────
-const attrEditing   = ref(false);
+const attrEditing = ref(false);
 const attrAddingNew = ref(false);
-const attrSelected  = ref([]);
-const attrRows      = ref(props.barangayAttractions.map(toAttrRow));
-const attrNewRow    = ref({ name: '', type: 'General', description: '', sitio_id: null, is_active: true });
-const attrForm      = useForm({ rows: [] });
+const attrSelected = ref([]);
+const attrRows = ref(props.barangayAttractions.map(toAttrRow));
+const attrNewRow = ref({ name: '', type: 'General', description: '', sitio_id: null, is_active: true });
+const attrForm = useForm({ rows: [] });
 
 watch(() => props.barangayAttractions, (v) => {
-    attrRows.value = v.map(toAttrRow);
+  attrRows.value = v.map(toAttrRow);
 }, { deep: true });
 
 const attrAllSelected = computed(() =>
-    attrRows.value.length > 0 && attrSelected.value.length === attrRows.value.length);
+  attrRows.value.length > 0 && attrSelected.value.length === attrRows.value.length);
 
 let attrSnapshot = [];
 function startAttrEdit() {
-    attrSnapshot      = attrRows.value.map(r => ({ ...r }));
-    attrEditing.value = true;
+  attrSnapshot = attrRows.value.map(r => ({ ...r }));
+  attrEditing.value = true;
 }
 function cancelAttrEdit() {
-    attrEditing.value = false; attrAddingNew.value = false; attrSelected.value = [];
-    attrRows.value    = attrSnapshot.map(r => ({ ...r }));
+  attrEditing.value = false; attrAddingNew.value = false; attrSelected.value = [];
+  attrRows.value = attrSnapshot.map(r => ({ ...r }));
 }
 function attrToggleAll(e) { attrSelected.value = e.target.checked ? attrRows.value.map(r => r._key) : []; }
 function attrStartAdd() {
-    attrAddingNew.value = true;
-    attrNewRow.value = { name: '', type: 'General', description: '', sitio_id: null, is_active: true };
+  attrAddingNew.value = true;
+  attrNewRow.value = { name: '', type: 'General', description: '', sitio_id: null, is_active: true };
 }
 function attrConfirmAdd() {
-    if (!attrNewRow.value.name.trim()) return;
-    const sitio = sitioRows.value.find(s => Number(s.id) === attrNewRow.value.sitio_id);
-    attrRows.value.push({
-        ...attrNewRow.value,
-        id:         null,
-        _key:       newTempKey(),
-        sitio_name: sitio?.name ?? '—',
-    });
-    attrAddingNew.value = false;
+  if (!attrNewRow.value.name.trim()) return;
+  const sitio = sitioRows.value.find(s => Number(s.id) === attrNewRow.value.sitio_id);
+  attrRows.value.push({
+    ...attrNewRow.value,
+    id: null,
+    _key: newTempKey(),
+    sitio_name: sitio?.name ?? '—',
+  });
+  attrAddingNew.value = false;
 }
 function attrDeleteSelected() {
-    if (!confirm(`Delete ${attrSelected.value.length} attraction(s)?`)) return;
-    attrRows.value = attrRows.value.filter(r => !attrSelected.value.includes(r._key));
-    attrSelected.value = [];
+  if (!confirm(`Delete ${attrSelected.value.length} attraction(s)?`)) return;
+  attrRows.value = attrRows.value.filter(r => !attrSelected.value.includes(r._key));
+  attrSelected.value = [];
 }
 function saveAttractions() {
-    if (attrAddingNew.value && attrNewRow.value.name.trim()) attrConfirmAdd();
-    attrForm.rows = attrRows.value;
-    attrForm.post(route('barangay-attractions.update-all'), {
-        preserveScroll: true,
-        onSuccess: () => { attrEditing.value = false; attrSelected.value = []; },
-    });
+  if (attrAddingNew.value && attrNewRow.value.name.trim()) attrConfirmAdd();
+  attrForm.rows = attrRows.value;
+  attrForm.post(route('barangay-attractions.update-all'), {
+    preserveScroll: true,
+    onSuccess: () => { attrEditing.value = false; attrSelected.value = []; },
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -750,33 +780,33 @@ const expandedAdd = ref(null);
 const addAttrForm = useForm({ name: '', type: 'General', sitio_id: null });
 
 function openAddForm(u) {
-    expandedAdd.value = u.id;
-    addAttrForm.name     = u.name;
-    addAttrForm.type     = 'General';
-    addAttrForm.sitio_id = null;
-    addAttrForm.clearErrors();
+  expandedAdd.value = u.id;
+  addAttrForm.name = u.name;
+  addAttrForm.type = 'General';
+  addAttrForm.sitio_id = null;
+  addAttrForm.clearErrors();
 }
 function closeAddForm() { expandedAdd.value = null; addAttrForm.reset(); }
 
 function submitAddFromUnrecognized(unreviewedId) {
-    addAttrForm.post(route('fee-categories.add-from-unrecognized', unreviewedId), {
-        preserveScroll: true,
-        onSuccess: () => { expandedAdd.value = null; addAttrForm.reset(); },
-    });
+  addAttrForm.post(route('fee-categories.add-from-unrecognized', unreviewedId), {
+    preserveScroll: true,
+    onSuccess: () => { expandedAdd.value = null; addAttrForm.reset(); },
+  });
 }
 
 const reviewForm = useForm({});
 function markReviewed(id) {
-    reviewForm.patch(route('fee-categories.review-unrecognized', id), { preserveScroll: true });
+  reviewForm.patch(route('fee-categories.review-unrecognized', id), { preserveScroll: true });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Nav helper
 // ─────────────────────────────────────────────────────────────────────────────
 const navClass = (routeName) => [
-    'pb-2 text-sm font-semibold transition border-b-2',
-    route().current(routeName)
-        ? 'text-gray-900 border-gray-900'
-        : 'text-gray-400 border-transparent hover:text-gray-600',
+  'pb-2 text-sm font-semibold transition border-b-2',
+  route().current(routeName)
+    ? 'text-gray-900 border-gray-900'
+    : 'text-gray-400 border-transparent hover:text-gray-600',
 ];
 </script>

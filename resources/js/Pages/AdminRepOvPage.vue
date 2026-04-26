@@ -3,10 +3,13 @@
         <!-- Top Bar -->
         <div class="container mx-auto">
             <div class="bg-gray-100 p-4 rounded-lg flex items-center gap-3">
+
                 <div class="relative flex-1">
-                    <input v-model="search" type="text" placeholder="Search by name or place of origin..." :class="[
+                    <input v-model="search" type="text" placeholder="Search..." :class="[
                         'w-full p-2 pl-8 rounded-lg border text-sm transition-colors duration-200',
-                        search ? 'border-gray-800 bg-white ring-1 ring-gray-800' : 'border-gray-300 bg-white focus:border-gray-400'
+                        search
+                            ? 'border-gray-800 bg-white ring-1 ring-gray-800'
+                            : 'border-gray-300 bg-white focus:border-gray-400'
                     ]" />
                     <svg class="absolute left-2.5 top-2.5 w-4 h-4" :class="search ? 'text-gray-800' : 'text-gray-400'"
                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -18,8 +21,72 @@
                         searching...
                     </span>
                 </div>
-                <FontAwesomeIcon icon="bell" />
-                <FontAwesomeIcon icon="user" />
+
+                <!-- Bell -->
+                <div class="relative" ref="bellRef">
+                    <button @click="toggleNotifications" class="relative focus:outline-none">
+                        <FontAwesomeIcon icon="bell" class="text-gray-700 text-lg" />
+                        <span v-if="pendingFees > 0"
+                            class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                            {{ pendingFees > 9 ? '9+' : pendingFees }}
+                        </span>
+                    </button>
+
+                    <div v-if="showNotifications"
+                        class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                            <h3 class="font-semibold text-gray-800 text-sm">Notifications</h3>
+                            <span v-if="pendingFees > 0"
+                                class="bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">
+                                {{ pendingFees }} new
+                            </span>
+                        </div>
+                        <div class="max-h-72 overflow-y-auto">
+                            <div v-if="pendingFees > 0"
+                                class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 border-b border-gray-50">
+                                <div class="mt-0.5 flex-shrink-0">
+                                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-semibold text-gray-800">
+                                        {{ pendingFees }} unpaid environmental fee(s)
+                                    </p>
+                                    <p class="text-xs text-gray-500 mt-0.5">
+                                        These registrations are incomplete. Please collect payment.
+                                    </p>
+                                    <button @click="feeStatus = 'Pending'; showNotifications = false; applyFilters()"
+                                        class="text-xs text-yellow-600 font-semibold mt-1 inline-block hover:underline">
+                                        Show Pending Records →
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-if="pendingFees === 0" class="px-4 py-8 text-center text-gray-400 text-sm">
+                                <FontAwesomeIcon icon="bell" class="text-gray-300 text-2xl mb-2 block mx-auto" />
+                                <p>No new notifications</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <button @click="showUser = !showUser">
+                        <FontAwesomeIcon icon="user" class="text-gray-700 text-lg" />
+                    </button>
+                    <!-- dropdown -->
+                    <div v-if="showUser"
+                        class="absolute right-0 mt-3 w-52 bg-white/90 backdrop-blur-md border border-gray-200 rounded-xl shadow-xl p-4 z-50 text-center">
+
+                        <!-- User Name -->
+                        <p class="text-sm font-semibold text-gray-800 truncate">
+                            {{ authUser?.name }}
+                        </p>
+
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -172,8 +239,12 @@ export default { components: { LandingLayout } }
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { usePage, Link, router } from '@inertiajs/vue3'
 import ExportModal from '@/Components/ExportModal.vue'
+
+const page = usePage()
+const authUser = computed(() => page.props.auth?.user)
+const showUser = ref(false)
 
 const props = defineProps({
     rows:        { type: Array,  default: () => [] },

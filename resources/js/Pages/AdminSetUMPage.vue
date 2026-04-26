@@ -5,18 +5,21 @@
             <div class="bg-gray-100 p-4 rounded-lg flex items-center gap-3">
 
                 <div class="relative flex-1">
-                    <input v-model="search" type="text" placeholder="Search by name, origin, or registration ID..."
-                        :class="[
-                            'w-full p-2 pl-8 rounded-lg border text-sm transition-colors duration-200',
-                            search
-                                ? 'border-gray-800 bg-white ring-1 ring-gray-800'
-                                : 'border-gray-300 bg-white focus:border-gray-400'
-                        ]" />
+                    <input v-model="search" type="text" placeholder="Search..." :class="[
+                        'w-full p-2 pl-8 rounded-lg border text-sm transition-colors duration-200',
+                        search
+                            ? 'border-gray-800 bg-white ring-1 ring-gray-800'
+                            : 'border-gray-300 bg-white focus:border-gray-400'
+                    ]" />
                     <svg class="absolute left-2.5 top-2.5 w-4 h-4" :class="search ? 'text-gray-800' : 'text-gray-400'"
                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
+                    <span v-if="search"
+                        class="absolute right-2.5 top-2 text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                        searching...
+                    </span>
                 </div>
 
                 <!-- Bell -->
@@ -55,12 +58,10 @@
                                     <p class="text-xs text-gray-500 mt-0.5">
                                         These registrations are incomplete. Please collect payment.
                                     </p>
-                                    <!-- FIX 7: applyFilters removed — just close notification and link to records -->
-                                    <Link :href="route('visitor-records')"
-                                        @click="showNotifications = false"
+                                    <button @click="feeStatus = 'Pending'; showNotifications = false; applyFilters()"
                                         class="text-xs text-yellow-600 font-semibold mt-1 inline-block hover:underline">
                                         Show Pending Records →
-                                    </Link>
+                                    </button>
                                 </div>
                             </div>
                             <div v-if="pendingFees === 0" class="px-4 py-8 text-center text-gray-400 text-sm">
@@ -71,7 +72,21 @@
                     </div>
                 </div>
 
-                <FontAwesomeIcon icon="user" class="text-gray-700" />
+                <div class="relative">
+                    <button @click="showUser = !showUser">
+                        <FontAwesomeIcon icon="user" class="text-gray-700 text-lg" />
+                    </button>
+                    <!-- dropdown -->
+                    <div v-if="showUser"
+                        class="absolute right-0 mt-3 w-52 bg-white/90 backdrop-blur-md border border-gray-200 rounded-xl shadow-xl p-4 z-50 text-center">
+
+                        <!-- User Name -->
+                        <p class="text-sm font-semibold text-gray-800 truncate">
+                            {{ authUser?.name }}
+                        </p>
+
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -363,6 +378,9 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Link, useForm, router, usePage } from '@inertiajs/vue3'
 import LandingLayout from '@/Layouts/SidebarLayout.vue'
+
+const authUser = computed(() => page.props.auth?.user)
+const showUser = ref(false)
 
 // ── Auth & permissions ────────────────────────────────────────────────────────
 const page        = usePage()

@@ -88,7 +88,21 @@
                     </div>
                 </div>
 
-                <FontAwesomeIcon icon="user" class="text-gray-700" />
+                <div class="relative">
+                    <button @click="showUser = !showUser">
+                        <FontAwesomeIcon icon="user" class="text-gray-700 text-lg" />
+                    </button>
+                    <!-- dropdown -->
+                    <div v-if="showUser"
+                        class="absolute right-0 mt-3 w-52 bg-white/90 backdrop-blur-md border border-gray-200 rounded-xl shadow-xl p-4 z-50 text-center">
+
+                        <!-- User Name -->
+                        <p class="text-sm font-semibold text-gray-800 truncate">
+                            {{ authUser?.name }}
+                        </p>
+
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -444,10 +458,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { usePage } from '@inertiajs/vue3'
 import LandingLayout from '@/Layouts/SidebarLayout.vue'
 
+const page = usePage()
+const authUser = computed(() => page.props.auth?.user)
+const showUser = ref(false)
 // ── Props — typed to match DashboardController exactly ───────────────────────
 // SOURCE: visitors table (bigint PK) — has real data.
 // visitor_visits (UUID PK) is the future table and is currently empty.
@@ -486,6 +504,7 @@ const props = defineProps({
     recentVisitors:   { type: Array, default: () => [] },
 })
 
+
 // ── Notification Bell ─────────────────────────────────────────────────────────
 const showNotifications = ref(false)
 const bellRef = ref(null)
@@ -520,6 +539,7 @@ const handleClickOutside = (e) => {
 
 onMounted(()  => document.addEventListener('click', handleClickOutside))
 onUnmounted(() => document.removeEventListener('click', handleClickOutside))
+
 
 // ── Chart helpers ─────────────────────────────────────────────────────────────
 
