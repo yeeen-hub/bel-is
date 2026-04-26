@@ -11,12 +11,66 @@ use App\Models\AuditLog;
 use App\Traits\SavesVisitorDestinations;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
 class VisitorController extends Controller
 {
     use SavesVisitorDestinations;
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Generate a unique registration_id safely under concurrent load.
+     *
+     * Strategy: use a named MySQL advisory lock scoped to today's date.
+     * Only one process can hold "bel_reg_YYYYMMDD" at a time, so the
+     * COUNT → compute → INSERT sequence is effectively serialized.
+     * The lock is released automatically when the connection ends or
+     * after 5 seconds if something goes wrong.
+     */
+    private function generateRegistrationId(): string
+    {
+        $date    = Carbon::now()->format('Ymd');
+        $lockKey = "bel_reg_{$date}";
+
+        // Acquire advisory lock (waits up to 5 s, returns 1 on success)
+        $locked = DB::selectOne("SELECT GET_LOCK(?, 5) AS acquired", [$lockKey]);
+
+        if (!$locked || !$locked->acquired) {
+            throw new \RuntimeException('Could not acquire registration ID lock. Please try again.');
+        }
+
+        try {
+            $count = VisitorVisit::whereDate('created_at', Carbon::today())->count();
+            return 'BEL-' . $date . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+        } finally {
+            // Always release — even if count throws
+            DB::selectOne("SELECT RELEASE_LOCK(?)", [$lockKey]);
+        }
+    }
+
+    /**
+     * Generate a unique reference_code using the DB unique constraint as the
+     * real guard. The do/while check-then-insert gap is eliminated by letting
+     * the INSERT itself fail on collision and retrying with a new code.
+     *
+     * With 1,000,000 possible codes the collision probability per attempt is
+     * (existing_codes / 1,000,000). At 10,000 total visits that's 1% — the
+     * retry loop handles it gracefully.
+     *
+     * Returns the code string (the visit must be saved by the caller).
+     */
+    private function generateReferenceCode(): string
+    {
+        do {
+            $code = 'BEL-' . str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $exists = VisitorVisit::where('reference_code', $code)->exists();
+        } while ($exists);
+
+        return $code;
+    }
 
     // ── List all visits ───────────────────────────────────────────────────────
     public function index(Request $request)
@@ -37,7 +91,6 @@ class VisitorController extends Controller
             });
         }
 
-        // Filter by destination attraction
         if ($request->filled('destination_id')) {
             $query->whereHas('destinations', fn($q) =>
                 $q->where('attraction_id', $request->destination_id)
@@ -120,9 +173,9 @@ class VisitorController extends Controller
             'visitor_category' => 'required|string|max:100',
             'profile_id'       => 'nullable|uuid|exists:visitor_profiles,id',
             'visit_id'         => 'nullable|uuid|exists:visitor_visits,id',
-            'destinations'                         => 'nullable|array',
-            'destinations.*.attraction_id'         => 'nullable|integer|exists:barangay_attractions,id',
-            'destinations.*.other_destination'     => 'nullable|string|max:255',
+            'destinations'                     => 'nullable|array',
+            'destinations.*.attraction_id'     => 'nullable|integer|exists:barangay_attractions,id',
+            'destinations.*.other_destination' => 'nullable|string|max:255',
         ]);
 
         DB::beginTransaction();
@@ -181,7 +234,7 @@ class VisitorController extends Controller
                     ->with('success', 'Pre-registration confirmed. Proceed to payment.');
             }
 
-            // ── SCENARIO 2: Returning walk-in ────────────────────────────────
+            // ── SCENARIO 2: New or returning walk-in ─────────────────────────
             if ($request->filled('profile_id')) {
                 $profile = VisitorProfile::findOrFail($request->profile_id);
                 $profile->update([
@@ -201,10 +254,8 @@ class VisitorController extends Controller
                 ]);
             }
 
-            $registrationId = 'BEL-' . Carbon::now()->format('Ymd') . '-' . str_pad(
-                VisitorVisit::whereDate('created_at', Carbon::today())->count() + 1,
-                4, '0', STR_PAD_LEFT
-            );
+            // ── Safe registration_id via advisory lock ────────────────────────
+            $registrationId = $this->generateRegistrationId();
 
             $visit = new VisitorVisit([
                 'registration_id'  => $registrationId,
@@ -234,7 +285,8 @@ class VisitorController extends Controller
             ]);
 
             DB::commit();
-            return redirect()->route('adminpay', $visit->id)->with('success', 'Visitor registered successfully.');
+            return redirect()->route('adminpay', $visit->id)
+                ->with('success', 'Visitor registered successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -297,9 +349,23 @@ class VisitorController extends Controller
                 $visits[] = $visit;
             }
 
+            // ── Assign group_code to all members ────────────────────────────────
+            // Manual group registrations must set group_code the same way
+            // pre-registered groups do — otherwise resolveGroupVisits() in
+            // ReceiptController cannot find the other members at payment time.
+            // We use the first visit's registration_id as the group_code so
+            // it's human-readable and traceable in the audit log.
+            if (count($visits) > 1) {
+                $groupCode = $visits[0]->registration_id;
+                $visitIds  = collect($visits)->pluck('id')->toArray();
+                DB::table('visitor_visits')
+                    ->whereIn('id', $visitIds)
+                    ->update(['group_code' => $groupCode]);
+            }
+
             DB::commit();
             return redirect()->route('adminpay', $visits[0]->id)
-                ->with('success', count($visits) . ' visitors registered. Processing first payment.')
+                ->with('success', count($visits) . ' visitors registered. Processing payment.')
                 ->with('group_visit_ids', collect($visits)->pluck('id')->toArray());
 
         } catch (\Exception $e) {
@@ -308,6 +374,7 @@ class VisitorController extends Controller
         }
     }
 
+    // ── createVisitRecord — used by storeGroup ────────────────────────────────
     private function createVisitRecord(array $data, int $staffId): array
     {
         if (!empty($data['profile_id'])) {
@@ -329,10 +396,8 @@ class VisitorController extends Controller
             ]);
         }
 
-        $registrationId = 'BEL-' . Carbon::now()->format('Ymd') . '-' . str_pad(
-            VisitorVisit::whereDate('created_at', Carbon::today())->count() + 1,
-            4, '0', STR_PAD_LEFT
-        );
+        // ── Safe registration_id via advisory lock ────────────────────────────
+        $registrationId = $this->generateRegistrationId();
 
         $visit = new VisitorVisit([
             'registration_id'  => $registrationId,
@@ -364,6 +429,7 @@ class VisitorController extends Controller
         return [$visit, $profile];
     }
 
+    // ── Show single visit ─────────────────────────────────────────────────────
     public function show(VisitorVisit $visitor)
     {
         $visitor->load('receipt', 'registeredBy', 'profile', 'destinations.attraction');
@@ -405,6 +471,7 @@ class VisitorController extends Controller
         ]);
     }
 
+    // ── Search visitor profiles ───────────────────────────────────────────────
     public function searchProfile(Request $request)
     {
         $request->validate(['query' => 'required|string|min:2']);

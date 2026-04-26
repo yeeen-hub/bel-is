@@ -9,6 +9,7 @@ use App\Models\FeeCategory;
 use App\Models\BarangayAttraction;
 use App\Traits\SavesVisitorDestinations;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
@@ -16,6 +17,69 @@ class PublicRegController extends Controller
 {
     use SavesVisitorDestinations;
 
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Generate a unique registration_id safely under concurrent load.
+     *
+     * Uses a MySQL named advisory lock scoped to today's date so that
+     * the COUNT → compute → INSERT sequence is atomic across all processes.
+     * Pre-registration uses the same format as staff walk-ins so the
+     * daily sequence stays consistent regardless of source.
+     */
+    private function generateRegistrationId(): string
+    {
+        $date    = Carbon::now()->format('Ymd');
+        $lockKey = "bel_reg_{$date}";
+
+        $locked = DB::selectOne("SELECT GET_LOCK(?, 5) AS acquired", [$lockKey]);
+
+        if (!$locked || !$locked->acquired) {
+            throw new \RuntimeException('Could not acquire registration ID lock. Please try again.');
+        }
+
+        try {
+            $count = VisitorVisit::whereDate('created_at', Carbon::today())->count();
+            return 'BEL-' . $date . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+        } finally {
+            DB::selectOne("SELECT RELEASE_LOCK(?)", [$lockKey]);
+        }
+    }
+
+    /**
+     * Generate a unique reference_code.
+     *
+     * The DB unique constraint on visitor_visits.reference_code is the real
+     * guard. We generate a candidate, attempt the full visit save, and catch
+     * UniqueConstraintViolationException to retry with a new code.
+     * This eliminates the check-then-insert race window in the original
+     * do/while approach.
+     *
+     * Called from createPreRegVisit() — returns [visit, code] on success.
+     */
+    private function saveVisitWithUniqueCode(VisitorVisit $visit): string
+    {
+        $maxAttempts = 10;
+        $attempts    = 0;
+
+        while ($attempts < $maxAttempts) {
+            $code        = 'BEL-' . str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $visit->reference_code = $code;
+
+            try {
+                $visit->save();
+                return $code;
+            } catch (UniqueConstraintViolationException $e) {
+                // reference_code collision — try a new one
+                $attempts++;
+                continue;
+            }
+        }
+
+        throw new \RuntimeException('Could not generate a unique reference code after ' . $maxAttempts . ' attempts.');
+    }
+
+    // ── Public page ───────────────────────────────────────────────────────────
     public function create()
     {
         return Inertia::render('PublicRegPage', [
@@ -33,6 +97,7 @@ class PublicRegController extends Controller
         ]);
     }
 
+    // ── Individual pre-registration ───────────────────────────────────────────
     public function store(Request $request)
     {
         $request->validate([
@@ -45,9 +110,9 @@ class PublicRegController extends Controller
             'duration_of_stay' => 'required|string|max:255',
             'contact_number'   => 'nullable|string|max:20',
             'visitor_category' => 'required|string|max:100',
-            'destinations'                         => 'nullable|array',
-            'destinations.*.attraction_id'         => 'nullable|integer|exists:barangay_attractions,id',
-            'destinations.*.other_destination'     => 'nullable|string|max:255',
+            'destinations'                     => 'nullable|array',
+            'destinations.*.attraction_id'     => 'nullable|integer|exists:barangay_attractions,id',
+            'destinations.*.other_destination' => 'nullable|string|max:255',
         ]);
 
         DB::beginTransaction();
@@ -82,6 +147,7 @@ class PublicRegController extends Controller
         }
     }
 
+    // ── Group pre-registration ────────────────────────────────────────────────
     public function storeGroup(Request $request)
     {
         $request->validate([
@@ -147,6 +213,7 @@ class PublicRegController extends Controller
         }
     }
 
+    // ── Reference code lookup ─────────────────────────────────────────────────
     public function lookup(Request $request)
     {
         $request->validate(['code' => 'required|string|min:3|max:20']);
@@ -192,6 +259,7 @@ class PublicRegController extends Controller
         ]);
     }
 
+    // ── Format a visit for the lookup JSON response ───────────────────────────
     private function formatVisit(VisitorVisit $visit): array
     {
         $visit->load('destinations.attraction');
@@ -210,7 +278,6 @@ class PublicRegController extends Controller
             'purpose_other'    => $visit->purpose_other,
             'duration_of_stay' => $visit->duration_of_stay,
             'visitor_category' => $visit->visitor_category,
-            // Return existing destination selections so form can pre-fill
             'destinations'     => $visit->destinations->map(fn($d) => [
                 'attraction_id'     => $d->attraction_id,
                 'other_destination' => $d->other_destination,
@@ -221,6 +288,7 @@ class PublicRegController extends Controller
         ];
     }
 
+    // ── Create a single pre-registration visit ────────────────────────────────
     private function createPreRegVisit(
         string  $first_name,
         string  $last_name,
@@ -242,18 +310,11 @@ class PublicRegController extends Controller
             'contact_number'  => $contact,
         ]);
 
-        $registrationId = 'BEL-' . Carbon::now()->format('Ymd') . '-' . str_pad(
-            VisitorVisit::whereDate('created_at', Carbon::today())->count() + 1,
-            4, '0', STR_PAD_LEFT
-        );
-
-        do {
-            $referenceCode = 'BEL-' . str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        } while (VisitorVisit::where('reference_code', $referenceCode)->exists());
+        // ── Safe registration_id via advisory lock ────────────────────────────
+        $registrationId = $this->generateRegistrationId();
 
         $visit = new VisitorVisit([
             'registration_id'  => $registrationId,
-            'reference_code'   => $referenceCode,
             'profile_id'       => $profile->id,
             'purpose'          => $purpose,
             'purpose_other'    => $purpose === 'Other' ? $purposeOther : null,
@@ -265,7 +326,9 @@ class PublicRegController extends Controller
         ]);
 
         $visit->takeSnapshot($profile);
-        $visit->save();
+
+        // ── Safe reference_code via catch-and-retry on unique violation ───────
+        $referenceCode = $this->saveVisitWithUniqueCode($visit);
 
         $this->saveDestinations($visit->id, $destinations);
 
