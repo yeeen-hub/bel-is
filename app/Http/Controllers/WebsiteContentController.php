@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\HeroSetting;
 use App\Models\ContactSetting;
 use App\Models\ContactMessage;
@@ -9,13 +10,13 @@ use App\Models\Attraction;
 use App\Models\AboutSetting;
 use App\Models\AboutImage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class WebsiteContentController extends Controller
 {
     // ── Admin page ────────────────────────────────────────────────────────────
-
     public function index()
     {
         $hero        = HeroSetting::instance();
@@ -25,12 +26,11 @@ class WebsiteContentController extends Controller
                 'id'          => $a->id,
                 'name'        => $a->name,
                 'description' => $a->description,
-                'location' => $a->location,
+                'location'    => $a->location,
                 'image_url'   => $a->image_url,
                 'sort_order'  => $a->sort_order,
             ]);
         $about       = AboutSetting::instance();
-
         $aboutImages = AboutImage::orderBy('sort_order')->orderBy('id')->get()
             ->map(fn($i) => ['id' => $i->id, 'image_url' => $i->image_url, 'sort_order' => $i->sort_order]);
 
@@ -63,7 +63,7 @@ class WebsiteContentController extends Controller
                 'instagram_url' => $contact->instagram_url,
                 'twitter_url'   => $contact->twitter_url,
             ],
-            'attractions' => $attractions,
+            'attractions'  => $attractions,
             'about' => [
                 'title'          => $about->title,
                 'subtitle'       => $about->subtitle,
@@ -74,14 +74,13 @@ class WebsiteContentController extends Controller
                 'feature3_title' => $about->feature3_title,
                 'feature3_desc'  => $about->feature3_desc,
             ],
-            'about_images'  => $aboutImages,
-            'messages'      => $messages,
-            'unread_count'  => $unreadCount,
+            'about_images' => $aboutImages,
+            'messages'     => $messages,
+            'unread_count' => $unreadCount,
         ]);
     }
 
     // ── Hero ──────────────────────────────────────────────────────────────────
-
     public function updateHero(Request $request)
     {
         $request->validate([
@@ -92,7 +91,8 @@ class WebsiteContentController extends Controller
             'background_image' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
         ]);
 
-        $hero = HeroSetting::instance();
+        $hero   = HeroSetting::instance();
+        $before = ['tagline' => $hero->tagline, 'barangay' => $hero->barangay, 'mun_prov' => $hero->mun_prov, 'sub' => $hero->sub];
 
         if ($request->hasFile('background_image')) {
             if ($hero->background_image) {
@@ -107,11 +107,21 @@ class WebsiteContentController extends Controller
         $hero->sub      = $request->sub;
         $hero->save();
 
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'updated',
+            'module'      => 'website_content',
+            'target_type' => 'HeroSetting',
+            'target_id'   => '1',
+            'old_values'  => json_encode($before),
+            'new_values'  => json_encode(['tagline' => $hero->tagline, 'barangay' => $hero->barangay, 'mun_prov' => $hero->mun_prov, 'sub' => $hero->sub]),
+            'ip_address'  => $request->ip(),
+        ]);
+
         return redirect()->back()->with('success', 'Hero section updated successfully!');
     }
 
     // ── Contact ───────────────────────────────────────────────────────────────
-
     public function updateContact(Request $request)
     {
         $request->validate([
@@ -124,7 +134,9 @@ class WebsiteContentController extends Controller
             'twitter_url'   => 'nullable|url|max:255',
         ]);
 
-        $contact                = ContactSetting::instance();
+        $contact = ContactSetting::instance();
+        $before  = ['email' => $contact->email, 'phone' => $contact->phone];
+
         $contact->email         = $request->email;
         $contact->phone         = $request->phone;
         $contact->email_hours   = $request->email_hours;
@@ -134,11 +146,21 @@ class WebsiteContentController extends Controller
         $contact->twitter_url   = $request->twitter_url   ?: null;
         $contact->save();
 
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'updated',
+            'module'      => 'website_content',
+            'target_type' => 'ContactSetting',
+            'target_id'   => '1',
+            'old_values'  => json_encode($before),
+            'new_values'  => json_encode(['email' => $contact->email, 'phone' => $contact->phone]),
+            'ip_address'  => $request->ip(),
+        ]);
+
         return redirect()->route('websitecontent')->with('success', 'Contact info updated successfully!');
     }
 
     // ── Contact Messages ──────────────────────────────────────────────────────
-
     public function sendMessage(Request $request)
     {
         $request->validate([
@@ -171,8 +193,7 @@ class WebsiteContentController extends Controller
         return redirect()->back()->with('success', 'Message deleted.');
     }
 
-    // ── Attractions ───────────────────────────────────────────────────────────
-
+    // ── Attractions (CMS) ─────────────────────────────────────────────────────
     public function storeAttraction(Request $request)
     {
         $request->validate([
@@ -193,7 +214,16 @@ class WebsiteContentController extends Controller
 
         $attraction->save();
 
-        // ✅ Explicit redirect instead of redirect()->back()
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'created',
+            'module'      => 'website_content',
+            'target_type' => 'Attraction',
+            'target_id'   => (string) $attraction->id,
+            'new_values'  => json_encode(['name' => $attraction->name, 'location' => $attraction->location]),
+            'ip_address'  => $request->ip(),
+        ]);
+
         return redirect()->route('websitecontent')->with('success', 'Attraction added successfully!');
     }
 
@@ -205,7 +235,9 @@ class WebsiteContentController extends Controller
             'image'       => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
         ]);
 
-        $attraction              = Attraction::findOrFail($id);
+        $attraction = Attraction::findOrFail($id);
+        $before     = ['name' => $attraction->name, 'description' => $attraction->description, 'location' => $attraction->location];
+
         $attraction->name        = $request->name;
         $attraction->location    = $request->location;
         $attraction->description = $request->description;
@@ -219,7 +251,17 @@ class WebsiteContentController extends Controller
 
         $attraction->save();
 
-        // ✅ Explicit redirect
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'updated',
+            'module'      => 'website_content',
+            'target_type' => 'Attraction',
+            'target_id'   => (string) $id,
+            'old_values'  => json_encode($before),
+            'new_values'  => json_encode(['name' => $attraction->name, 'location' => $attraction->location]),
+            'ip_address'  => $request->ip(),
+        ]);
+
         return redirect()->route('websitecontent')->with('success', 'Attraction updated successfully!');
     }
 
@@ -227,18 +269,26 @@ class WebsiteContentController extends Controller
     {
         $attraction = Attraction::findOrFail($id);
 
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'deleted',
+            'module'      => 'website_content',
+            'target_type' => 'Attraction',
+            'target_id'   => (string) $id,
+            'old_values'  => json_encode(['name' => $attraction->name, 'location' => $attraction->location]),
+            'ip_address'  => request()->ip(),
+        ]);
+
         if ($attraction->image) {
             Storage::disk('public')->delete($attraction->image);
         }
 
         $attraction->delete();
 
-        // ✅ Explicit redirect
         return redirect()->route('websitecontent')->with('success', 'Attraction deleted successfully!');
     }
 
     // ── About ─────────────────────────────────────────────────────────────────
-
     public function updateAbout(Request $request)
     {
         $request->validate([
@@ -252,7 +302,9 @@ class WebsiteContentController extends Controller
             'feature3_desc'  => 'required|string|max:1000',
         ]);
 
-        $about                 = AboutSetting::instance();
+        $about  = AboutSetting::instance();
+        $before = ['title' => $about->title, 'subtitle' => $about->subtitle];
+
         $about->title          = $request->title;
         $about->subtitle       = $request->subtitle;
         $about->feature1_title = $request->feature1_title;
@@ -263,19 +315,38 @@ class WebsiteContentController extends Controller
         $about->feature3_desc  = $request->feature3_desc;
         $about->save();
 
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'updated',
+            'module'      => 'website_content',
+            'target_type' => 'AboutSetting',
+            'target_id'   => '1',
+            'old_values'  => json_encode($before),
+            'new_values'  => json_encode(['title' => $about->title, 'subtitle' => $about->subtitle]),
+            'ip_address'  => $request->ip(),
+        ]);
+
         return redirect()->route('websitecontent')->with('success', 'About section updated successfully!');
     }
 
     public function storeAboutImage(Request $request)
     {
-        $request->validate([
-            'image' => 'required|image|mimes:jpg,jpeg,png|max:5120',
-        ]);
+        $request->validate(['image' => 'required|image|mimes:jpg,jpeg,png|max:5120']);
 
         $img             = new AboutImage();
         $img->image      = $request->file('image')->store('about', 'public');
         $img->sort_order = AboutImage::max('sort_order') + 1;
         $img->save();
+
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'created',
+            'module'      => 'website_content',
+            'target_type' => 'AboutImage',
+            'target_id'   => (string) $img->id,
+            'new_values'  => json_encode(['image' => $img->image]),
+            'ip_address'  => $request->ip(),
+        ]);
 
         return redirect()->route('websitecontent')->with('success', 'Image added successfully!');
     }
@@ -283,16 +354,27 @@ class WebsiteContentController extends Controller
     public function destroyAboutImage($id)
     {
         $img = AboutImage::findOrFail($id);
+
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'deleted',
+            'module'      => 'website_content',
+            'target_type' => 'AboutImage',
+            'target_id'   => (string) $id,
+            'old_values'  => json_encode(['image' => $img->image]),
+            'ip_address'  => request()->ip(),
+        ]);
+
         if ($img->image) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($img->image);
+            Storage::disk('public')->delete($img->image);
         }
+
         $img->delete();
 
         return redirect()->route('websitecontent')->with('success', 'Image removed successfully!');
     }
 
     // ── Public Landing Page ───────────────────────────────────────────────────
-
     public function landingPage()
     {
         $hero        = HeroSetting::instance();
@@ -326,7 +408,7 @@ class WebsiteContentController extends Controller
                 'instagram_url' => $contact->instagram_url,
                 'twitter_url'   => $contact->twitter_url,
             ],
-            'attractions'  => $attractions,
+            'attractions' => $attractions,
             'about' => [
                 'title'          => $about->title,
                 'subtitle'       => $about->subtitle,
@@ -339,4 +421,5 @@ class WebsiteContentController extends Controller
             ],
             'about_images' => $aboutImages,
         ]);
-    }}
+    }
+}

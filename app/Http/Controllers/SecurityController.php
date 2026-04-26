@@ -13,12 +13,11 @@ use Inertia\Inertia;
 
 class SecurityController extends Controller
 {
-    // ── UI Tab → DB module slug ───────────────────────────────────────────────
     private array $permissionMap = [
         'Dashboard'        => 'dashboard',
         'Registration'     => 'registration',
         'Visitor Records'  => 'visitor_records',
-        'Payment'          => 'payment',          // ← NEW: controls No Show action
+        'Payment'          => 'payment',
         'Reports'          => 'reports',
         'Settings'         => 'settings',
         'General Settings' => 'system_settings',
@@ -74,6 +73,14 @@ class SecurityController extends Controller
     {
         $request->validate(['roles' => 'required|array']);
 
+        // Snapshot before for audit
+        $before = [];
+        foreach ($request->roles as $roleData) {
+            $role = Role::find($roleData['id']);
+            if (!$role || strtolower($role->name) === 'admin') continue;
+            $before[$role->name] = $role->permissions->pluck('name')->sort()->values()->toArray();
+        }
+
         foreach ($request->roles as $roleData) {
             $role = Role::find($roleData['id']);
             if (!$role || strtolower($role->name) === 'admin') continue;
@@ -102,7 +109,26 @@ class SecurityController extends Controller
             $role->syncPermissions($existsInDb);
         }
 
+        // Snapshot after for audit
+        $after = [];
+        foreach ($request->roles as $roleData) {
+            $role = Role::find($roleData['id']);
+            if (!$role || strtolower($role->name) === 'admin') continue;
+            $after[$role->name] = $role->fresh()->permissions->pluck('name')->sort()->values()->toArray();
+        }
+
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'rbac_updated',
+            'module'      => 'security',
+            'target_type' => 'Role',
+            'target_id'   => null,
+            'old_values'  => json_encode($before),
+            'new_values'  => json_encode($after),
+            'ip_address'  => $request->ip(),
+        ]);
 
         return back()->with('success', 'Permissions updated successfully.');
     }
@@ -119,6 +145,16 @@ class SecurityController extends Controller
             'password' => \Illuminate\Support\Facades\Hash::make($request->password),
         ]);
 
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'password_changed',
+            'module'      => 'security',
+            'target_type' => 'User',
+            'target_id'   => (string) Auth::id(),
+            'new_values'  => json_encode(['note' => 'Password changed by user']),
+            'ip_address'  => $request->ip(),
+        ]);
+
         return back()->with('success', 'Your password has been changed.');
     }
 
@@ -127,9 +163,22 @@ class SecurityController extends Controller
     {
         $request->validate(['strong_password' => 'boolean']);
 
+        $before = DB::table('security_settings')->where('id', 1)->first();
+
         DB::table('security_settings')->where('id', 1)->update([
             'require_strong_password' => $request->strong_password,
             'updated_at'              => now(),
+        ]);
+
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'security_settings_updated',
+            'module'      => 'security',
+            'target_type' => 'SecuritySetting',
+            'target_id'   => '1',
+            'old_values'  => json_encode(['require_strong_password' => $before?->require_strong_password]),
+            'new_values'  => json_encode(['require_strong_password' => $request->strong_password]),
+            'ip_address'  => $request->ip(),
         ]);
 
         return back()->with('success', 'Security configurations updated.');
@@ -139,6 +188,16 @@ class SecurityController extends Controller
     public function logoutOthers(Request $request)
     {
         Auth::logoutOtherDevices($request->current_password);
+
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'other_sessions_terminated',
+            'module'      => 'security',
+            'target_type' => 'User',
+            'target_id'   => (string) Auth::id(),
+            'new_values'  => json_encode(['note' => 'All other sessions forcibly logged out']),
+            'ip_address'  => $request->ip(),
+        ]);
 
         return back()->with('success', 'Logged out from all other active sessions.');
     }

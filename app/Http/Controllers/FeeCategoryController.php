@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\FeeCategory;
 use App\Models\Sitio;
 use App\Models\BarangayAttraction;
 use App\Models\UnrecognizedAttraction;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class FeeCategoryController extends Controller
@@ -69,6 +71,9 @@ class FeeCategoryController extends Controller
             'rows.*.fee'       => 'required|integer|min:0',
         ]);
 
+        // Snapshot before changes for audit
+        $before = FeeCategory::orderBy('id')->get(['id', 'category', 'age_range', 'fee'])->toArray();
+
         $incomingIds = collect($request->rows)
             ->filter(fn($r) => !empty($r['id']))
             ->pluck('id')
@@ -76,7 +81,7 @@ class FeeCategoryController extends Controller
 
         FeeCategory::whereNotIn('id', $incomingIds)->delete();
 
-        $adminName = auth()->user()->name ?? 'Admin';
+        $adminName = Auth::user()->name ?? 'Admin';
 
         foreach ($request->rows as $row) {
             FeeCategory::updateOrCreate(
@@ -90,6 +95,19 @@ class FeeCategoryController extends Controller
             );
         }
 
+        $after = FeeCategory::orderBy('id')->get(['id', 'category', 'age_range', 'fee'])->toArray();
+
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'updated',
+            'module'      => 'fee_categories',
+            'target_type' => 'FeeCategory',
+            'target_id'   => null,
+            'old_values'  => json_encode($before),
+            'new_values'  => json_encode($after),
+            'ip_address'  => $request->ip(),
+        ]);
+
         return redirect()->back()->with('success', 'Fee categories saved successfully.');
     }
 
@@ -102,6 +120,8 @@ class FeeCategoryController extends Controller
             'rows.*.description' => 'nullable|string|max:1000',
             'rows.*.is_active'   => 'boolean',
         ]);
+
+        $before = Sitio::orderBy('id')->get(['id', 'name', 'description', 'is_active'])->toArray();
 
         $incomingIds = collect($request->rows)
             ->filter(fn($r) => !empty($r['id']))
@@ -121,6 +141,19 @@ class FeeCategoryController extends Controller
             );
         }
 
+        $after = Sitio::orderBy('id')->get(['id', 'name', 'description', 'is_active'])->toArray();
+
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'updated',
+            'module'      => 'sitios',
+            'target_type' => 'Sitio',
+            'target_id'   => null,
+            'old_values'  => json_encode($before),
+            'new_values'  => json_encode($after),
+            'ip_address'  => $request->ip(),
+        ]);
+
         return redirect()->back()->with('success', 'Sitios saved successfully.');
     }
 
@@ -135,6 +168,10 @@ class FeeCategoryController extends Controller
             'rows.*.sitio_id'    => 'nullable|integer|exists:sitios,id',
             'rows.*.is_active'   => 'boolean',
         ]);
+
+        $before = BarangayAttraction::orderBy('id')
+            ->get(['id', 'name', 'type', 'sitio_id', 'is_active'])
+            ->toArray();
 
         $incomingIds = collect($request->rows)
             ->filter(fn($r) => !empty($r['id']))
@@ -156,10 +193,25 @@ class FeeCategoryController extends Controller
             );
         }
 
+        $after = BarangayAttraction::orderBy('id')
+            ->get(['id', 'name', 'type', 'sitio_id', 'is_active'])
+            ->toArray();
+
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'updated',
+            'module'      => 'barangay_attractions',
+            'target_type' => 'BarangayAttraction',
+            'target_id'   => null,
+            'old_values'  => json_encode($before),
+            'new_values'  => json_encode($after),
+            'ip_address'  => $request->ip(),
+        ]);
+
         return redirect()->back()->with('success', 'Attractions saved successfully.');
     }
 
-    // ── Mark unrecognized as reviewed (dismiss without adding) ────────────────
+    // ── Mark unrecognized as reviewed (dismiss) ───────────────────────────────
     public function reviewUnrecognized(Request $request, $id)
     {
         $item = UnrecognizedAttraction::findOrFail($id);
@@ -168,10 +220,20 @@ class FeeCategoryController extends Controller
             'reviewed_at' => now(),
         ]);
 
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'dismissed',
+            'module'      => 'unrecognized_attractions',
+            'target_type' => 'UnrecognizedAttraction',
+            'target_id'   => (string) $id,
+            'new_values'  => json_encode(['name' => $item->name, 'action' => 'dismissed']),
+            'ip_address'  => $request->ip(),
+        ]);
+
         return redirect()->back()->with('success', 'Marked as reviewed.');
     }
 
-    // ── Add reported destination to official attractions + mark reviewed ──────
+    // ── Add reported destination to official attractions ──────────────────────
     public function addFromUnrecognized(Request $request, $id)
     {
         $item = UnrecognizedAttraction::findOrFail($id);
@@ -182,7 +244,7 @@ class FeeCategoryController extends Controller
             'sitio_id' => 'nullable|integer|exists:sitios,id',
         ]);
 
-        BarangayAttraction::create([
+        $attraction = BarangayAttraction::create([
             'name'      => $request->name,
             'type'      => $request->type,
             'sitio_id'  => $request->sitio_id ?: null,
@@ -192,6 +254,21 @@ class FeeCategoryController extends Controller
         $item->update([
             'is_reviewed' => true,
             'reviewed_at' => now(),
+        ]);
+
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'added_from_unrecognized',
+            'module'      => 'barangay_attractions',
+            'target_type' => 'BarangayAttraction',
+            'target_id'   => (string) $attraction->id,
+            'new_values'  => json_encode([
+                'name'             => $attraction->name,
+                'type'             => $attraction->type,
+                'sitio_id'         => $attraction->sitio_id,
+                'source_report_id' => $id,
+            ]),
+            'ip_address'  => $request->ip(),
         ]);
 
         return redirect()->back()->with(
