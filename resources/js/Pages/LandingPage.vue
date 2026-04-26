@@ -15,26 +15,26 @@
 
   <!-- MAIN CONTAINER -->
   <div
-    class="w-full px-4 sm:px-8 lg:px-16 3xl:px-24 4xl:px-32 mt-20 flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8">
+    class="w-full px-4 sm:px-8 lg:px-16 3xl:px-24 4xl:px-32 4xl:mt-20 flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8">
 
     <!-- LEFT CONTENT -->
-    <div class="text-center lg:text-left w-full xl:mt-10">
+    <div class="text-center lg:text-left w-full">
 
       <!-- TAGLINE FIRST -->
-      <p class="text-sm sm:text-lg md:text-xl lg:text-2xl 3xl:text-3xl 4xl:text-4xl
+      <p class="text-sm sm:text-lg md:text-xl lg:text-xl 3xl:text-3xl 4xl:text-4xl
         text-blue-500 font-kaushan italic leading-tight mb-3 lg:ml-4">
         {{ taglineFirst }}
       </p>
 
       <!-- TAGLINE REST -->
-      <h2 class="text-base sm:text-xl md:text-2xl lg:text-5xl 3xl:text-6xl 4xl:text-7xl
+      <h2 class="text-base sm:text-xl md:text-2xl lg:text-3xl 3xl:text-6xl 4xl:text-7xl
         text-white font-heading leading-tight mb-1 lg:ml-4">
         {{ taglineRest }}
       </h2>
 
       <!-- BARANGAY -->
       <span class="block font-bold leading-none
-        text-4xl sm:text-6xl md:text-7xl lg:text-[10rem] xl:text-[12rem] 3xl:text-[14rem] 4xl:text-[18rem]
+        text-4xl sm:text-6xl md:text-7xl lg:text-[10rem] xl:text-[9rem] ml-2 3xl:text-[14rem] 4xl:text-[18rem]
         text-white relative"
         style="text-shadow: 1px 1px 0 #0a2a55, 2px 2px 0 #082244, 3px 3px 0 #061a33, 4px 4px 10px rgba(0,0,0,0.25);">
         {{ hero.barangay || 'Bel-is' }}
@@ -60,8 +60,8 @@
       <div class="flex flex-wrap gap-4 p-5 justify-center lg:justify-start items-stretch">
 
         <!-- CARD 1 -->
-        <div class="nature-card flex items-center gap-4 w-full sm:w-[200px] lg:w-[220px] xl:w-[260px] 3xl:w-[320px] 4xl:w-[400px]
-          px-6 py-6 rounded-[18px]
+        <div class="nature-card flex items-center gap-4 w-full sm:w-[200px] lg:w-[220px] xl:w-[220px] 3xl:w-[320px] 4xl:w-[400px]
+          px-3 py-3 rounded-[18px]
           border border-blue-400/40
           bg-gradient-to-br from-[#0d47a1]/60 via-[#1565c0]/45 to-[#1976d2]/30
           backdrop-blur-[14px]
@@ -86,7 +86,7 @@
         </div>
 
         <!-- CARD 2 -->
-        <div class="nature-card flex items-center gap-4 w-full sm:w-[200px] lg:w-[220px] xl:w-[260px] 3xl:w-[320px] 4xl:w-[400px]
+        <div class="nature-card flex items-center gap-4 w-full sm:w-[200px] lg:w-[220px] xl:w-[220px] 3xl:w-[320px] 4xl:w-[400px]
           px-3 py-3 rounded-[18px]
           border border-blue-400/40
           bg-gradient-to-br from-[#0d47a1]/60 via-[#1565c0]/45 to-[#1976d2]/30
@@ -110,8 +110,8 @@
         </div>
 
         <!-- CARD 3 -->
-        <div class="nature-card flex items-center gap-4 w-full sm:w-[200px] lg:w-[220px] xl:w-[260px] 3xl:w-[320px] 4xl:w-[400px]
-          px-6 py-6 rounded-[18px]
+        <div class="nature-card flex items-center gap-4 w-full sm:w-[200px] lg:w-[220px] xl:w-[220px] 3xl:w-[320px] 4xl:w-[400px]
+          px-3 py-3 rounded-[18px]
           border border-blue-400/40
           bg-gradient-to-br from-[#0d47a1]/60 via-[#1565c0]/45 to-[#1976d2]/30
           backdrop-blur-[14px]">
