@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useForm, usePage, Link } from '@inertiajs/vue3'
-import PlainLayout from '@/Layouts/PlainLayout.vue'
+import LandingLayout from '@/Layouts/LandingLayout.vue'
 import DestinationChecklist from '@/Components/DestinationChecklist.vue'
 
 const props = defineProps({
@@ -46,7 +46,7 @@ const form = useForm({
     duration_of_stay: '',
     contact_number:   '',
     visitor_category: '',
-    destinations:     [],   // ← NEW
+    destinations:     [],
 })
 
 const submit = () => {
@@ -67,7 +67,7 @@ const blankMember = () => ({
     duration_of_stay: '',
     contact_number:   '',
     visitor_category: '',
-    destinations:     [],   // ← NEW
+    destinations:     [],
     openPurpose:      false,
     openDuration:     false,
     openCategory:     false,
@@ -88,7 +88,7 @@ const cloneFromLeader = (i) => {
     m.purpose          = leader.purpose
     m.purpose_other    = leader.purpose_other
     m.duration_of_stay = leader.duration_of_stay
-    // destinations intentionally NOT cloned
+    // destinations intentionally NOT cloned — each member picks their own
 }
 
 const memberErrors = ref([])
@@ -121,7 +121,7 @@ const submitGroup = () => {
         duration_of_stay: m.duration_of_stay,
         contact_number:   m.contact_number || '',
         visitor_category: m.visitor_category,
-        destinations:     m.destinations,   // ← NEW
+        destinations:     m.destinations,
     }))
     groupForm.post(route('pre-register.group'), {
         preserveScroll: true,
@@ -131,7 +131,7 @@ const submitGroup = () => {
 </script>
 
 <template>
-    <PlainLayout>
+    <LandingLayout>
         <div class="min-h-screen bg-gray-50">
 
             <!-- ══════════ SUCCESS SCREEN ══════════ -->
@@ -179,13 +179,18 @@ const submitGroup = () => {
                             </div>
                         </div>
                         <h1 class="text-2xl font-bold text-gray-800 mb-1">Your Group is Pre-Registered!</h1>
-                        <p class="text-gray-500 text-sm mb-6">{{ groupMembers.length }} member(s) registered.</p>
+                        <p class="text-gray-500 text-sm mb-6">{{ groupMembers.length }} member(s) registered. Show this code at the checkpoint.</p>
                         <div class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl px-6 py-5 mb-6">
                             <p class="text-xs text-gray-400 uppercase tracking-widest mb-2">Group Reference Code</p>
                             <p class="text-4xl font-mono font-bold text-gray-900 tracking-widest">{{ groupCode }}</p>
                         </div>
                         <div class="flex flex-col items-center mb-6">
+                            <p class="text-xs text-gray-400 mb-3">Or let staff scan this QR code</p>
                             <img :src="qrUrl(groupCode)" :alt="groupCode" class="w-44 h-44 border border-gray-200 rounded-xl p-2" />
+                        </div>
+                        <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-6 text-left">
+                            <p class="text-sm font-semibold text-amber-800">📸 Screenshot this screen</p>
+                            <p class="text-xs text-amber-700 mt-1">Staff will look up all {{ groupMembers.length }} member(s) and collect fees per person.</p>
                         </div>
                         <Link :href="route('home')" class="block w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-gray-700 transition text-sm text-center">
                             Back to Bel-is Website
@@ -195,21 +200,14 @@ const submitGroup = () => {
             </div>
 
             <!-- ══════════ REGISTRATION FORM ══════════ -->
-            <div v-else class="py-12 px-4">
+            <div v-else class="pt-28 pb-12 px-4">
 
-                <!-- Back link -->
-                <div class="max-w-2xl mx-auto mb-6">
-                    <Link :href="route('home')" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-                        </svg>
-                        Back to website
-                    </Link>
-                </div>
+
+
+
 
                 <!-- Header -->
                 <div class="max-w-2xl mx-auto text-center mb-8">
-                    <img src="/images/brgylogo.png" alt="Barangay Bel-is" class="w-16 h-16 rounded-full mx-auto mb-4 border border-gray-200" />
                     <h1 class="text-3xl font-bold text-gray-800">Visitor Pre-Registration</h1>
                     <p class="text-gray-500 text-sm mt-2 max-w-md mx-auto">
                         Fill out this form before arriving at Barangay Bel-is. You will receive a reference code to show at the checkpoint.
@@ -250,7 +248,6 @@ const submitGroup = () => {
                 <div v-if="mode === 'single'" class="max-w-2xl mx-auto">
                     <form @submit.prevent="submit" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-6">
 
-                        <!-- Name -->
                         <div class="grid grid-cols-2 gap-5">
                             <div>
                                 <label class="block text-gray-700 text-sm font-semibold mb-1.5">First Name *</label>
@@ -266,7 +263,6 @@ const submitGroup = () => {
                             </div>
                         </div>
 
-                        <!-- Municipality / Province -->
                         <div class="grid grid-cols-2 gap-5">
                             <div>
                                 <label class="block text-gray-700 text-sm font-semibold mb-1.5">Municipality *</label>
@@ -282,7 +278,6 @@ const submitGroup = () => {
                             </div>
                         </div>
 
-                        <!-- Contact -->
                         <div>
                             <label class="block text-gray-700 text-sm font-semibold mb-1.5">Phone Number (optional)</label>
                             <input v-model="form.contact_number" type="tel"
@@ -323,7 +318,7 @@ const submitGroup = () => {
                             </div>
                         </div>
 
-                        <!-- ── NEW: Destination ──────────────────────────── -->
+                        <!-- Destination Checklist -->
                         <div>
                             <label class="block text-gray-700 text-sm font-semibold mb-2">
                                 Where are you going?
@@ -374,7 +369,7 @@ const submitGroup = () => {
 
                         <button type="submit" :disabled="form.processing"
                             class="w-full bg-gray-900 text-white font-bold py-3 rounded-xl disabled:opacity-50 hover:bg-gray-700 transition">
-                            Submit Pre-Registration →
+                            {{ form.processing ? 'Submitting...' : 'Submit Pre-Registration →' }}
                         </button>
                     </form>
                 </div>
@@ -385,7 +380,6 @@ const submitGroup = () => {
                         class="bg-white rounded-2xl border shadow-sm"
                         :class="i === 0 ? 'border-gray-800' : 'border-gray-200'">
 
-                        <!-- Card header -->
                         <div class="flex items-center justify-between px-5 py-3 rounded-t-2xl"
                             :class="i === 0 ? 'bg-gray-900 text-white' : 'bg-gray-50'">
                             <span class="text-xs font-bold uppercase tracking-wider">{{ i === 0 ? '★ Group Leader' : `Member ${i + 1}` }}</span>
@@ -395,7 +389,6 @@ const submitGroup = () => {
                             </div>
                         </div>
 
-                        <!-- Card body -->
                         <div class="p-6 space-y-4">
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
@@ -454,7 +447,7 @@ const submitGroup = () => {
                                 </div>
                             </div>
 
-                            <!-- ── NEW: Destination per member ── -->
+                            <!-- Destination per member -->
                             <div>
                                 <label class="block text-gray-600 text-xs font-semibold mb-2">
                                     Where are you going? <span class="text-gray-400 font-normal">(optional)</span>
@@ -482,7 +475,7 @@ const submitGroup = () => {
                                 </div>
                             </div>
 
-                            <div v-if="m.purpose === 'Other'" class="col-span-2">
+                            <div v-if="m.purpose === 'Other'">
                                 <input v-model="m.purpose_other" placeholder="Please specify purpose"
                                     class="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-1 focus:ring-gray-300 focus:outline-none" />
                                 <p v-if="memberErrors[i]?.purpose_other" class="text-red-500 text-xs mt-1">{{ memberErrors[i].purpose_other }}</p>
@@ -498,16 +491,30 @@ const submitGroup = () => {
                         + Add Member
                     </button>
 
+                    <!-- Validation summary -->
+                    <div v-if="memberErrors.length && memberErrors.some(e => Object.keys(e).length > 0)"
+                        class="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+                        <p class="font-semibold mb-1">Please fix the following:</p>
+                        <ul class="list-disc list-inside space-y-0.5 text-xs">
+                            <li v-for="(e, i) in memberErrors" :key="i">
+                                <span v-if="Object.keys(e).length > 0">
+                                    <strong>{{ i === 0 ? 'Group Leader' : `Member ${i + 1}` }}</strong>
+                                    — {{ Object.values(e).join(', ') }}
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+
                     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-center justify-between">
-                        <p class="text-sm font-semibold text-gray-700">{{ memberCount }} visitors in group</p>
+                        <p class="text-sm font-semibold text-gray-700">{{ memberCount }} visitor(s) in group</p>
                         <button type="button" @click="submitGroup" :disabled="groupForm.processing"
                             class="bg-gray-900 text-white font-bold py-2.5 px-6 rounded-xl disabled:opacity-50 hover:bg-gray-700 transition">
-                            Pre-Register Group →
+                            {{ groupForm.processing ? 'Submitting...' : 'Pre-Register Group →' }}
                         </button>
                     </div>
                 </div>
 
             </div>
         </div>
-    </PlainLayout>
+    </LandingLayout>
 </template>

@@ -18,21 +18,34 @@ class UserController extends Controller
             ->latest()
             ->get()
             ->map(fn($u) => [
-                'id'            => $u->id,
-                'name'          => $u->name,
-                'email'         => $u->email,
-                'contact_no'    => $u->contact_no ?? 'N/A', 
-                'role'          => $u->roles->first()?->name ?? 'User',
-                'is_active'     => (bool)$u->is_active,
+                'id'                 => $u->id,
+                'name'               => $u->name,
+                'email'              => $u->email,
+                'contact_no'         => $u->contact_no ?? 'N/A',
+                // Always read live role from DB relationship — never cached
+                'role'               => $u->roles->first()?->name ?? '',
+                'is_active'          => (bool) $u->is_active,
                 'current_session_id' => $u->current_session_id,
                 'last_login_at'      => $u->last_login_at?->format('M d, Y h:i A'),
             ]);
-
-        $roles = Role::all();
-
+    
+        // Load ALL roles from DB — ordered so they appear consistently in dropdown.
+        // Any role added via: php artisan permission:create-role new_role
+        // or directly inserted into the roles table will appear here automatically.
+        $roles = \Spatie\Permission\Models\Role::orderBy('name')->get()
+            ->map(fn($r) => [
+                'id'   => $r->id,
+                'name' => $r->name,   // raw slug — Vue converts to label dynamically
+            ]);
+    
+        $pendingFees = \App\Models\Visitor::whereNull('deleted_at')
+            ->where('fee_status', 'Pending')
+            ->count();
+    
         return Inertia::render('AdminSetUMPage', [
-            'users' => $users,
-            'roles' => $roles,
+            'users'       => $users,
+            'roles'       => $roles,
+            'pendingFees' => $pendingFees,
         ]);
     }
 
@@ -77,53 +90,72 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
-
-         if (!auth()->user()->can('edit_user_management')) {
-            return back()->with('error', 'You do not have permission to edit users.');
+        // Permission check
+        if (!auth()->user()->can('edit_user_management')) {
+            return back()->withErrors(['error' => 'You do not have permission to edit users.']);
         }
+    
         $request->validate([
             'name'           => 'required|string|max:255',
             'email'          => 'required|email|unique:users,email,' . $user->id,
             'contact_no'     => 'nullable|string|max:20',
-            'role'           => 'required|exists:roles,name',
+            'role'           => 'required|string|exists:roles,name',
+            // password optional on edit — only validated if provided
             'password'       => 'nullable|min:8|confirmed',
-            'admin_password' => 'required',
+            'admin_password' => 'required|string',
         ]);
-
-        // Verify Admin identity
+    
+        // Verify admin identity
         if (!Hash::check($request->admin_password, Auth::user()->password)) {
-            return back()->withErrors(['admin_password' => 'Incorrect admin password. Update denied.']);
+            return back()->withErrors([
+                'admin_password' => 'Incorrect admin password. Update denied.',
+            ]);
         }
-
-        $old = [
-            'name' => $user->name, 
-            'email' => $user->email, 
-            'contact_no' => $user->contact_no
+    
+        // Track old values for audit
+        $oldRole = $user->roles->first()?->name ?? 'none';
+        $old     = [
+            'name'       => $user->name,
+            'email'      => $user->email,
+            'contact_no' => $user->contact_no,
+            'role'       => $oldRole,
         ];
-
-        $user->name = $request->name;
-        $user->email = $request->email;
-        $user->contact_no = $request->contact_no; // Explicitly update
-
+    
+        // Update user fields
+        $user->name       = $request->name;
+        $user->email      = $request->email;
+        $user->contact_no = $request->contact_no;
+    
         if ($request->filled('password')) {
             $user->password = Hash::make($request->password);
         }
-
-        $user->save(); // Use save() to ensure all attributes are persisted
+    
+        $user->save();
+    
+        // Sync role — syncRoles replaces ALL current roles with the new one
+        // This is the correct Spatie method for single-role systems
         $user->syncRoles([$request->role]);
-
+    
+        // Force reload the roles relationship so the response reflects the new role
+        $user->load('roles');
+    
         AuditLog::create([
             'user_id'     => Auth::id(),
             'action'      => 'updated',
             'module'      => 'users',
             'target_type' => 'User',
             'target_id'   => $user->id,
-            'old_values'  => $old,
-            'new_values'  => $request->only(['name', 'email', 'contact_no', 'role']),
+            'old_values'  => json_encode($old),
+            'new_values'  => json_encode([
+                'name'       => $request->name,
+                'email'      => $request->email,
+                'contact_no' => $request->contact_no,
+                'role'       => $request->role,
+            ]),
             'ip_address'  => $request->ip(),
         ]);
-
-        return back()->with('success', 'User updated successfully.');
+    
+        return back()->with('success', "User {$user->name} updated successfully.");
     }
 
     

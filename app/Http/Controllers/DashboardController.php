@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\VisitorVisit;
 use App\Models\Receipt;
 use App\Models\TourismContent;
+use App\Models\BarangayAttraction;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
@@ -18,10 +19,8 @@ class DashboardController extends Controller
         $yearStart  = Carbon::now()->startOfYear()->startOfDay();
 
         // ── BASE SCOPE ────────────────────────────────────────────────────────
-        // ALL dashboard queries use this single base.
         // source = 'staff'  → confirmed walk-ins + confirmed pre-reg visitors
         // source = 'pre_registration' + Pending → excluded everywhere
-        // Walk-in Pending (source='staff', fee_status='Pending') → included
         $base = VisitorVisit::whereNull('deleted_at')
                              ->where('source', 'staff');
 
@@ -32,27 +31,23 @@ class DashboardController extends Controller
             ->whereBetween('arrival_at', [$todayStart, $todayEnd])
             ->count();
 
-        // ── CARD 2: Visitors This Month ───────────────────────────────────────
+        // ── Visitors This Month ───────────────────────────────────────────────
         $visitorsThisMonth = (clone $base)
             ->where('arrival_at', '>=', $monthStart)
             ->count();
 
-        // ── CARD 3: Pending Fees (walk-in only) ───────────────────────────────
-        // Only staff-sourced visits awaiting payment.
-        // Pre-reg pending is intentionally excluded — they haven't arrived yet.
+        // ── Pending Fees (walk-in only) ───────────────────────────────────────
         $pendingFees = (clone $base)
             ->where('fee_status', 'Pending')
             ->count();
 
-        // ── INFO: Pending Pre-Registrations ───────────────────────────────────
-        // Visitors who filled the public form but haven't been confirmed yet.
-        // Shown as info only — not counted in tourist totals.
+        // ── Pending Pre-Registrations ─────────────────────────────────────────
         $pendingPreReg = VisitorVisit::whereNull('deleted_at')
             ->where('source', 'pre_registration')
             ->where('fee_status', 'Pending')
             ->count();
 
-        // ── CARDS 4-6: Revenue ────────────────────────────────────────────────
+        // ── Revenue ───────────────────────────────────────────────────────────
         $receiptsExist = Receipt::count() > 0;
 
         if ($receiptsExist) {
@@ -86,10 +81,24 @@ class DashboardController extends Controller
                 ->count() * $feePerVisitor;
         }
 
-        // ── Tourism Content Counts ────────────────────────────────────────────
-        $totalAttractions = TourismContent::where('type', 'attraction')->where('is_published', true)->count();
-        $totalPackages    = TourismContent::where('type', 'package')->where('is_published', true)->count();
-        $totalCircuits    = TourismContent::where('type', 'circuit')->where('is_published', true)->count();
+            // ── Barangay Attraction Counts ────────────────────────────────────────
+        // Source: barangay_attractions table (is_active = true)
+        // This is where actual local spots are managed by staff.
+        //
+        // Card 2: All Tourist Spots — total active attractions of any type.
+        //   Grand total is what staff quote when asked "how many spots do we have?"
+        //
+        // Card 3: Resorts — most visited category, highest fee relevance.
+        //   Resorts = overnight stays → higher economic impact per visitor.
+        //
+        // Card 4: Beaches — primary draw for Bel-is tourism.
+        //   Separate count useful for LGU coastal resource reporting.
+        //
+        // All counts use is_active=true only — deactivated spots don't count.
+
+        $totalSpots   = BarangayAttraction::where('is_active', true)->count();
+        $totalResorts = BarangayAttraction::where('is_active', true)->where('type', 'Resort')->count();
+        $totalBeaches = BarangayAttraction::where('is_active', true)->where('type', 'Beach')->count();
 
         // ── Bar Chart: Visitors Per Day (last 7 days) ─────────────────────────
         $visitorsPerDay = collect(range(6, 0))->map(function ($i) use ($base) {
@@ -141,9 +150,6 @@ class DashboardController extends Controller
             ]);
 
         // ── Recent Visits (latest 10) ─────────────────────────────────────────
-        // Only staff-confirmed visits appear here.
-        // Walk-in Pending shows (still needs fee collection).
-        // Pre-reg Pending is hidden until staff scans code at checkpoint.
         $recentVisitors = (clone $base)
             ->orderByDesc('arrival_at')
             ->limit(10)
@@ -163,18 +169,18 @@ class DashboardController extends Controller
 
         return Inertia::render('AdmindbPage', [
             'stats' => [
-                'total_tourists'       => $totalTourists,
-                'total_tourists_today' => $totalTouristsToday,
-                'visitors_this_month'  => $visitorsThisMonth,
-                'pending_fees'         => $pendingFees,
-                'pending_pre_reg'      => $pendingPreReg,
-                'revenue_today'        => $revenueToday,
-                'revenue_this_month'   => $revenueThisMonth,
-                'revenue_this_year'    => $revenueThisYear,
-                'total_attractions'    => $totalAttractions,
-                'total_packages'       => $totalPackages,
-                'total_circuits'       => $totalCircuits,
-                'revenue_is_estimated' => !$receiptsExist,
+                'total_tourists'          => $totalTourists,
+                'total_tourists_today'    => $totalTouristsToday,
+                'visitors_this_month'     => $visitorsThisMonth,
+                'pending_fees'            => $pendingFees,
+                'pending_pre_reg'         => $pendingPreReg,
+                'revenue_today'           => $revenueToday,
+                'revenue_this_month'      => $revenueThisMonth,
+                'revenue_this_year'       => $revenueThisYear,
+                'total_spots'   => $totalSpots,    // Card 2: all active tourist spots
+                'total_resorts' => $totalResorts,  // Card 3: active resorts
+                'total_beaches' => $totalBeaches,  // Card 4: active beaches
+                'revenue_is_estimated'    => !$receiptsExist,
             ],
             'visitorsPerDay'   => $visitorsPerDay,
             'visitorsPerMonth' => $visitorsPerMonth,
