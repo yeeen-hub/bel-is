@@ -114,11 +114,6 @@
                 Website Content
             </Link>
 
-            <Link v-if="can('view_virtual_tour')" :href="route('virtualtour')" :class="navClass('virtualtour')"
-                class="text-sm sm:text-base">
-                Virtual Tour
-            </Link>
-
             <Link v-if="can('view_security')" :href="route('securitysettings')" :class="navClass('securitysettings')"
                 class="text-sm sm:text-base">
                 Security
@@ -237,11 +232,11 @@
             </header>
 
             <!-- MODULE TABS -->
-            <div class="flex gap-3 mb-6 overflow-x-auto pb-2">
+            <div class="flex gap-3 mb-6 overflow-x-auto pb-3 border-b border-gray-300 scrollbar-hide">
                 <button v-for="tab in modules" :key="tab" @click="activeTab = tab"
                     class="px-4 md:px-5 py-2 rounded-lg border text-sm font-medium transition-colors whitespace-nowrap"
                     :class="activeTab === tab
-                        ? 'bg-indigo-900 border-indigo-900 text-white'
+                        ? 'bg-gray-900 border-indigo-900 text-white'
                         : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'">
                     {{ tab }}
                 </button>

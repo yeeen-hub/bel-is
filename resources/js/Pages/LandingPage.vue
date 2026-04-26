@@ -587,7 +587,7 @@
           <!-- SOCIALS — only shown if URL is set by admin -->
           <div class="flex flex-row md:flex-col justify-start md:justify-end items-center md:items-end gap-4 md:gap-5 reveal">
             <a v-if="contact.facebook_url" :href="contact.facebook_url" target="_blank" rel="noopener"
-              class="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-full hover:bg-blue-600 hover:text-white transition">
+              class="reveal w-10 h-10 flex items-center justify-center border border-gray-300 rounded-full hover:bg-blue-600 hover:text-white transition">
               <svg fill="currentColor" width="22px" height="22px" viewBox="0 0 32 32"
                 xmlns="http://www.w3.org/2000/svg">
                 <path
@@ -595,7 +595,7 @@
               </svg>
             </a>
             <a v-if="contact.instagram_url" :href="contact.instagram_url" target="_blank" rel="noopener"
-              class="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-full hover:bg-pink-500 hover:text-white transition">
+              class="reveal w-10 h-10 flex items-center justify-center border border-gray-300 rounded-full hover:bg-pink-500 hover:text-white transition">
               <svg width="22px" height="22px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path fill-rule="evenodd" clip-rule="evenodd"
                   d="M12 18C15.3137 18 18 15.3137 18 12C18 8.68629 15.3137 6 12 6C8.68629 6 6 8.68629 6 12C6 15.3137 8.68629 18 12 18ZM12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16Z"
@@ -609,7 +609,7 @@
               </svg>
             </a>
             <a v-if="contact.twitter_url" :href="contact.twitter_url" target="_blank" rel="noopener"
-              class="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-full hover:bg-black hover:text-white transition">
+              class="reveal w-10 h-10 flex items-center justify-center border border-gray-300 rounded-full hover:bg-black hover:text-white transition">
               <svg width="18px" height="18px" viewBox="0 0 24 24" fill="currentColor"
                 xmlns="http://www.w3.org/2000/svg">
                 <path

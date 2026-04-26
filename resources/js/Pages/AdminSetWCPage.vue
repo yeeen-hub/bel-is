@@ -108,11 +108,6 @@
                 Website Content
             </Link>
 
-            <Link v-if="can('view_virtual_tour')" :href="route('virtualtour')" :class="navClass('virtualtour')"
-                class="text-sm sm:text-base">
-                Virtual Tour
-            </Link>
-
             <Link v-if="can('view_security')" :href="route('securitysettings')" :class="navClass('securitysettings')"
                 class="text-sm sm:text-base">
                 Security

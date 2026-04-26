@@ -25,7 +25,6 @@ class SecurityController extends Controller
         'User Management'  => 'user_management',
         'Audit Logs'       => 'audit_logs',
         'Website Content'  => 'website_content',
-        'Virtual Tour'     => 'virtual_tour',
         'Security'         => 'security',
     ];
 
