@@ -91,6 +91,14 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/feerevenue',   fn() => redirect()->route('reports.fee-revenue'))->name('feerevenue');
         Route::get('/demographics', fn() => redirect()->route('reports.demographics'))->name('demographics');
+
+        // ── Export routes (POST — payload sent from ExportModal.vue) ─────────
+        Route::post('/reports/analytics/export/pdf',      [\App\Http\Controllers\ExportController::class, 'analyticsPdf'])->name('reports.analytics.export.pdf');
+        Route::post('/reports/analytics/export/excel',    [\App\Http\Controllers\ExportController::class, 'analyticsExcel'])->name('reports.analytics.export.excel');
+        Route::post('/reports/demographics/export/pdf',   [\App\Http\Controllers\ExportController::class, 'demographicsPdf'])->name('reports.demographics.export.pdf');
+        Route::post('/reports/demographics/export/excel', [\App\Http\Controllers\ExportController::class, 'demographicsExcel'])->name('reports.demographics.export.excel');
+        Route::post('/reports/fee-revenue/export/pdf',    [\App\Http\Controllers\ExportController::class, 'feeRevenuePdf'])->name('reports.fee-revenue.export.pdf');
+        Route::post('/reports/fee-revenue/export/excel',  [\App\Http\Controllers\ExportController::class, 'feeRevenueExcel'])->name('reports.fee-revenue.export.excel');
     });
 
     // ── User Management ───────────────────────────────────────────────────────

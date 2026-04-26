@@ -24,26 +24,26 @@
             </div>
         </div>
 
-        <p class="text-xs text-gray-500 mt-5 mb-5"> Reports / Fee Revenue </p>
+        <p class="text-xs text-gray-500 mt-5 mb-5">Reports / Fee Revenue</p>
 
-        <h1 class="font-heading text-gray-800 font-semibold text-2xl"> Dashboard </h1>
+        <h1 class="font-heading text-gray-800 font-semibold text-2xl">Dashboard</h1>
 
-        <!-- Stat cards (unchanged) -->
+        <!-- Stat cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 p-4 gap-4 mt-4">
             <div class="bg-white p-4 rounded-lg shadow-md">
-                <h2 class="text-gray-800 font-medium text-sm"> Total Revenue </h2>
-                <p class="text-2xl font-bold text-gray-800"> {{ totalRevenue }} php </p>
+                <h2 class="text-gray-800 font-medium text-sm">Total Revenue</h2>
+                <p class="text-2xl font-bold text-gray-800">{{ totalRevenue }} php</p>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-md">
-                <h2 class="text-gray-800 font-medium text-sm"> Avereage Daily Revenue </h2>
-                <p class="text-2xl font-bold text-gray-800"> {{ avgDaily }} php </p>
+                <h2 class="text-gray-800 font-medium text-sm">Average Daily Revenue</h2>
+                <p class="text-2xl font-bold text-gray-800">{{ avgDaily }} php</p>
             </div>
         </div>
 
         <div class="mt-5">
             <div class="flex items-center justify-between w-full">
 
-                <!-- LEFT: Filters button + active chips -->
+                <!-- LEFT: Filters + chips -->
                 <div class="flex items-center gap-2 flex-wrap">
                     <button ref="filterBtnRef" @click="toggleFilter"
                         class="relative flex items-center gap-1.5 text-sm border px-3 py-2 rounded transition h-10"
@@ -68,13 +68,20 @@
                     </span>
                 </div>
 
-                <!-- RIGHT: Enter + Export only -->
+                <!-- RIGHT: Export buttons — open modal -->
                 <div class="flex items-center gap-2">
-                    <button @click="applyFilters" class="h-10 bg-gray-900 text-white font-bold px-4 text-sm rounded">
+                    <button @click="applyFilters"
+                        class="h-10 bg-gray-900 text-white font-bold px-4 text-sm rounded">
                         Enter
                     </button>
-                    <button class="h-10 border border-gray-900 font-bold px-3 text-sm rounded-lg">Export PDF</button>
-                    <button class="h-10 border border-gray-900 font-bold px-3 text-sm rounded-lg">Export EXCEL</button>
+                    <button @click="showExportModal = true"
+                        class="h-10 border border-gray-900 font-bold px-3 text-sm rounded-lg hover:bg-gray-900 hover:text-white transition">
+                        Export Excel
+                    </button>
+                    <button @click="showExportModal = true"
+                        class="h-10 bg-gray-900 text-white font-bold px-3 text-sm rounded-lg hover:bg-black transition">
+                        Export PDF
+                    </button>
                 </div>
             </div>
 
@@ -82,7 +89,6 @@
             <div v-if="showFilter" ref="filterRef"
                 class="bg-white border border-gray-200 rounded-lg p-4 mt-3 grid grid-cols-1 md:grid-cols-3 gap-4">
 
-                <!-- Visit Category -->
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">Visit Category</label>
                     <select v-model="category"
@@ -94,7 +100,6 @@
                     </select>
                 </div>
 
-                <!-- Fee Status -->
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">Fee Status</label>
                     <select v-model="feeType"
@@ -107,7 +112,6 @@
                     </select>
                 </div>
 
-                <!-- Area (Sitio) -->
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">Area (Sitio)</label>
                     <select v-model="area"
@@ -117,14 +121,12 @@
                     </select>
                 </div>
 
-                <!-- Date From -->
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">Date From</label>
                     <input v-model="dateFrom" type="date"
                         class="w-full border rounded py-2 px-2 text-sm text-gray-700 focus:ring-0 focus:border-gray-400"/>
                 </div>
 
-                <!-- Date To -->
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">Date To</label>
                     <input v-model="dateTo" type="date"
@@ -164,6 +166,18 @@
                 </tr>
             </tbody>
         </table>
+
+        <!-- Export Modal -->
+        <ExportModal
+            :show="showExportModal"
+            report-type="fee-revenue"
+            default-title="Fee Revenue Report"
+            :column-defs="columnDefs"
+            :filtered-rows="rows"
+            :all-rows="allRows"
+            :sitios="sitios"
+            @close="showExportModal = false"
+        />
     </LandingLayout>
 </template>
 
@@ -175,14 +189,25 @@ export default { components: { LandingLayout } }
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { router } from '@inertiajs/vue3'
+import ExportModal from '@/Components/ExportModal.vue'
 
 const props = defineProps({
     rows:         { type: Array,  default: () => [] },
+    allRows:      { type: Array,  default: () => [] },
     totalRevenue: { type: String, default: '0.00' },
     avgDaily:     { type: String, default: '0.00' },
     sitios:       { type: Array,  default: () => [] },
     filters:      { type: Object, default: () => ({}) },
 })
+
+// ── Column definitions for this report ───────────────────────────────────────
+const columnDefs = [
+    { key: 'visit_category', label: 'Visit Category' },
+    { key: 'full_name',      label: 'Name'           },
+    { key: 'revenue',        label: 'Revenue (₱)'    },
+]
+
+const showExportModal = ref(false)
 
 const search   = ref(props.filters.search    ?? '')
 const category = ref(props.filters.category  ?? '')

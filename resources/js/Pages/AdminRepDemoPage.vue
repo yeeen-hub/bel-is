@@ -22,10 +22,7 @@
             </div>
         </div>
 
-        <!-- Header -->
-        <p class="text-xs text-gray-500 mt-5 mb-5">
-            Reports / Analytics
-        </p>
+        <p class="text-xs text-gray-500 mt-5 mb-5">Reports / Demographics</p>
 
         <!-- Dropdown -->
         <div class="relative w-full sm:w-1/2 md:w-1/3 lg:w-1/5" ref="dropdownRef">
@@ -33,7 +30,6 @@
                 class="w-full border py-2 px-3 rounded text-left bg-white">
                 {{ ddreports || 'Demographics' }}
             </button>
-
             <div v-if="openDdreports" class="absolute left-0 w-full mt-1 bg-white border rounded shadow z-10">
                 <Link v-for="option in purposeOptions" :key="option.label" :href="option.link"
                     class="block px-3 py-2 hover:bg-gray-100">
@@ -44,13 +40,8 @@
 
         <!-- TOOLBAR -->
         <div class="mt-5">
-
             <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 w-full">
-
-                <!-- LEFT SIDE -->
                 <div class="flex flex-wrap items-center gap-2">
-
-                    <!-- Filter Button -->
                     <button ref="filterBtnRef" @click="toggleFilter"
                         class="relative flex items-center gap-1.5 text-sm border px-3 py-2 rounded transition h-10"
                         :class="activeFilterCount > 0
@@ -58,113 +49,92 @@
                             : 'border-gray-300 text-gray-700 hover:bg-gray-200'">
                         <FontAwesomeIcon icon="filter" class="text-xs" />
                         Filters
-
                         <span v-if="activeFilterCount > 0"
                             class="bg-white text-gray-900 text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
                             {{ activeFilterCount }}
                         </span>
                     </button>
-
-                    <!-- Active Chips -->
                     <span v-for="chip in activeChips" :key="chip.key"
                         class="flex items-center gap-1 bg-gray-800 text-white text-xs px-2 py-1 rounded-full h-7">
                         {{ chip.label }}
-                        <button @click="removeChip(chip.key)" class="ml-1 hover:text-gray-300">
-                            ✕
-                        </button>
+                        <button @click="removeChip(chip.key)" class="ml-1 hover:text-gray-300">✕</button>
                     </span>
-
                 </div>
-
-                <!-- RIGHT SIDE -->
                 <div class="flex flex-wrap gap-2 w-full lg:w-auto">
-
-                    <button class="h-10 border border-gray-900 font-bold px-3 text-sm rounded-lg w-full sm:w-auto">
+                    <button @click="showExportModal = true"
+                        class="h-10 border border-gray-900 font-bold px-3 text-sm rounded-lg w-full sm:w-auto hover:bg-gray-900 hover:text-white transition">
+                        Export Excel
+                    </button>
+                    <button @click="showExportModal = true"
+                        class="h-10 bg-gray-900 text-white font-bold px-3 text-sm rounded-lg w-full sm:w-auto hover:bg-black transition">
                         Export PDF
                     </button>
-
-                    <button class="h-10 border border-gray-900 font-bold px-3 text-sm rounded-lg w-full sm:w-auto">
-                        Export EXCEL
-                    </button>
-
                 </div>
-
             </div>
 
             <!-- FILTER PANEL -->
             <div v-if="showFilter" ref="filterRef"
                 class="bg-white border border-gray-200 rounded-lg p-4 mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-
-                <!-- Area -->
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">Area (Sitio)</label>
                     <select v-model="area" class="w-full border rounded py-2 px-2 text-sm">
                         <option value="">All Areas</option>
-                        <option v-for="s in sitios" :key="s.id" :value="s.name">
-                            {{ s.name }}
-                        </option>
+                        <option v-for="s in sitios" :key="s.id" :value="s.name">{{ s.name }}</option>
                     </select>
                 </div>
-
-                <!-- Date From -->
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">Date From</label>
                     <input v-model="dateFrom" type="date" class="w-full border rounded py-2 px-2 text-sm" />
                 </div>
-
-                <!-- Date To -->
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">Date To</label>
                     <input v-model="dateTo" type="date" class="w-full border rounded py-2 px-2 text-sm" />
                 </div>
-
-                <!-- Actions -->
                 <div class="md:col-span-3 flex flex-col sm:flex-row gap-2 justify-end">
-
                     <button @click="clearFilters"
                         class="text-sm text-gray-500 border border-gray-300 px-3 py-1.5 rounded hover:bg-gray-100 w-full sm:w-auto">
                         Clear All
                     </button>
-
                     <button @click="applyFilters"
                         class="bg-gray-900 text-white text-sm font-bold px-4 py-1.5 rounded hover:bg-gray-700 w-full sm:w-auto">
                         Apply Filters
                     </button>
-
                 </div>
-
             </div>
-
         </div>
 
-        <!-- TABLE (RESPONSIVE FIX) -->
+        <!-- TABLE -->
         <div class="overflow-x-auto mt-5">
-
             <table class="min-w-[500px] w-full text-left border-collapse text-center bg-white rounded-lg shadow-md">
-
                 <thead class="bg-gray-200">
                     <tr>
                         <th class="p-2 text-black">Origin</th>
                         <th class="p-2 text-black">Total Tourist</th>
                     </tr>
                 </thead>
-
                 <tbody>
                     <tr v-for="(row, i) in rows" :key="i" class="hover:bg-gray-100">
                         <td class="p-2 border-b">{{ row.place_of_origin }}</td>
                         <td class="p-2 border-b">{{ row.total_tourists }}</td>
                     </tr>
-
                     <tr v-if="rows.length === 0">
-                        <td colspan="2" class="p-8 text-center text-gray-400 text-sm">
-                            No data found.
-                        </td>
+                        <td colspan="2" class="p-8 text-center text-gray-400 text-sm">No data found.</td>
                     </tr>
                 </tbody>
-
             </table>
-
         </div>
+
+        <!-- Export Modal -->
+        <ExportModal
+            :show="showExportModal"
+            report-type="demographics"
+            default-title="Visitor Demographics Report"
+            :column-defs="columnDefs"
+            :filtered-rows="rows"
+            :all-rows="allRows"
+            :sitios="sitios"
+            @close="showExportModal = false"
+        />
     </LandingLayout>
 </template>
 
@@ -176,57 +146,65 @@ export default { components: { LandingLayout } }
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import ExportModal from '@/Components/ExportModal.vue'
 
 const props = defineProps({
-    rows: { type: Array, default: () => [] },
-    sitios: { type: Array, default: () => [] },
+    rows:    { type: Array,  default: () => [] },
+    allRows: { type: Array,  default: () => [] },
+    sitios:  { type: Array,  default: () => [] },
     filters: { type: Object, default: () => ({}) },
 })
 
-const ddreports = ref('')
-const openDdreports = ref(false)
-const dropdownRef = ref(null)
-const purposeOptions = [{ label: 'Overview', link: route('reports.analytics') }]
+const columnDefs = [
+    { key: 'place_of_origin', label: 'Place of Origin' },
+    { key: 'total_tourists',  label: 'Total Tourists'  },
+]
 
-const search = ref(props.filters.search ?? '')
-const area = ref(props.filters.area ?? '')
+const showExportModal = ref(false)
+const ddreports       = ref('')
+const openDdreports   = ref(false)
+const dropdownRef     = ref(null)
+const purposeOptions  = [{ label: 'Overview', link: route('reports.analytics') }]
+
+const search   = ref(props.filters.search    ?? '')
+const area     = ref(props.filters.area      ?? '')
 const dateFrom = ref(props.filters.date_from ?? '')
-const dateTo = ref(props.filters.date_to ?? '')
-const showFilter = ref(false)
-const filterRef = ref(null)
+const dateTo   = ref(props.filters.date_to   ?? '')
+const showFilter   = ref(false)
+const filterRef    = ref(null)
 const filterBtnRef = ref(null)
 
 const activeFilterCount = computed(() => {
     let n = 0
-    if (area.value) n++
+    if (area.value)     n++
     if (dateFrom.value) n++
-    if (dateTo.value) n++
+    if (dateTo.value)   n++
     return n
 })
 
 const activeChips = computed(() => {
     const chips = []
-    if (search.value) chips.push({ key: 'search', label: `Search: "${search.value}"` })
-    if (area.value) chips.push({ key: 'area', label: `Area: ${area.value}` })
+    if (search.value)   chips.push({ key: 'search',    label: `Search: "${search.value}"` })
+    if (area.value)     chips.push({ key: 'area',      label: `Area: ${area.value}` })
     if (dateFrom.value) chips.push({ key: 'date_from', label: `From: ${dateFrom.value}` })
-    if (dateTo.value) chips.push({ key: 'date_to', label: `To: ${dateTo.value}` })
+    if (dateTo.value)   chips.push({ key: 'date_to',   label: `To: ${dateTo.value}` })
     return chips
 })
 
 const removeChip = (key) => {
-    if (key === 'search') search.value = ''
-    if (key === 'area') area.value = ''
+    if (key === 'search')    search.value   = ''
+    if (key === 'area')      area.value     = ''
     if (key === 'date_from') dateFrom.value = ''
-    if (key === 'date_to') dateTo.value = ''
+    if (key === 'date_to')   dateTo.value   = ''
     applyFilters()
 }
 
 const applyFilters = () => {
     router.get(route('reports.demographics'), {
-        search: search.value || undefined,
-        area: area.value || undefined,
-        date_from: dateFrom.value || undefined,
-        date_to: dateTo.value || undefined,
+        search:    search.value    || undefined,
+        area:      area.value      || undefined,
+        date_from: dateFrom.value  || undefined,
+        date_to:   dateTo.value    || undefined,
     }, { preserveState: true, replace: true })
 }
 
