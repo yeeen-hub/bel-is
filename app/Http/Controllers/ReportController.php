@@ -96,8 +96,29 @@ class ReportController extends Controller
             ];
         });
 
+        // allRows = full unfiltered dataset for "All Data" scope + in-modal filtering
+        // arrival_at_raw is kept as a sortable date string for client-side date filter
+        $allRows = VisitorVisit::query()
+            ->select('id','snapshot_first_name','snapshot_last_name','snapshot_place_of_origin','purpose','duration_of_stay','arrival_at')
+            ->orderByDesc('arrival_at')
+            ->get()
+            ->map(function ($v) use ($named, $others) {
+                $parts = collect();
+                if (isset($named[$v->id])) $parts = $parts->merge(collect($named[$v->id])->pluck('name'));
+                if (isset($others[$v->id])) $parts = $parts->merge(collect($others[$v->id])->pluck('other_destination'));
+                return [
+                    'full_name'        => trim(($v->snapshot_first_name ?? '') . ' ' . ($v->snapshot_last_name ?? '')) ?: '—',
+                    'place_of_origin'  => $v->snapshot_place_of_origin ?? '—',
+                    'purpose'          => $v->purpose          ?? '—',
+                    'duration_of_stay' => $v->duration_of_stay ?? '—',
+                    'destinations'     => $parts->isNotEmpty() ? $parts->implode(', ') : '—',
+                    'arrival_at_raw'   => $v->arrival_at ? \Carbon\Carbon::parse($v->arrival_at)->format('Y-m-d') : '',
+                ];
+            });
+
         return Inertia::render('AdminRepOvPage', [
             'rows'        => $rows,
+            'allRows'     => $allRows,
             'sitios'      => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'attractions' => BarangayAttraction::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'filters'     => [
@@ -159,8 +180,20 @@ class ReportController extends Controller
             'total_tourists'  => (int) $r->total_tourists,
         ])->values();
 
+        // For demographics allRows, we keep individual visit rows (not grouped)
+        // so the modal can filter by date and area client-side, then group for display
+        $allRowsDemo = VisitorVisit::query()
+            ->select('snapshot_place_of_origin', DB::raw('COUNT(*) as total_tourists'))
+            ->groupBy('snapshot_place_of_origin')
+            ->orderByDesc(DB::raw('COUNT(*)'))
+            ->get()->map(fn($r) => [
+                'place_of_origin' => $r->snapshot_place_of_origin ?? '—',
+                'total_tourists'  => (int) $r->total_tourists,
+            ])->values();
+
         return Inertia::render('AdminRepDemoPage', [
             'rows'    => $rows,
+            'allRows' => $allRowsDemo,
             'sitios'  => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'filters' => [
                 'search'    => $request->search    ?? '',
@@ -175,6 +208,32 @@ class ReportController extends Controller
     public function feeRevenue(Request $request)
     {
         $feeTypeFilter = $request->fee_type ?? '';
+
+        // ── allRows: computed ONCE before any early-return branches ──────────
+        // Each fee_type branch returns early, so $allRowsFee must be defined
+        // here at the top — before any if/return — so all three paths can use it.
+        // collected_at_raw kept for client-side date filtering in ExportModal.
+        $allRowsFee = DB::table('visitor_visits')
+            ->join('receipts', 'visitor_visits.id', '=', 'receipts.visit_id')
+            ->select(
+                DB::raw("TRIM(CONCAT(IFNULL(visitor_visits.snapshot_first_name,''), ' ', IFNULL(visitor_visits.snapshot_last_name,''))) as full_name"),
+                'visitor_visits.visitor_category as visit_category',
+                'receipts.total_amount as revenue',
+                'receipts.fee_type',
+                'receipts.collected_at'
+            )
+            ->orderByDesc('receipts.collected_at')
+            ->get()
+            ->map(fn($r) => [
+                'visit_category'    => $r->visit_category ?: '—',
+                'full_name'         => trim($r->full_name) ?: '—',
+                'revenue'           => $r->fee_type === 'Waived'
+                    ? 'Waived'
+                    : number_format((float) $r->revenue, 2),
+                'fee_type'          => $r->fee_type,
+                'collected_at_raw'  => $r->collected_at
+                    ? \Carbon\Carbon::parse($r->collected_at)->format('Y-m-d') : '',
+            ])->values()->all();
 
         if ($feeTypeFilter === 'No Show') {
             $noShowQuery = DB::table('visitor_visits')
@@ -205,12 +264,14 @@ class ReportController extends Controller
 
             $rows = $noShowQuery->get();
 
+
             return Inertia::render('AdminRepFeePage', [
                 'rows'         => $rows->map(fn($r) => [
                     'visit_category' => $r->visit_category ?: '—',
                     'full_name'      => trim($r->full_name) ?: '—',
                     'revenue'        => 'No Show',
                 ]),
+                'allRows'      => $allRowsFee,
                 'totalRevenue' => '0.00',
                 'avgDaily'     => '0.00',
                 'sitios'       => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
@@ -260,6 +321,7 @@ class ReportController extends Controller
                     'full_name'      => trim($r->full_name) ?: '—',
                     'revenue'        => 'Pending',
                 ]),
+                'allRows'      => $allRowsFee,
                 'totalRevenue' => '0.00',
                 'avgDaily'     => '0.00',
                 'sitios'       => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
@@ -316,6 +378,7 @@ class ReportController extends Controller
                     ? 'Waived'
                     : number_format((float) $r->revenue, 2),
             ]),
+            'allRows'      => $allRowsFee,
             'totalRevenue' => number_format($totalRevenue, 2),
             'avgDaily'     => number_format($avgDaily, 2),
             'sitios'       => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
