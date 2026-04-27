@@ -22,26 +22,39 @@ const props = defineProps({
 const isVisible  = (key) => props.formFields.find(f => f.field_key === key)?.is_visible  ?? true
 
 // ── Age → visitor_category from DB fee_categories ────────────────────────────
+// Handles numeric ranges ("13-59", "60 & above", "12 & below") automatically.
+// Non-numeric ranges like "Any age" are skipped — user picks those manually.
 const deriveCategory = (age) => {
     if (!age || isNaN(age)) return ''
     const n = parseInt(age)
     for (const cat of props.feeCategories) {
         const r = cat.age_range?.toLowerCase() ?? ''
+
+        // Skip non-numeric ranges entirely — e.g. "Any age", "With ID"
+        const hasNumber = /\d/.test(r)
+        if (!hasNumber) continue
+
+        // "above" / "& above" / "yrs. above" → minimum age upward
         if (r.includes('above') || r.includes('abov')) {
-            const min = parseInt(r)
+            const min = parseInt(r.match(/(\d+)/)?.[1] ?? '')
             if (!isNaN(min) && n >= min) return cat.category
         }
+
+        // "below" / "& below" → maximum age downward
         if (r.includes('below')) {
-            const max = parseInt(r.replace(/[^\d]/g, ''))
+            const max = parseInt(r.match(/(\d+)/)?.[1] ?? '')
             if (!isNaN(max) && n <= max) return cat.category
         }
+
+        // "X – Y" or "X - Y" numeric range
         const rangeMatch = r.match(/(\d+)\s*[-–]\s*(\d+)/)
         if (rangeMatch) {
-            const [, lo, hi] = rangeMatch.map(Number)
+            const lo = parseInt(rangeMatch[1])
+            const hi = parseInt(rangeMatch[2])
             if (n >= lo && n <= hi) return cat.category
         }
     }
-    return ''
+    return '' // no numeric match → user selects manually from dropdown
 }
 
 // ── Nationality auto-detection ────────────────────────────────────────────────
@@ -115,14 +128,86 @@ const activeMemberCount = computed(() =>
 const addRow    = () => members.value.push(blankMember())
 const removeRow = (i) => { if (members.value.length > 1) members.value.splice(i, 1) }
 
+// ── Check if an age is within a category's range ────────────────────────────
+// Returns true if age fits, false if out of range, null if range is non-numeric
+const ageInCategoryRange = (age, categoryName) => {
+    const cat = props.feeCategories.find(c => c.category === categoryName)
+    if (!cat) return null
+    const r = cat.age_range?.toLowerCase() ?? ''
+    const hasNumber = /\d/.test(r)
+    if (!hasNumber) return null // non-numeric range like "Any age" — don't validate
+
+    const n = parseInt(age)
+    if (isNaN(n)) return false
+
+    if (r.includes('above') || r.includes('abov')) {
+        const min = parseInt(r.match(/(\d+)/)?.[1] ?? '')
+        return !isNaN(min) && n >= min
+    }
+    if (r.includes('below')) {
+        const max = parseInt(r.match(/(\d+)/)?.[1] ?? '')
+        return !isNaN(max) && n <= max
+    }
+    const rangeMatch = r.match(/(\d+)\s*[-–]\s*(\d+)/)
+    if (rangeMatch) {
+        return n >= parseInt(rangeMatch[1]) && n <= parseInt(rangeMatch[2])
+    }
+    return null
+}
+
 // ── Watch age → category per row ──────────────────────────────────────────────
+// Also auto-sets sharedCategory from row 1 (representative) age.
 const setupAgeWatch = (i) => {
     watch(() => members.value[i]?.age, (age) => {
-        if (members.value[i]) members.value[i].visitor_category = deriveCategory(age)
+        if (!members.value[i]) return
+        const derived = deriveCategory(age)
+        members.value[i].visitor_category = derived
+        // Row 1: sync sharedCategory dropdown
+        if (i === 0 && derived) {
+            sharedCategory.value = derived
+        }
     })
 }
-members.value.forEach((_, i) => setupAgeWatch(i))
-watch(() => members.value.length, (len) => setupAgeWatch(len - 1))
+
+// ── Watch category dropdown → clear age if out of range ──────────────────────
+// When staff changes the category dropdown manually:
+//   - If the category has a numeric range and current age doesn't fit → clear age
+//   - If the category has no numeric range (e.g. "Foreign National") → leave age as is
+const setupCategoryWatch = (i) => {
+    watch(() => members.value[i]?.visitor_category, (newCat, oldCat) => {
+        if (!members.value[i] || !newCat || newCat === oldCat) return
+        const age = members.value[i].age
+        if (!age && age !== 0) return // age already blank, nothing to do
+        const inRange = ageInCategoryRange(age, newCat)
+        // inRange === false means numeric range exists but age doesn't fit → clear age
+        if (inRange === false) {
+            members.value[i].age = ''
+        }
+        // inRange === null means non-numeric range → keep age as typed
+        // inRange === true means age fits → keep age
+    })
+}
+
+// ── sharedCategory dropdown → clear row 1 age if out of range ────────────────
+watch(sharedCategory, (newCat) => {
+    if (!newCat || !members.value[0]) return
+    const age = members.value[0].age
+    if (!age && age !== 0) return
+    const inRange = ageInCategoryRange(age, newCat)
+    if (inRange === false) {
+        members.value[0].age = ''
+        members.value[0].visitor_category = ''
+    }
+})
+
+members.value.forEach((_, i) => {
+    setupAgeWatch(i)
+    setupCategoryWatch(i)
+})
+watch(() => members.value.length, (len) => {
+    setupAgeWatch(len - 1)
+    setupCategoryWatch(len - 1)
+})
 
 // ── Watch country → nationality per row ───────────────────────────────────────
 watch(() => members.value.map(m => m.country), (countries) => {
@@ -314,6 +399,7 @@ const buildPayload = (m) => {
 }
 
 const submit = () => {
+    if (!validate()) return   // ← stop if validation fails
     const active = members.value.filter((m, i) => i === 0 || m.surname.trim() || m.first_name.trim())
     if (active.length === 1) {
         // Assign each field individually — Object.assign breaks Inertia's reactive form
@@ -348,6 +434,43 @@ const submit = () => {
 }
 
 const purposeOptions = ['Tourism', 'Research', 'Event', 'Official Visit', 'Other']
+
+// ── Validation ────────────────────────────────────────────────────────────────
+const formErrors   = ref({})
+const shakeFields  = ref(false)
+
+const validate = () => {
+    formErrors.value = {}
+    const active = members.value.filter((m, i) => i === 0 || m.surname.trim() || m.first_name.trim())
+
+    // Shared fields
+    if (!purpose.value)       formErrors.value.purpose  = 'Purpose of visit is required'
+    if (!sharedGender.value)  formErrors.value.gender   = 'Gender is required'
+
+    // Per-member validation
+    active.forEach((m, i) => {
+        const prefix = `member_${i}`
+        if (!m.surname.trim())    formErrors.value[`${prefix}_surname`]   = `Row ${i + 1}: Last name is required`
+        if (!m.first_name.trim()) formErrors.value[`${prefix}_firstname`] = `Row ${i + 1}: First name is required`
+        if (!m.town_city?.trim()) formErrors.value[`${prefix}_town`]      = `Row ${i + 1}: Town/City is required`
+
+        // Either age OR category must be set
+        const hasAge      = m.age !== '' && m.age !== null && m.age !== undefined
+        const hasCategory = !!m.visitor_category
+        if (!hasAge && !hasCategory) {
+            formErrors.value[`${prefix}_agecategory`] = `Row ${i + 1}: Age or Category is required`
+        }
+    })
+
+    if (Object.keys(formErrors.value).length > 0) {
+        shakeFields.value = true
+        setTimeout(() => { shakeFields.value = false }, 600)
+        // Scroll to top of form to show errors
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return false
+    }
+    return true
+}
 </script>
 
 <template>
@@ -417,6 +540,25 @@ const purposeOptions = ['Tourism', 'Research', 'Event', 'Official Visit', 'Other
                 <p v-if="lookupError" class="text-red-500 text-xs mt-2">{{ lookupError }}</p>
             </div>
 
+            <!-- ── Validation Error Banner ── -->
+            <div v-if="Object.keys(formErrors).length > 0"
+                :class="['mb-4 bg-red-50 border border-red-300 rounded-xl px-5 py-4 flex items-start gap-3',
+                    shakeFields ? 'animate-shake' : '']">
+                <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/>
+                </svg>
+                <div>
+                    <p class="text-sm font-bold text-red-700 mb-1">Please fix the following before registering:</p>
+                    <ul class="space-y-0.5">
+                        <li v-for="(msg, key) in formErrors" :key="key"
+                            class="text-xs text-red-600 flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 bg-red-400 rounded-full shrink-0"></span>
+                            {{ msg }}
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
             <!-- ══ TOURIST ARRIVAL FORM (mirrors physical form exactly) ══ -->
             <div class="bg-white border-2 border-gray-800 text-sm overflow-hidden rounded-sm shadow">
 
@@ -471,33 +613,41 @@ const purposeOptions = ['Tourism', 'Research', 'Event', 'Official Visit', 'Other
                 <div class="border-b-2 border-gray-800 flex">
 
                     <!-- Gender -->
-                    <div class="w-28 shrink-0 px-3 py-2">
-                        <p class="font-bold text-xs text-gray-800 uppercase mb-2">GENDER</p>
+                    <div class="w-28 shrink-0 px-3 py-2 transition-colors"
+                        :class="formErrors.gender ? 'bg-red-50' : ''">
+                        <p class="font-bold text-xs uppercase mb-2"
+                            :class="formErrors.gender ? 'text-red-600' : 'text-gray-800'">
+                            GENDER <span v-if="formErrors.gender" class="text-red-400 text-xs font-normal">⚠</span>
+                        </p>
                         <label class="flex items-center gap-2 mb-1.5 cursor-pointer">
                             <input type="radio" name="form-shared-gender" value="M" v-model="sharedGender"
+                                @change="delete formErrors.gender"
                                 class="text-gray-900 focus:ring-0" />
                             <span class="text-xs text-gray-700">MALE</span>
                         </label>
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="radio" name="form-shared-gender" value="F" v-model="sharedGender"
+                                @change="delete formErrors.gender"
                                 class="text-gray-900 focus:ring-0" />
                             <span class="text-xs text-gray-700">FEMALE</span>
                         </label>
                     </div>
 
-                    <!-- Category -->
+                    <!-- Category — dropdown with age-range hints; auto-filled by age watcher -->
                     <div class="flex-1 px-3 py-2">
-                        <div class="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                            <label v-for="cat in feeCategories" :key="cat.id"
-                                class="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="form-shared-category" :value="cat.category"
-                                    v-model="sharedCategory" class="text-gray-900 focus:ring-0" />
-                                <span class="text-xs text-gray-700 uppercase">
-                                    {{ cat.category }}
-                                    <span v-if="cat.age_range" class="text-gray-400">({{ cat.age_range }})</span>
-                                </span>
-                            </label>
-                        </div>
+                        <p class="font-bold text-xs text-gray-800 uppercase mb-1.5">CATEGORY</p>
+                        <select v-model="sharedCategory"
+                            class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-gray-500">
+                            <option value="">— Select or enter age —</option>
+                            <option v-for="cat in feeCategories" :key="cat.id" :value="cat.category">
+                                {{ cat.category }}{{ cat.age_range ? ' (' + cat.age_range + ')' : '' }}
+                            </option>
+                        </select>
+                        <p v-if="sharedCategory" class="text-xs text-gray-400 mt-1">
+                            Fee: <span class="font-semibold text-gray-600">
+                                ₱{{ feeCategories.find(c => c.category === sharedCategory)?.fee ?? '—' }}
+                            </span>
+                        </p>
                     </div>
 
                     <!-- Nationality -->
@@ -570,11 +720,15 @@ const purposeOptions = ['Tourism', 'Research', 'Event', 'Official Visit', 'Other
 
                         <!-- Purpose of Visit — placed here like the form note area -->
                         <div class="mt-3 border-t border-gray-200 pt-2">
-                            <p class="font-bold text-xs text-gray-700 mb-1.5">PURPOSE OF VISIT:</p>
+                            <p class="font-bold text-xs mb-1.5" :class="formErrors.purpose ? 'text-red-600' : 'text-gray-700'">
+                            PURPOSE OF VISIT:
+                            <span v-if="formErrors.purpose" class="text-red-400 font-normal">⚠ required</span>
+                        </p>
                             <div class="grid grid-cols-2 gap-x-2 gap-y-1">
                                 <label v-for="opt in purposeOptions" :key="opt"
                                     class="flex items-center gap-1.5 cursor-pointer">
                                     <input type="radio" name="form-shared-purpose" :value="opt" v-model="purpose"
+                                        @change="delete formErrors.purpose"
                                         class="text-gray-900 focus:ring-0" />
                                     <span class="text-xs text-gray-700">{{ opt }}</span>
                                 </label>
@@ -663,13 +817,19 @@ const purposeOptions = ['Tourism', 'Research', 'Event', 'Official Visit', 'Other
                                         <input v-model="members[rowIndex-1].surname"
                                             :disabled="!!members[rowIndex-1].search.selected"
                                             placeholder="Surname *"
-                                            class="w-full border-b border-gray-300 bg-transparent text-xs focus:outline-none focus:border-gray-600 py-0.5 mb-1"
-                                            :class="members[rowIndex-1].search.selected ? 'text-gray-400' : 'text-gray-800'" />
+                                            @input="delete formErrors[`member_${rowIndex-1}_surname`]"
+                                            :class="['w-full border-b text-xs focus:outline-none py-0.5 mb-1 bg-transparent',
+                                                formErrors[`member_${rowIndex-1}_surname`]
+                                                    ? 'border-red-400 text-red-500 placeholder-red-300'
+                                                    : members[rowIndex-1].search.selected ? 'border-gray-300 text-gray-400' : 'border-gray-300 text-gray-800 focus:border-gray-600']" />
                                         <input v-model="members[rowIndex-1].first_name"
                                             :disabled="!!members[rowIndex-1].search.selected"
                                             placeholder="First Name *"
-                                            class="w-full border-b border-gray-300 bg-transparent text-xs focus:outline-none focus:border-gray-600 py-0.5 mb-1"
-                                            :class="members[rowIndex-1].search.selected ? 'text-gray-400' : 'text-gray-800'" />
+                                            @input="delete formErrors[`member_${rowIndex-1}_firstname`]"
+                                            :class="['w-full border-b text-xs focus:outline-none py-0.5 mb-1 bg-transparent',
+                                                formErrors[`member_${rowIndex-1}_firstname`]
+                                                    ? 'border-red-400 text-red-500 placeholder-red-300'
+                                                    : members[rowIndex-1].search.selected ? 'border-gray-300 text-gray-400' : 'border-gray-300 text-gray-800 focus:border-gray-600']" />
                                         <input v-model="members[rowIndex-1].middle_name"
                                             placeholder="Middle Name"
                                             class="w-full border-b border-gray-300 bg-transparent text-xs focus:outline-none focus:border-gray-600 py-0.5 text-gray-700" />
@@ -681,8 +841,12 @@ const purposeOptions = ['Tourism', 'Research', 'Event', 'Official Visit', 'Other
                                             <input v-model="members[rowIndex-1].town_city"
                                                 @focus="members[rowIndex-1].showTownSug = true"
                                                 @blur="setTimeout(() => members[rowIndex-1].showTownSug = false, 150)"
+                                                @input="delete formErrors[`member_${rowIndex-1}_town`]"
                                                 placeholder="Town / City *"
-                                                class="w-full border-b border-gray-300 bg-transparent text-xs focus:outline-none focus:border-gray-600 py-0.5" />
+                                                :class="['w-full border-b bg-transparent text-xs focus:outline-none py-0.5',
+                                                    formErrors[`member_${rowIndex-1}_town`]
+                                                        ? 'border-red-400 text-red-500 placeholder-red-300'
+                                                        : 'border-gray-300 focus:border-gray-600']" />
                                             <ul v-if="members[rowIndex-1].showTownSug && allAddresses.filter(a => a !== members[rowIndex-1].town_city && a.toLowerCase().includes((members[rowIndex-1].town_city||'').toLowerCase())).length"
                                                 class="absolute z-30 w-full mt-0.5 bg-white border border-gray-200 rounded shadow-lg max-h-24 overflow-auto">
                                                 <li v-for="addr in allAddresses.filter(a => a !== members[rowIndex-1].town_city && a.toLowerCase().includes((members[rowIndex-1].town_city||'').toLowerCase()))"
@@ -725,16 +889,34 @@ const purposeOptions = ['Tourism', 'Research', 'Event', 'Official Visit', 'Other
                                         </div>
                                     </td>
 
-                                    <!-- Age -->
-                                    <td class="border-r-2 border-gray-800 px-2 py-2 text-center align-middle w-20">
+                                    <!-- Age + Category (required: at least one) -->
+                                    <td class="border-r-2 border-gray-800 px-2 py-2 text-center align-middle w-20 transition-colors"
+                                        :class="formErrors[`member_${rowIndex-1}_agecategory`] ? 'bg-red-50' : ''">
                                         <input v-model="members[rowIndex-1].age"
                                             type="number" min="0" max="120" placeholder="—"
-                                            style="color:#111 !important;-moz-appearance:textfield;font-size:13px;font-weight:600;"
-                                            class="w-full border border-gray-300 rounded bg-white text-center focus:outline-none focus:border-gray-600 py-1 px-1 mb-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                                        <span v-if="members[rowIndex-1].visitor_category"
-                                            class="inline-block text-xs bg-blue-50 border border-blue-200 text-blue-700 font-semibold px-1 py-0.5 rounded-full leading-tight">
-                                            {{ members[rowIndex-1].visitor_category }}
-                                        </span>
+                                            @input="delete formErrors[`member_${rowIndex-1}_agecategory`]"
+                                            style="-moz-appearance:textfield;font-size:13px;font-weight:600;"
+                                            :style="formErrors[`member_${rowIndex-1}_agecategory`] ? 'color:#ef4444 !important' : 'color:#111 !important'"
+                                            :class="['w-full rounded text-center focus:outline-none py-1 px-1 mb-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
+                                                formErrors[`member_${rowIndex-1}_agecategory`]
+                                                    ? 'border-2 border-red-400 bg-red-50'
+                                                    : 'border border-gray-300 bg-white focus:border-gray-600']" />
+                                        <select v-model="members[rowIndex-1].visitor_category"
+                                            @change="delete formErrors[`member_${rowIndex-1}_agecategory`]"
+                                            :class="['w-full rounded text-xs text-center focus:outline-none py-0.5 px-0.5 mt-0.5',
+                                                formErrors[`member_${rowIndex-1}_agecategory`]
+                                                    ? 'border-2 border-red-400 bg-red-50 text-red-500'
+                                                    : 'border border-gray-200 bg-white focus:border-gray-500']"
+                                            style="font-size:10px;">
+                                            <option value="">—</option>
+                                            <option v-for="cat in feeCategories" :key="cat.id" :value="cat.category">
+                                                {{ cat.category }}
+                                            </option>
+                                        </select>
+                                        <p v-if="formErrors[`member_${rowIndex-1}_agecategory`]"
+                                            class="text-red-500 mt-0.5 leading-tight" style="font-size:9px;">
+                                            ⚠ Required
+                                        </p>
                                     </td>
 
                                     <!-- Contact -->
@@ -879,3 +1061,16 @@ const purposeOptions = ['Tourism', 'Research', 'Event', 'Official Visit', 'Other
         </div>
     </LandingLayout>
 </template>
+
+<style scoped>
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    15%       { transform: translateX(-6px); }
+    30%       { transform: translateX(6px); }
+    45%       { transform: translateX(-4px); }
+    60%       { transform: translateX(4px); }
+    75%       { transform: translateX(-2px); }
+    90%       { transform: translateX(2px); }
+}
+.animate-shake { animation: shake 0.55s ease-in-out; }
+</style>

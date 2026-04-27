@@ -103,6 +103,10 @@
         class="text-sm sm:text-base">
         Website Content
       </Link>
+      <Link v-if="can('view_virtual_tour')" :href="route('virtualtour')" :class="navClass('virtualtour')"
+        class="text-sm sm:text-base">
+        Virtual Tour
+      </Link>
       <Link v-if="can('view_security')" :href="route('securitysettings')" :class="navClass('securitysettings')"
         class="text-sm sm:text-base">
         Security
@@ -859,4 +863,11 @@ const navClass = (routeName) => [
         ? 'text-gray-900 border-gray-900'
         : 'text-gray-400 border-transparent hover:text-gray-600',
 ];
+
+// ── Top bar state (search, notifications, user) ───────────────────────────────
+const authUser          = computed(() => page.props.auth?.user)
+const search            = ref('')
+const showNotifications = ref(false)
+const pendingFees       = ref(0)
+const toggleNotifications = () => { showNotifications.value = !showNotifications.value }
 </script>

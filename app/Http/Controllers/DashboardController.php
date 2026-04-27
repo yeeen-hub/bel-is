@@ -8,6 +8,7 @@ use App\Models\TourismContent;
 use App\Models\BarangayAttraction;
 use Inertia\Inertia;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -50,35 +51,57 @@ class DashboardController extends Controller
         // ── Revenue ───────────────────────────────────────────────────────────
         $receiptsExist = Receipt::count() > 0;
 
+        // ── Revenue — always from receipts table if it has rows ─────────────────
+        // Falls back to visitor_visits fee_status='Collected' × fee_category amount
+        // when no receipts exist yet (e.g. fresh install before any payment).
+        // Uses BOTH collected_at AND created_at to handle seeded data.
         if ($receiptsExist) {
-            $revenueToday = (float) Receipt::whereBetween('collected_at', [$todayStart, $todayEnd])
+            // Try collected_at first, fall back to created_at for seeded data
+            $revenueToday = (float) Receipt::where(function ($q) use ($todayStart, $todayEnd) {
+                    $q->whereBetween('collected_at', [$todayStart, $todayEnd])
+                      ->orWhereBetween('created_at',   [$todayStart, $todayEnd]);
+                })
                 ->where('fee_type', '!=', 'Waived')
                 ->sum('total_amount');
 
-            $revenueThisMonth = (float) Receipt::where('collected_at', '>=', $monthStart)
+            $revenueThisMonth = (float) Receipt::where(function ($q) use ($monthStart) {
+                    $q->where('collected_at', '>=', $monthStart)
+                      ->orWhere('created_at',   '>=', $monthStart);
+                })
                 ->where('fee_type', '!=', 'Waived')
                 ->sum('total_amount');
 
-            $revenueThisYear = (float) Receipt::where('collected_at', '>=', $yearStart)
+            $revenueThisYear = (float) Receipt::where(function ($q) use ($yearStart) {
+                    $q->where('collected_at', '>=', $yearStart)
+                      ->orWhere('created_at',   '>=', $yearStart);
+                })
                 ->where('fee_type', '!=', 'Waived')
                 ->sum('total_amount');
         } else {
-            $feePerVisitor = 100.00;
+            // No receipts yet — estimate from visitor_visits + fee_categories
+            $categoryFees = DB::table('fee_categories')->pluck('fee', 'category');
+            $defaultFee   = 100.00;
 
-            $revenueToday = (float) (clone $base)
-                ->where('fee_status', 'Collected')
-                ->whereBetween('arrival_at', [$todayStart, $todayEnd])
-                ->count() * $feePerVisitor;
+            $calcRevenue = function ($visits) use ($categoryFees, $defaultFee) {
+                return $visits->get()->sum(function ($v) use ($categoryFees, $defaultFee) {
+                    return (float) ($categoryFees[$v->visitor_category] ?? $defaultFee);
+                });
+            };
 
-            $revenueThisMonth = (float) (clone $base)
-                ->where('fee_status', 'Collected')
-                ->where('arrival_at', '>=', $monthStart)
-                ->count() * $feePerVisitor;
+            $revenueToday = $calcRevenue(
+                (clone $base)->where('fee_status', 'Collected')
+                             ->whereBetween('arrival_at', [$todayStart, $todayEnd])
+            );
 
-            $revenueThisYear = (float) (clone $base)
-                ->where('fee_status', 'Collected')
-                ->where('arrival_at', '>=', $yearStart)
-                ->count() * $feePerVisitor;
+            $revenueThisMonth = $calcRevenue(
+                (clone $base)->where('fee_status', 'Collected')
+                             ->where('arrival_at', '>=', $monthStart)
+            );
+
+            $revenueThisYear = $calcRevenue(
+                (clone $base)->where('fee_status', 'Collected')
+                             ->where('arrival_at', '>=', $yearStart)
+            );
         }
 
             // ── Barangay Attraction Counts ────────────────────────────────────────
