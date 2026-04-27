@@ -154,11 +154,6 @@
                         Attractions
                     </button>
 
-                    <button @click="activeTab = 'map'" :class="tabClass('map')"
-                        class="px-3 py-1.5 text-sm rounded-md whitespace-nowrap">
-                        Map
-                    </button>
-
                     <button @click="activeTab = 'about'" :class="tabClass('about')"
                         class="px-3 py-1.5 text-sm rounded-md whitespace-nowrap">
                         About
@@ -167,11 +162,6 @@
                     <button @click="activeTab = 'contact'" :class="tabClass('contact')"
                         class="px-3 py-1.5 text-sm rounded-md whitespace-nowrap">
                         Contact
-                    </button>
-
-                    <button @click="activeTab = 'footer'" :class="tabClass('footer')"
-                        class="px-3 py-1.5 text-sm rounded-md whitespace-nowrap">
-                        Footer
                     </button>
 
                 </div>
@@ -423,7 +413,12 @@
                                 <!-- Upload -->
                                 <div @click="$refs.attrFileInput.click()"
                                     class="border-2 border-dashed border-blue-500 rounded-xl p-4 text-center cursor-pointer">
-                                    <input type="file" ref="attrFileInput" class="hidden" />
+                                    <input
+                                    type="file"
+                                    ref="attrFileInput"
+                                    class="hidden"
+                                    @change="handleAttractionImage"
+                                    />
 
                                     <p class="text-sm text-gray-500">
                                         Click to upload image

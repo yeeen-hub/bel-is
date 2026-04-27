@@ -169,7 +169,7 @@
 
       </div>
     </section>
-   
+
 
     <!-- ── Attractions ──────────────────────────────────────────────────────── -->
     <section id="attractions" data-section="attractions" class="snap-start bg-white">
@@ -214,67 +214,79 @@
         </div>
 
         <!-- Grid -->
-        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mt-8 reveal-stagger">
+        <div v-if="viewMode === 'grid'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
 
-          <div v-for="attraction in visibleAttractions" :key="attraction.id"
-            class="relative rounded-xl overflow-hidden shadow-md group cursor-pointer h-56 sm:h-64 lg:h-72"
-            @click="openAttractionModal(attraction)">
+          <div v-for="attraction in visibleAttractions" :key="attraction.id" @click="openAttractionModal(attraction)"
+            class="relative rounded-xl overflow-hidden shadow-md group cursor-pointer h-56">
 
-            <!-- Image -->
-            <img :src="attraction.image_url || '/images/h-resort.jpg'"
-              class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              :alt="attraction.name" />
+            <img :src="attraction.image_url"
+              class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition" />
 
-            <!-- Overlay -->
-            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
+            <div class="absolute inset-0 bg-black/40"></div>
 
-            <!-- Text -->
-            <div class="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
-              <h3 class="text-white font-bold text-base sm:text-lg leading-tight">
-                {{ attraction.name }}
-              </h3>
-
-              <p class="text-white/80 text-xs sm:text-sm mt-1 line-clamp-2">
-                {{ attraction.description }}
-              </p>
-
-              <span
-                class="inline-block mt-2 text-xs text-white/70 border border-white/40 rounded-full px-3 py-0.5 hover:bg-white/20 transition">
-                Read more →
-              </span>
+            <div class="absolute bottom-0 p-4 text-white">
+              <h3 class="font-bold">{{ attraction.name }}</h3>
+              <p class="text-xs opacity-80 line-clamp-2">{{ attraction.description }}</p>
             </div>
 
           </div>
+
         </div>
 
+
+
         <!-- Modal -->
-        <div v-if="selectedAttraction" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
-          @click.self="selectedAttraction = null">
+        <div v-else-if="viewMode === 'immersive' && selectedAttraction" class="fixed inset-0 z-50 flex flex-col md:flex-row bg-[#0a0f14]">
 
-          <div
-            class="relative rounded-2xl overflow-hidden shadow-2xl w-full max-w-md sm:max-w-lg h-[420px] sm:h-[480px]">
+          <!-- HERO -->
+          <div class="flex-[2] relative bg-black overflow-hidden">
 
-            <img :src="selectedAttraction.image_url || '/images/h-resort.jpg'"
-              class="absolute inset-0 w-full h-full object-cover" />
+            <img :src="selectedAttraction?.image_url"
+              class="absolute inset-0 w-full h-full object-cover transition duration-700" />
 
-            <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
 
-            <button @click="selectedAttraction = null"
-              class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/70 transition text-xl">
-              &times;
-            </button>
-
-            <div class="absolute bottom-0 left-0 right-0 p-4 sm:p-6">
-              <h3 class="text-white text-lg sm:text-xl font-bold">
+            <div class="absolute bottom-0 p-6 text-white">
+              <h1 class="text-3xl font-bold">
                 {{ selectedAttraction.name }}
-              </h3>
+              </h1>
 
-              <p class="text-white/85 text-xs sm:text-sm mt-2">
+              <p class="text-sm opacity-80 mt-2">
                 {{ selectedAttraction.description }}
               </p>
             </div>
 
+            <!-- BACK BUTTON -->
+            <button @click="closeImmersive"
+              class="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full">
+              ← Back
+            </button>
+
           </div>
+
+          <!-- SIDE PANEL -->
+          <div class="flex-1 bg-[#11161c] p-4 overflow-y-auto">
+
+            <h2 class="text-white font-semibold mb-3">Other Attractions</h2>
+
+            <div class="space-y-3">
+
+              <div v-for="a in visibleAttractions" :key="a.id" @click="selectedAttraction = a"
+                class="flex gap-3 p-2 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition">
+
+                <img :src="a.image_url" class="w-16 h-16 object-cover rounded-md" />
+
+                <div>
+                  <p class="text-white text-sm font-semibold">{{ a.name }}</p>
+                  <p class="text-white/60 text-xs line-clamp-2">{{ a.description }}</p>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
         </div>
 
         <!-- Pagination -->
@@ -307,7 +319,6 @@
     <TourismCircuitMap />
 
     <!-- ── About ────────────────────────────────────────────────────────────── -->
-    <!-- overflow-y-auto moved to inner div -->
     <section id="about" data-section="about"
       class="snap-start min-h-screen w-full relative bg-cover bg-center bg-no-repeat reveal"
       style="background-image: url('/images/abstractbg.jpg')">
@@ -662,27 +673,56 @@ const heroBackgroundUrl = computed(() =>
   props.hero.background_image_url ?? '/images/bg3.jpeg'
 )
 
-
+// =========================
 // Attractions pagination
+// =========================
 const PER_PAGE = 6
+
 const currentPage = ref(1)
-const totalPages = computed(() => Math.max(1, Math.ceil(props.attractions.length / PER_PAGE)))
+
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(props.attractions.length / PER_PAGE))
+)
+
 const visibleAttractions = computed(() => {
   const start = (currentPage.value - 1) * PER_PAGE
   return props.attractions.slice(start, start + PER_PAGE)
 })
+
 const pageNumbers = computed(() => {
   const pages = []
-  for (let i = 1; i <= totalPages.value; i++) pages.push(i)
+  for (let i = 1; i <= totalPages.value; i++) {
+    pages.push(i)
+  }
   return pages
 })
 
-// Read more modal
+// =========================
+// UI MODE (NEW)
+// grid | immersive
+// =========================
+const viewMode = ref('grid')
+
+// =========================
+// Selected attraction
+// =========================
 const selectedAttraction = ref(null)
+
+// =========================
+// Open immersive view
+// =========================
 function openAttractionModal(attraction) {
   selectedAttraction.value = attraction
+  viewMode.value = 'immersive'
 }
 
+// =========================
+// Close immersive view
+// =========================
+function closeImmersive() {
+  viewMode.value = 'grid'
+  selectedAttraction.value = null
+}
 // ── Contact form ──────────────────────────────────────────────────────────────
 const contactForm = ref({ name: '', email: '', phone: '', message: '' })
 const contactErrors = ref({})

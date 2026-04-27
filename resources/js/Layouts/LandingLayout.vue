@@ -81,7 +81,7 @@ function goTo(sectionId) {
 
       <a @click.prevent="goTo('home')" href="#" :class="navClass('home')">Home</a>
       <a @click.prevent="goTo('attractions')" href="#" :class="navClass('attractions')">Attractions</a>
-      <a @click.prevent="goTo('map')" href="#" :class="navClass('map')">Map</a>
+      <a @click.prevent="goTo('map')" href="#" :class="navClass('map')">Tourism Circuit</a>
       <a @click.prevent="goTo('about')" href="#" :class="navClass('about')">About</a>
       <a @click.prevent="goTo('pre-register')" href="#" :class="navClass('pre-register')">Pre-Register</a>
       <a @click.prevent="goTo('contact')" href="#" :class="navClass('contact')">Contact</a>
@@ -115,7 +115,7 @@ function goTo(sectionId) {
 
       <a @click.prevent="goTo('home')" href="#" class="hover:text-blue-400 transition">Home</a>
       <a @click.prevent="goTo('attractions')" href="#" class="hover:text-blue-400 transition">Attractions</a>
-      <a @click.prevent="goTo('map')" href="#" class="hover:text-blue-400 transition">Map</a>
+      <a @click.prevent="goTo('map')" href="#" class="hover:text-blue-400 transition">Tourism Circuit</a>
       <a @click.prevent="goTo('about')" href="#" class="hover:text-blue-400 transition">About</a>
 
       <a @click.prevent="goTo('pre-register')" href="#"
