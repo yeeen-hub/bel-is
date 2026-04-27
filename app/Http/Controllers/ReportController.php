@@ -7,6 +7,7 @@ use App\Models\VisitorVisit;
 use App\Models\VisitorDestination;
 use App\Models\BarangayAttraction;
 use App\Models\Sitio;
+use App\Models\FeeCategory;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -275,6 +276,7 @@ class ReportController extends Controller
                 'totalRevenue' => '0.00',
                 'avgDaily'     => '0.00',
                 'sitios'       => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+                'feeCategories' => FeeCategory::orderBy('id')->get(['id', 'category', 'age_range', 'fee']),
                 'filters'      => [
                     'search'    => $request->search    ?? '',
                     'category'  => $request->category  ?? '',
@@ -325,6 +327,7 @@ class ReportController extends Controller
                 'totalRevenue' => '0.00',
                 'avgDaily'     => '0.00',
                 'sitios'       => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+                'feeCategories' => FeeCategory::orderBy('id')->get(['id', 'category', 'age_range', 'fee']),
                 'filters'      => [
                     'search'    => $request->search    ?? '',
                     'category'  => $request->category  ?? '',
@@ -381,7 +384,8 @@ class ReportController extends Controller
             'allRows'      => $allRowsFee,
             'totalRevenue' => number_format($totalRevenue, 2),
             'avgDaily'     => number_format($avgDaily, 2),
-            'sitios'       => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'sitios'        => Sitio::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'feeCategories' => FeeCategory::orderBy('id')->get(['id', 'category', 'age_range', 'fee']),
             'filters'      => [
                 'search'    => $request->search    ?? '',
                 'category'  => $request->category  ?? '',
@@ -396,12 +400,14 @@ class ReportController extends Controller
     // ── Temporal ──────────────────────────────────────────────────────────────
     public function temporal(Request $request)
     {
-        return Inertia::render('AdminRepTemporalPage', []);
+        // Page not yet built — redirect to analytics
+        return redirect()->route('reports.analytics');
     }
 
     // ── Behavioral ────────────────────────────────────────────────────────────
     public function behavioral(Request $request)
     {
-        return Inertia::render('AdminRepBehavioralPage', []);
+        // Page not yet built — redirect to analytics
+        return redirect()->route('reports.analytics');
     }
 }
