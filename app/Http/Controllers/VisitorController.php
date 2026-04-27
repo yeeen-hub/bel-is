@@ -21,21 +21,11 @@ class VisitorController extends Controller
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    /**
-     * Generate a unique registration_id safely under concurrent load.
-     *
-     * Strategy: use a named MySQL advisory lock scoped to today's date.
-     * Only one process can hold "bel_reg_YYYYMMDD" at a time, so the
-     * COUNT → compute → INSERT sequence is effectively serialized.
-     * The lock is released automatically when the connection ends or
-     * after 5 seconds if something goes wrong.
-     */
     private function generateRegistrationId(): string
     {
         $date    = Carbon::now()->format('Ymd');
         $lockKey = "bel_reg_{$date}";
 
-        // Acquire advisory lock (waits up to 5 s, returns 1 on success)
         $locked = DB::selectOne("SELECT GET_LOCK(?, 5) AS acquired", [$lockKey]);
 
         if (!$locked || !$locked->acquired) {
@@ -46,26 +36,14 @@ class VisitorController extends Controller
             $count = VisitorVisit::whereDate('created_at', Carbon::today())->count();
             return 'BEL-' . $date . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
         } finally {
-            // Always release — even if count throws
             DB::selectOne("SELECT RELEASE_LOCK(?)", [$lockKey]);
         }
     }
 
-    /**
-     * Generate a unique reference_code using the DB unique constraint as the
-     * real guard. The do/while check-then-insert gap is eliminated by letting
-     * the INSERT itself fail on collision and retrying with a new code.
-     *
-     * With 1,000,000 possible codes the collision probability per attempt is
-     * (existing_codes / 1,000,000). At 10,000 total visits that's 1% — the
-     * retry loop handles it gracefully.
-     *
-     * Returns the code string (the visit must be saved by the caller).
-     */
     private function generateReferenceCode(): string
     {
         do {
-            $code = 'BEL-' . str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $code   = 'BEL-' . str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
             $exists = VisitorVisit::where('reference_code', $code)->exists();
         } while ($exists);
 
@@ -154,6 +132,16 @@ class VisitorController extends Controller
                     'type'       => $a->type,
                     'sitio_name' => $a->sitio?->name,
                 ]),
+            'formFields' => DB::table('form_field_settings')
+                ->orderBy('sort_order')
+                ->get()
+                ->map(fn($f) => [
+                    'field_key'   => $f->field_key,
+                    'label'       => $f->label,
+                    'is_required' => (bool) $f->is_required,
+                    'is_visible'  => (bool) $f->is_visible,
+                ])
+                ->values(),
         ]);
     }
 
@@ -163,8 +151,17 @@ class VisitorController extends Controller
         $request->validate([
             'first_name'       => 'required|string|max:255',
             'last_name'        => 'required|string|max:255',
-            'municipality'     => 'required|string|max:255',
-            'province'         => 'required|string|max:255',
+            'middle_name'      => 'nullable|string|max:255',
+            'town_city'        => 'required|string|max:255',
+            'country'          => 'nullable|string|max:255',
+            'sex'              => 'nullable|in:M,F',
+            'age'              => 'nullable|integer|min:0|max:120',
+            'nationality'      => 'nullable|in:Local,Aklanon,OFW,Foreign',
+            'remarks'          => 'nullable|string|max:1000',
+            'is_day_tour'      => 'nullable|boolean',
+            'nights'           => 'nullable|integer|min:1',
+            'municipality'     => 'nullable|string|max:255',
+            'province'         => 'nullable|string|max:255',
             'place_of_origin'  => 'required|string|max:255',
             'purpose'          => 'required|in:Tourism,Research,Event,Official Visit,Other',
             'purpose_other'    => 'required_if:purpose,Other|nullable|string|max:255',
@@ -178,6 +175,14 @@ class VisitorController extends Controller
             'destinations.*.other_destination' => 'nullable|string|max:255',
         ]);
 
+        // Resolve shared fields
+        $townCity    = $request->town_city  ?? $request->municipality ?? '';
+        $country     = $request->country    ?? $request->province     ?? 'Philippines';
+        $middleName  = $request->middle_name ? trim($request->middle_name) : null;
+        $nationality = $request->nationality ?: null;
+        $sex         = $request->sex         ?: null;
+        $age         = ($request->age !== null && $request->age !== '') ? (int) $request->age : null;
+
         DB::beginTransaction();
 
         try {
@@ -190,30 +195,44 @@ class VisitorController extends Controller
                     return back()->withErrors(['error' => 'This registration has already been processed.']);
                 }
 
+                // Update profile with middle_name
                 if ($visit->profile_id) {
                     $profile = VisitorProfile::find($visit->profile_id);
                     if ($profile) {
                         $profile->update([
-                            'municipality'    => $request->municipality,
-                            'province'        => $request->province,
-                            'place_of_origin' => $request->place_of_origin,
-                            'contact_number'  => $request->contact_number,
+                            'middle_name'     => $middleName ?? $profile->middle_name,
+                            'municipality'    => $townCity,
+                            'province'        => $country,
+                            'place_of_origin' => "{$townCity}, {$country}",
+                            'contact_number'  => $request->contact_number ?? $profile->contact_number,
                         ]);
                     }
                 }
 
+                // Update visit with ALL new Tourist Arrival Form fields
                 $visit->update([
                     'source'                   => 'staff',
                     'registered_by'            => Auth::id(),
                     'purpose'                  => $request->purpose,
                     'purpose_other'            => $request->purpose === 'Other' ? $request->purpose_other : null,
                     'duration_of_stay'         => $request->duration_of_stay,
+                    'is_day_tour'              => $request->boolean('is_day_tour', true),
+                    'nights'                   => $request->nights,
                     'visitor_category'         => $request->visitor_category,
+                    // Tourist Arrival Form fields — were missing in original
+                    'sex'                      => $sex,
+                    'age'                      => $age,
+                    'nationality'              => $nationality,
+                    'town_city'                => $townCity,
+                    'country'                  => $country,
+                    'remarks'                  => $request->remarks ?: null,
+                    // Snapshots
                     'snapshot_first_name'      => $request->first_name,
+                    'snapshot_middle_name'     => $middleName,
                     'snapshot_last_name'       => $request->last_name,
-                    'snapshot_municipality'    => $request->municipality,
-                    'snapshot_province'        => $request->province,
-                    'snapshot_place_of_origin' => $request->place_of_origin,
+                    'snapshot_municipality'    => $townCity,
+                    'snapshot_province'        => $country,
+                    'snapshot_place_of_origin' => "{$townCity}, {$country}",
                     'snapshot_contact_number'  => $request->contact_number,
                 ]);
 
@@ -238,23 +257,24 @@ class VisitorController extends Controller
             if ($request->filled('profile_id')) {
                 $profile = VisitorProfile::findOrFail($request->profile_id);
                 $profile->update([
-                    'municipality'    => $request->municipality,
-                    'province'        => $request->province,
-                    'place_of_origin' => $request->place_of_origin,
-                    'contact_number'  => $request->contact_number,
+                    'middle_name'     => $middleName ?? $profile->middle_name,
+                    'municipality'    => $townCity,
+                    'province'        => $country,
+                    'place_of_origin' => "{$townCity}, {$country}",
+                    'contact_number'  => $request->contact_number ?? $profile->contact_number,
                 ]);
             } else {
                 $profile = VisitorProfile::create([
                     'first_name'      => $request->first_name,
                     'last_name'       => $request->last_name,
-                    'municipality'    => $request->municipality,
-                    'province'        => $request->province,
-                    'place_of_origin' => $request->place_of_origin,
+                    'middle_name'     => $middleName,
+                    'municipality'    => $townCity,
+                    'province'        => $country,
+                    'place_of_origin' => "{$townCity}, {$country}",
                     'contact_number'  => $request->contact_number,
                 ]);
             }
 
-            // ── Safe registration_id via advisory lock ────────────────────────
             $registrationId = $this->generateRegistrationId();
 
             $visit = new VisitorVisit([
@@ -263,7 +283,15 @@ class VisitorController extends Controller
                 'purpose'          => $request->purpose,
                 'purpose_other'    => $request->purpose === 'Other' ? $request->purpose_other : null,
                 'duration_of_stay' => $request->duration_of_stay,
+                'is_day_tour'      => $request->boolean('is_day_tour', true),
+                'nights'           => $request->nights,
                 'visitor_category' => $request->visitor_category,
+                'sex'              => $sex,
+                'age'              => $age,
+                'nationality'      => $nationality,
+                'town_city'        => $townCity,
+                'country'          => $country,
+                'remarks'          => $request->remarks ?: null,
                 'fee_status'       => 'Pending',
                 'source'           => 'staff',
                 'registered_by'    => Auth::id(),
@@ -301,13 +329,22 @@ class VisitorController extends Controller
             'members'                                        => 'required|array|min:1|max:20',
             'members.*.first_name'                           => 'required|string|max:255',
             'members.*.last_name'                            => 'required|string|max:255',
-            'members.*.municipality'                         => 'required|string|max:255',
-            'members.*.province'                             => 'required|string|max:255',
-            'members.*.place_of_origin'                      => 'required|string|max:255',
+            'members.*.middle_name'                          => 'nullable|string|max:255',
+            'members.*.town_city'                            => 'nullable|string|max:255',
+            'members.*.country'                              => 'nullable|string|max:255',
+            'members.*.sex'                                  => 'nullable|in:M,F',
+            'members.*.age'                                  => 'nullable|integer|min:0|max:120',
+            'members.*.nationality'                          => 'nullable|in:Local,Aklanon,OFW,Foreign',
+            'members.*.remarks'                              => 'nullable|string|max:1000',
+            'members.*.is_day_tour'                          => 'nullable|boolean',
+            'members.*.nights'                               => 'nullable|integer|min:1',
+            'members.*.municipality'                         => 'nullable|string|max:255',
+            'members.*.province'                             => 'nullable|string|max:255',
+            'members.*.place_of_origin'                      => 'nullable|string|max:255',
             'members.*.purpose'                              => 'required|in:Tourism,Research,Event,Official Visit,Other',
-            'members.*.purpose_other'                        => 'required_if:members.*.purpose,Other|nullable|string|max:255',
+            'members.*.purpose_other'                        => 'nullable|string|max:255',
             'members.*.duration_of_stay'                     => 'required|string|max:255',
-            'members.*.visitor_category'                     => 'required|string|max:100',
+            'members.*.visitor_category'                     => 'nullable|string|max:100',
             'members.*.contact_number'                       => 'nullable|string|max:20',
             'members.*.profile_id'                           => 'nullable|uuid|exists:visitor_profiles,id',
             'members.*.visit_id'                             => 'nullable|uuid|exists:visitor_visits,id',
@@ -325,20 +362,52 @@ class VisitorController extends Controller
                 if (!empty($memberData['visit_id'])) {
                     $visit = VisitorVisit::findOrFail($memberData['visit_id']);
                     if ($visit->source === 'pre_registration' && $visit->fee_status === 'Pending') {
+
+                        $townCity   = $memberData['town_city']   ?? $memberData['municipality'] ?? '';
+                        $country    = $memberData['country']     ?? $memberData['province']     ?? 'Philippines';
+                        $middleName = isset($memberData['middle_name']) ? trim($memberData['middle_name']) : null;
+                        $nationality = $memberData['nationality'] ?: null;
+                        $sex        = $memberData['sex']         ?: null;
+                        $age        = (isset($memberData['age']) && $memberData['age'] !== '') ? (int) $memberData['age'] : null;
+
+                        // Update profile
+                        if ($visit->profile_id) {
+                            $profile = VisitorProfile::find($visit->profile_id);
+                            if ($profile) {
+                                $profile->update([
+                                    'middle_name'     => $middleName ?? $profile->middle_name,
+                                    'municipality'    => $townCity,
+                                    'province'        => $country,
+                                    'place_of_origin' => "{$townCity}, {$country}",
+                                    'contact_number'  => $memberData['contact_number'] ?? $profile->contact_number,
+                                ]);
+                            }
+                        }
+
                         $visit->update([
                             'source'                   => 'staff',
                             'registered_by'            => Auth::id(),
                             'purpose'                  => $memberData['purpose'],
                             'purpose_other'            => $memberData['purpose'] === 'Other' ? ($memberData['purpose_other'] ?? null) : null,
                             'duration_of_stay'         => $memberData['duration_of_stay'],
-                            'visitor_category'         => $memberData['visitor_category'],
+                            'is_day_tour'              => (bool) ($memberData['is_day_tour'] ?? true),
+                            'nights'                   => $memberData['nights'] ?? null,
+                            'visitor_category'         => $memberData['visitor_category'] ?? null,
+                            'sex'                      => $sex,
+                            'age'                      => $age,
+                            'nationality'              => $nationality,
+                            'town_city'                => $townCity,
+                            'country'                  => $country,
+                            'remarks'                  => $memberData['remarks'] ?: null,
                             'snapshot_first_name'      => $memberData['first_name'],
+                            'snapshot_middle_name'     => $middleName,
                             'snapshot_last_name'       => $memberData['last_name'],
-                            'snapshot_municipality'    => $memberData['municipality'],
-                            'snapshot_province'        => $memberData['province'],
-                            'snapshot_place_of_origin' => $memberData['place_of_origin'],
+                            'snapshot_municipality'    => $townCity,
+                            'snapshot_province'        => $country,
+                            'snapshot_place_of_origin' => "{$townCity}, {$country}",
                             'snapshot_contact_number'  => $memberData['contact_number'] ?? null,
                         ]);
+
                         $this->saveDestinations($visit->id, $memberData['destinations'] ?? []);
                         $visits[] = $visit;
                         continue;
@@ -349,12 +418,6 @@ class VisitorController extends Controller
                 $visits[] = $visit;
             }
 
-            // ── Assign group_code to all members ────────────────────────────────
-            // Manual group registrations must set group_code the same way
-            // pre-registered groups do — otherwise resolveGroupVisits() in
-            // ReceiptController cannot find the other members at payment time.
-            // We use the first visit's registration_id as the group_code so
-            // it's human-readable and traceable in the audit log.
             if (count($visits) > 1) {
                 $groupCode = $visits[0]->registration_id;
                 $visitIds  = collect($visits)->pluck('id')->toArray();
@@ -377,26 +440,35 @@ class VisitorController extends Controller
     // ── createVisitRecord — used by storeGroup ────────────────────────────────
     private function createVisitRecord(array $data, int $staffId): array
     {
+        $townCity      = $data['town_city']    ?? $data['municipality'] ?? '';
+        $country       = $data['country']      ?? $data['province']     ?? 'Philippines';
+        $middleName    = isset($data['middle_name']) ? trim($data['middle_name']) : null;
+        $nationality   = $data['nationality']  ?: null;
+        $sex           = $data['sex']          ?: null;
+        $age           = (isset($data['age']) && $data['age'] !== '') ? (int) $data['age'] : null;
+        $placeOfOrigin = "{$townCity}, {$country}";
+
         if (!empty($data['profile_id'])) {
             $profile = VisitorProfile::findOrFail($data['profile_id']);
             $profile->update([
-                'municipality'    => $data['municipality'],
-                'province'        => $data['province'],
-                'place_of_origin' => $data['place_of_origin'],
+                'middle_name'     => $middleName ?? $profile->middle_name,
+                'municipality'    => $townCity,
+                'province'        => $country,
+                'place_of_origin' => $placeOfOrigin,
                 'contact_number'  => $data['contact_number'] ?? $profile->contact_number,
             ]);
         } else {
             $profile = VisitorProfile::create([
                 'first_name'      => $data['first_name'],
                 'last_name'       => $data['last_name'],
-                'municipality'    => $data['municipality'],
-                'province'        => $data['province'],
-                'place_of_origin' => $data['place_of_origin'],
+                'middle_name'     => $middleName,
+                'municipality'    => $townCity,
+                'province'        => $country,
+                'place_of_origin' => $placeOfOrigin,
                 'contact_number'  => $data['contact_number'] ?? null,
             ]);
         }
 
-        // ── Safe registration_id via advisory lock ────────────────────────────
         $registrationId = $this->generateRegistrationId();
 
         $visit = new VisitorVisit([
@@ -405,7 +477,15 @@ class VisitorController extends Controller
             'purpose'          => $data['purpose'],
             'purpose_other'    => $data['purpose'] === 'Other' ? ($data['purpose_other'] ?? null) : null,
             'duration_of_stay' => $data['duration_of_stay'],
+            'is_day_tour'      => isset($data['is_day_tour']) ? (bool) $data['is_day_tour'] : true,
+            'nights'           => $data['nights'] ?? null,
             'visitor_category' => $data['visitor_category'] ?? null,
+            'sex'              => $sex,
+            'age'              => $age,
+            'nationality'      => $nationality,
+            'town_city'        => $townCity,
+            'country'          => $country,
+            'remarks'          => $data['remarks'] ?: null,
             'fee_status'       => 'Pending',
             'source'           => 'staff',
             'registered_by'    => $staffId,
@@ -448,6 +528,11 @@ class VisitorController extends Controller
                 'province'         => $visitor->snapshot_province,
                 'contact_number'   => $visitor->snapshot_contact_number ?? 'N/A',
                 'visitor_category' => $visitor->visitor_category,
+                'sex'              => $visitor->sex,
+                'age'              => $visitor->age,
+                'nationality'      => $visitor->nationality,
+                'country'          => $visitor->country,
+                'town_city'        => $visitor->town_city,
                 'destinations'     => $visitor->destinations->map(fn($d) => [
                     'id'                => $d->id,
                     'attraction_name'   => $d->attraction?->name ?? 'Other',
@@ -458,6 +543,7 @@ class VisitorController extends Controller
                     'province'        => $visitor->profile->province,
                     'place_of_origin' => $visitor->profile->place_of_origin,
                     'contact_number'  => $visitor->profile->contact_number,
+                    'middle_name'     => $visitor->profile->middle_name,
                 ] : null,
                 'purpose'          => $visitor->purpose === 'Other' && $visitor->purpose_other
                                          ? "Other: {$visitor->purpose_other}"

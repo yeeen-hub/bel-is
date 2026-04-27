@@ -27,6 +27,7 @@ class VisitorProfile extends Model
 
     protected $fillable = [
         'first_name',
+        'middle_name',
         'last_name',
         'contact_number',
         'municipality',

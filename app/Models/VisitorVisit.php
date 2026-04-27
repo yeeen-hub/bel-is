@@ -25,43 +25,51 @@ class VisitorVisit extends Model
     }
 
     protected $fillable = [
+        'id',
+        'registration_id',
         'reference_code',
         'profile_id',
-        'registration_id',
+        'group_code',
+        'source',
+        'registered_by',
         'purpose',
         'purpose_other',
-        'group_code',
         'duration_of_stay',
+        'is_day_tour',
+        'nights',
         'visitor_category',
+        'fee_status',
+        'waiver_reason',
         'arrival_at',
-        'departure_at',
-        // Historical snapshot
+        // ── Tourist Arrival Form fields ───────────────────────────────────────
+        'sex',
+        'age',
+        'nationality',
+        'town_city',
+        'country',
+        'remarks',
+        // ── Snapshot fields ───────────────────────────────────────────────────
         'snapshot_first_name',
+        'snapshot_middle_name',
         'snapshot_last_name',
         'snapshot_municipality',
         'snapshot_province',
         'snapshot_place_of_origin',
         'snapshot_contact_number',
-        // Fee
-        'fee_status',
-        'waiver_reason',
-        // Meta
-        'source',
-        'registered_by',
-        'device_id',
-        'synced_at',
     ];
 
     protected $casts = [
         'arrival_at'   => 'datetime',
         'departure_at' => 'datetime',
         'synced_at'    => 'datetime',
+        'is_day_tour'  => 'boolean',
+        'age'          => 'integer',
     ];
 
     // ── Computed: full name from snapshot ─────────────────────────────────────
     public function getFullNameAttribute(): string
     {
-        return "{$this->snapshot_first_name} {$this->snapshot_last_name}";
+        return trim("{$this->snapshot_first_name} {$this->snapshot_last_name}");
     }
 
     // ── Computed: place of origin from snapshot ───────────────────────────────
@@ -88,21 +96,17 @@ class VisitorVisit extends Model
         return $this->belongsTo(User::class, 'registered_by');
     }
 
-    /**
-     * Destinations this visitor selected at registration.
-     * Each row = one attraction_id (named) or null + other_destination (free text).
-     * Used by the area/sitio and attraction filters in reports.
-     */
     public function destinations()
     {
         return $this->hasMany(VisitorDestination::class, 'visit_id');
     }
 
-    // ── Snapshot: copies profile's current data into the visit record ─────────
-    // Called once when a visit is created — preserves historical address.
+    // ── Snapshot ──────────────────────────────────────────────────────────────
+    // Called once at visit creation — preserves historical profile data.
     public function takeSnapshot(VisitorProfile $profile): void
     {
         $this->snapshot_first_name      = $profile->first_name;
+        $this->snapshot_middle_name     = $profile->middle_name;   // ← was missing
         $this->snapshot_last_name       = $profile->last_name;
         $this->snapshot_municipality    = $profile->municipality;
         $this->snapshot_province        = $profile->province;
@@ -110,13 +114,13 @@ class VisitorVisit extends Model
         $this->snapshot_contact_number  = $profile->contact_number;
     }
 
-    // ── Scope: only staff-confirmed visits (visible in records/counts) ────────
+    // ── Scopes ────────────────────────────────────────────────────────────────
+
     public function scopeConfirmed($query)
     {
         return $query->where('source', 'staff');
     }
 
-    // ── Scope: unsynced records (for offline sync engine) ────────────────────
     public function scopeUnsynced($query)
     {
         return $query->whereNull('synced_at');

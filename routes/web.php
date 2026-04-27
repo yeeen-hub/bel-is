@@ -128,6 +128,8 @@ Route::middleware(['auth'])->group(function () {
 
         Route::post('/admin/settings/fee-categories', [FeeCategoryController::class, 'update'])
             ->name('fee-categories.update');
+        Route::post('/admin/settings/form-fields', [FeeCategoryController::class, 'updateFormFields'])
+            ->name('form-fields.update');
         Route::post('/admin/settings/sitios', [FeeCategoryController::class, 'updateSitios'])
             ->name('sitios.update');
         Route::post('/admin/settings/attractions', [FeeCategoryController::class, 'updateAttractions'])

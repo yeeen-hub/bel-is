@@ -8,6 +8,7 @@ use App\Models\Sitio;
 use App\Models\BarangayAttraction;
 use App\Models\UnrecognizedAttraction;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -58,6 +59,19 @@ class FeeCategoryController extends Controller
 
             'unreviewedCount' => $unreviewedCount,
             'unreviewed'      => $unreviewed,
+
+            // Form Field Management — required/visible toggles per registration field
+            'formFields' => DB::table('form_field_settings')
+                ->orderBy('sort_order')
+                ->get()
+                ->map(fn($f) => [
+                    'id'          => $f->id,
+                    'field_key'   => $f->field_key,
+                    'label'       => $f->label,
+                    'is_required' => (bool) $f->is_required,
+                    'is_visible'  => (bool) $f->is_visible,
+                    'sort_order'  => $f->sort_order,
+                ]),
         ]);
     }
 
@@ -231,6 +245,51 @@ class FeeCategoryController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Marked as reviewed.');
+    }
+
+    // ── Form Field Settings ──────────────────────────────────────────────────
+    public function updateFormFields(Request $request)
+    {
+        $request->validate([
+            'fields'              => 'required|array',
+            'fields.*.field_key'  => 'required|string|max:100',
+            'fields.*.is_required'=> 'boolean',
+            'fields.*.is_visible' => 'boolean',
+        ]);
+
+        // Core fields that cannot be toggled off — always required
+        $alwaysRequired = ['surname', 'first_name', 'address', 'sex', 'age'];
+
+        $before = DB::table('form_field_settings')->orderBy('sort_order')->get()->toArray();
+
+        foreach ($request->fields as $field) {
+            $isRequired = in_array($field['field_key'], $alwaysRequired)
+                ? true
+                : (bool) ($field['is_required'] ?? false);
+
+            DB::table('form_field_settings')
+                ->where('field_key', $field['field_key'])
+                ->update([
+                    'is_required' => $isRequired,
+                    'is_visible'  => (bool) ($field['is_visible'] ?? true),
+                    'updated_at'  => now(),
+                ]);
+        }
+
+        $after = DB::table('form_field_settings')->orderBy('sort_order')->get()->toArray();
+
+        AuditLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'updated',
+            'module'      => 'form_field_settings',
+            'target_type' => 'FormFieldSetting',
+            'target_id'   => null,
+            'old_values'  => json_encode($before),
+            'new_values'  => json_encode($after),
+            'ip_address'  => $request->ip(),
+        ]);
+
+        return redirect()->back()->with('success', 'Form field settings saved successfully.');
     }
 
     // ── Add reported destination to official attractions ──────────────────────

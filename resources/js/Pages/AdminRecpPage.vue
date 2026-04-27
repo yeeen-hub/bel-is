@@ -1,17 +1,87 @@
 <script setup>
-import { ref } from 'vue'
+/**
+ * AdminRecpPage.vue — Official Receipt (Accountable Form No. 51-C format)
+ * Republic of the Philippines · Official Receipt
+ */
+import { ref, computed } from 'vue'
+import { usePage } from '@inertiajs/vue3'
 import LandingLayout from '@/Layouts/SidebarLayout.vue'
 
 const props = defineProps({
-    visitor:         Object,
-    receipt:         Object,
-    isGroup:         { type: Boolean, default: false },
+    visitor: Object,
+    receipt: Object,
+    isGroup: { type: Boolean, default: false },
 })
 
-const print = () => window.print()
+const page      = usePage()
+const printPage = () => window.print()
 
-// Notes expand/collapse — collapsed by default so the receipt stays compact
-const notesExpanded = ref(false)
+// ── Amount in words helper ────────────────────────────────────────────────────
+const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine',
+               'Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen',
+               'Seventeen','Eighteen','Nineteen']
+const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety']
+
+function numToWords(n) {
+    if (n === 0) return 'Zero'
+    if (n < 20) return ones[n]
+    if (n < 100) return tens[Math.floor(n/10)] + (n%10 ? ' ' + ones[n%10] : '')
+    if (n < 1000) return ones[Math.floor(n/100)] + ' Hundred' + (n%100 ? ' ' + numToWords(n%100) : '')
+    if (n < 1000000) return numToWords(Math.floor(n/1000)) + ' Thousand' + (n%1000 ? ' ' + numToWords(n%1000) : '')
+    return numToWords(Math.floor(n/1000000)) + ' Million' + (n%1000000 ? ' ' + numToWords(n%1000000) : '')
+}
+
+const amountInWords = computed(() => {
+    if (!props.receipt || props.receipt.fee_type === 'Waived') return 'Waived'
+    const total = parseFloat(props.receipt.total_amount ?? 0)
+    const pesos  = Math.floor(total)
+    const cents  = Math.round((total - pesos) * 100)
+    let words = numToWords(pesos) + ' Peso' + (pesos !== 1 ? 's' : '')
+    if (cents > 0) words += ' and ' + numToWords(cents) + ' Centavo' + (cents !== 1 ? 's' : '')
+    return words + ' Only'
+})
+
+// ── OR number formatted like "No. 3680424 S" ─────────────────────────────────
+const orNumber = computed(() => {
+    if (!props.receipt?.receipt_number) return 'N/A'
+    // receipt_number is stored as e.g. "OR-2026-0000029"
+    // Extract the numeric portion and format as "XXXXXXX S"
+    const parts = props.receipt.receipt_number.split('-')
+    const num   = parts[parts.length - 1] ?? props.receipt.receipt_number
+    return `${num} S`
+})
+
+// ── Payor name ────────────────────────────────────────────────────────────────
+const payorName = computed(() => {
+    if (props.isGroup) {
+        const leader = props.receipt?.member_breakdown?.[0]
+        return leader ? `${leader.full_name} et al. (${props.receipt?.number_of_visitors ?? ''} pax)` : '—'
+    }
+    return props.visitor?.full_name ?? '—'
+})
+
+// Nature of collection rows for the table
+const collectionRows = computed(() => {
+    if (!props.receipt || props.receipt.fee_type === 'Waived') {
+        return [{ description: 'Environmental Fee — WAIVED', account_code: '', amount: 0 }]
+    }
+    if (props.isGroup && props.receipt.member_breakdown?.length) {
+        return props.receipt.member_breakdown.map(m => ({
+            description:  `Environmental Fee — ${m.visitor_category || 'Visitor'} (${m.full_name})`,
+            account_code: '101',
+            amount:       parseFloat(m.fee ?? 0),
+        }))
+    }
+    return [{
+        description:  `Environmental Fee — ${props.visitor?.visitor_category || 'Visitor'}`,
+        account_code: '101',
+        amount:       parseFloat(props.receipt?.total_amount ?? 0),
+    }]
+})
+
+const totalAmount = computed(() =>
+    parseFloat(props.receipt?.total_amount ?? 0)
+)
 </script>
 
 <template>
@@ -52,217 +122,193 @@ const notesExpanded = ref(false)
                 </div>
             </div>
 
-            <!-- Receipt Card -->
-            <div class="w-full mt-4 bg-white p-6 rounded-lg max-w-lg shadow-sm" id="receipt-content">
-
-                <!-- Barangay Header -->
-                <div class="text-center mb-4">
-                    <img src="/images/brgylogo.png" alt="Barangay Logo" class="h-16 w-16 mx-auto mb-2 rounded-full" />
-                    <p class="font-bold text-gray-800 text-lg">Barangay Bel-is</p>
-                    <p class="text-sm text-gray-600">Buruanga, Aklan, Philippines</p>
-                    <p class="text-xs text-gray-500 mt-1">Official Environmental Fee Receipt</p>
-                </div>
-
-                <hr class="my-3 border-gray-300">
-
-                <!-- Status icon -->
-                <div class="flex justify-center mb-2">
-                    <svg v-if="receipt?.fee_type !== 'Waived'" width="36" height="36" viewBox="0 0 24 24" fill="none">
-                        <path fill-rule="evenodd" clip-rule="evenodd"
-                            d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12ZM16.0303 8.96967C16.3232 9.26256 16.3232 9.73744 16.0303 10.0303L11.0303 15.0303C10.7374 15.3232 10.2626 15.3232 9.96967 15.0303L7.96967 13.0303C7.67678 12.7374 7.67678 12.2626 7.96967 11.9697C8.26256 11.6768 8.73744 11.6768 9.03033 11.9697L10.5 13.4393L12.7348 11.2045L14.9697 8.96967C15.2626 8.67678 15.7374 8.67678 16.0303 8.96967Z"
-                            fill="#0d912e" />
+            <!-- Success indicator -->
+            <div class="flex flex-col items-center mb-4 mt-2">
+                <div class="w-12 h-12 rounded-full flex items-center justify-center mb-2"
+                    :class="receipt?.fee_type === 'Waived' ? 'bg-amber-100' : 'bg-green-100'">
+                    <svg v-if="receipt?.fee_type !== 'Waived'" class="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12ZM16.0303 8.96967C16.3232 9.26256 16.3232 9.73744 16.0303 10.0303L11.0303 15.0303C10.7374 15.3232 10.2626 15.3232 9.96967 15.0303L7.96967 13.0303C7.67678 12.7374 7.67678 12.2626 7.96967 11.9697C8.26256 11.6768 8.73744 11.6768 9.03033 11.9697L10.5 13.4393L12.7348 11.2045L14.9697 8.96967C15.2626 8.67678 15.7374 8.67678 16.0303 8.96967Z"/>
                     </svg>
-                    <svg v-else width="36" height="36" viewBox="0 0 24 24" fill="none">
-                        <path fill-rule="evenodd" clip-rule="evenodd"
-                            d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12ZM10 7a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1zm1 4a1 1 0 100 2h.01a1 1 0 100-2H11z"
-                            fill="#d97706" />
+                    <svg v-else class="w-6 h-6 text-amber-600" fill="currentColor" viewBox="0 0 24 24">
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 5a1 1 0 011 1v4a1 1 0 01-2 0V8a1 1 0 011-1zm0 8a1 1 0 100 2 1 1 0 000-2z"/>
                     </svg>
                 </div>
+                <p class="font-bold text-gray-800">{{ receipt?.fee_type === 'Waived' ? 'Fee Waived' : 'Payment Successful' }}</p>
+            </div>
 
-                <h2 class="text-center text-gray-800 font-bold text-lg">
-                    {{ receipt?.fee_type === 'Waived' ? 'Fee Waived' : 'Payment Successful' }}
-                </h2>
-                <p class="text-center text-gray-500 text-xs mt-1 mb-4">
-                    Receipt No: <span class="font-mono font-bold">{{ receipt?.receipt_number ?? 'N/A' }}</span>
-                </p>
+            <!-- ══ Official Receipt Card (Accountable Form No. 51-C format) ══ -->
+            <div class="w-full max-w-md" id="receipt-content">
+                <div class="bg-white border-2 border-gray-800 rounded-sm shadow-lg overflow-hidden">
 
-                <hr class="my-3 border-dashed border-gray-300">
-
-                <!-- ── Individual receipt ─────────────────────────────────── -->
-                <template v-if="!isGroup">
-                    <h3 class="text-gray-700 font-bold text-sm uppercase tracking-wide mb-2">Visitor Details</h3>
-                    <div class="space-y-1 text-sm mb-4">
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Name</span>
-                            <span class="font-medium text-gray-800">{{ visitor?.full_name ?? '—' }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Place of Origin</span>
-                            <span class="font-medium text-gray-800">{{ visitor?.place_of_origin ?? '—' }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Purpose of Visit</span>
-                            <span class="font-medium text-gray-800">{{ visitor?.purpose ?? '—' }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Duration of Stay</span>
-                            <span class="font-medium text-gray-800">{{ visitor?.duration ?? '—' }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Date of Arrival</span>
-                            <span class="font-medium text-gray-800">{{ visitor?.arrival_at ?? '—' }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Visitor Category</span>
-                            <span class="font-medium text-gray-800">{{ visitor?.visitor_category ?? '—' }}</span>
-                        </div>
-                    </div>
-                </template>
-
-                <!-- ── Group receipt — full member breakdown ──────────────── -->
-                <template v-else>
-                    <h3 class="text-gray-700 font-bold text-sm uppercase tracking-wide mb-2">
-                        Group Visitors
-                        <span class="ml-1 text-gray-400 font-normal normal-case">({{ receipt?.member_breakdown?.length ?? 0 }} members)</span>
-                    </h3>
-
-                    <div class="mb-3 text-xs text-gray-500 flex flex-wrap gap-3">
-                        <span><span class="font-semibold text-gray-600">Date of Arrival:</span> {{ visitor?.arrival_at ?? '—' }}</span>
-                        <span><span class="font-semibold text-gray-600">Purpose:</span> {{ visitor?.purpose ?? '—' }}</span>
-                        <span><span class="font-semibold text-gray-600">Duration:</span> {{ visitor?.duration ?? '—' }}</span>
+                    <!-- Header: Accountable Form label -->
+                    <div class="px-4 pt-3 pb-1 border-b border-gray-300">
+                        <p class="text-xs text-gray-500 italic">Accountable Form No. 51-C</p>
+                        <p class="text-xs text-gray-500 italic">Revised January, 1992 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (ORIGINAL)</p>
                     </div>
 
-                    <!-- Member breakdown table -->
-                    <div class="overflow-hidden rounded-lg border border-gray-100 mb-4">
-                        <table class="w-full text-xs">
-                            <thead class="bg-gray-50 border-b border-gray-100">
-                                <tr>
-                                    <th class="px-3 py-2 text-left font-semibold text-gray-600">Name</th>
-                                    <th class="px-3 py-2 text-left font-semibold text-gray-600">Category</th>
-                                    <th class="px-3 py-2 text-right font-semibold text-gray-600">Fee</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="(m, i) in (receipt?.member_breakdown ?? [])" :key="i"
-                                    class="border-b border-gray-50 last:border-0">
-                                    <td class="px-3 py-2 text-gray-800 font-medium">
-                                        {{ m.full_name }}
-                                        <span v-if="i === 0" class="ml-1 text-gray-400">(Leader)</span>
-                                    </td>
-                                    <td class="px-3 py-2 text-gray-500">{{ m.visitor_category || '—' }}</td>
-                                    <td class="px-3 py-2 text-right font-semibold"
-                                        :class="receipt?.fee_type === 'Waived' ? 'text-amber-600' : 'text-green-700'">
-                                        {{ receipt?.fee_type === 'Waived' ? 'Waived' : `PHP ${Number(m.fee ?? 0).toFixed(2)}` }}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </template>
-
-                <hr class="my-3 border-dashed border-gray-300">
-
-                <!-- Payment Details -->
-                <h3 class="text-gray-700 font-bold text-sm uppercase tracking-wide mb-2">Payment Details</h3>
-                <div class="space-y-1 text-sm mb-4">
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Fee Type</span>
-                        <span class="font-medium text-gray-800">{{ receipt?.fee_type ?? '—' }}</span>
-                    </div>
-
-                    <!-- Waiver reason -->
-                    <div v-if="receipt?.fee_type === 'Waived' && receipt?.waiver_reason" class="flex justify-between">
-                        <span class="text-gray-500">Waiver Reason</span>
-                        <span class="font-medium text-amber-700">{{ receipt.waiver_reason }}</span>
-                    </div>
-
-                    <template v-if="receipt?.fee_type !== 'Waived'">
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">No. of Visitors</span>
-                            <span class="font-medium text-gray-800">{{ receipt?.number_of_visitors ?? '—' }}</span>
+                    <!-- Official Receipt header with logo + OR number -->
+                    <div class="flex border-b-2 border-gray-800">
+                        <!-- Logo cell -->
+                        <div class="w-24 shrink-0 border-r-2 border-gray-800 flex items-center justify-center p-3">
+                            <img src="/images/republic of the philippines.png" alt="Republic of the Philippines"
+                                class="w-16 h-16 object-contain"
+                                onerror="this.src='/images/brgylogo.png'" />
                         </div>
-
-                        <!-- Individual: show per-head fee -->
-                        <div v-if="!isGroup" class="flex justify-between">
-                            <span class="text-gray-500">Fee per Visitor</span>
-                            <span class="font-medium text-gray-800">
-                                PHP {{ receipt?.amount != null ? Number(receipt.amount).toFixed(2) : '—' }}
-                            </span>
-                        </div>
-
-                        <!-- Calculation line -->
-                        <div v-if="!isGroup" class="flex justify-between text-xs text-gray-400 italic">
-                            <span>{{ visitor?.visitor_category }} × {{ receipt?.number_of_visitors }}</span>
-                            <span>= PHP {{ receipt?.total_amount != null ? Number(receipt.total_amount).toFixed(2) : '—' }}</span>
-                        </div>
-                    </template>
-
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Payment Method</span>
-                        <span class="font-medium text-gray-800">{{ receipt?.payment_method ?? '—' }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Date Collected</span>
-                        <span class="font-medium text-gray-800">{{ receipt?.collected_at ?? '—' }}</span>
-                    </div>
-
-                    <!-- Notes — expandable row, only shown when notes exist -->
-                    <div v-if="receipt?.notes" class="pt-1">
-                        <button
-                            type="button"
-                            @click="notesExpanded = !notesExpanded"
-                            class="flex items-center justify-between w-full text-left group">
-                            <span class="text-gray-500">Notes</span>
-                            <div class="flex items-center gap-1.5">
-                                <!-- Preview text when collapsed -->
-                                <span v-if="!notesExpanded"
-                                    class="text-gray-400 text-xs truncate max-w-[140px]">
-                                    {{ receipt.notes }}
-                                </span>
-                                <!-- Chevron icon -->
-                                <svg
-                                    class="w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0"
-                                    :class="notesExpanded ? 'rotate-180' : ''"
-                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                </svg>
+                        <!-- Title + OR number -->
+                        <div class="flex-1 p-3">
+                            <div class="text-center border-b border-gray-400 pb-2 mb-2">
+                                <p class="text-sm font-bold text-gray-800 leading-tight">Official Receipt</p>
+                                <p class="text-xs text-gray-600">of the</p>
+                                <p class="text-xs font-bold text-gray-800">Republic of the Philippines</p>
                             </div>
-                        </button>
-                        <!-- Expanded notes content -->
-                        <div v-if="notesExpanded"
-                            class="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">
-                            {{ receipt.notes }}
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-lg font-bold text-gray-800">N<sup>o</sup></span>
+                                <span class="text-2xl font-bold tracking-widest font-mono text-gray-900">{{ orNumber }}</span>
+                            </div>
+                            <div class="mt-2 border-t border-gray-300 pt-1">
+                                <span class="text-xs text-gray-500">Date: </span>
+                                <span class="text-xs font-semibold text-gray-800">{{ receipt?.collected_at ?? '—' }}</span>
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Agency + Fund row -->
+                    <div class="flex border-b border-gray-400 text-xs">
+                        <div class="flex-1 px-3 py-2 border-r border-gray-400">
+                            <span class="text-gray-500">Agency: </span>
+                            <span class="font-semibold text-gray-800">Barangay Bel-is, Buruanga, Aklan</span>
+                        </div>
+                        <div class="w-28 px-3 py-2">
+                            <span class="text-gray-500">Fund: </span>
+                            <span class="font-semibold text-gray-800">General</span>
+                        </div>
+                    </div>
+
+                    <!-- Payor row -->
+                    <div class="px-3 py-2 border-b border-gray-400 text-xs">
+                        <span class="text-gray-500">Payor: </span>
+                        <span class="font-semibold text-gray-800">{{ payorName }}</span>
+                        <span class="ml-3 text-gray-400">· {{ visitor?.place_of_origin ?? '—' }}</span>
+                    </div>
+
+                    <!-- Nature of Collection table -->
+                    <div class="border-b border-gray-400">
+                        <div class="grid grid-cols-12 bg-gray-100 border-b border-gray-300 text-xs font-bold text-gray-600 px-2 py-1">
+                            <div class="col-span-7 text-center">Nature of Collection</div>
+                            <div class="col-span-2 text-center">Account Code</div>
+                            <div class="col-span-3 text-center">Amount</div>
+                        </div>
+
+                        <!-- Collection rows -->
+                        <div v-for="(row, i) in collectionRows" :key="i"
+                            class="grid grid-cols-12 border-b border-gray-200 text-xs px-2 py-1.5">
+                            <div class="col-span-7 text-gray-800">{{ row.description }}</div>
+                            <div class="col-span-2 text-center text-gray-600">{{ row.account_code }}</div>
+                            <div class="col-span-3 text-right font-semibold text-gray-800">
+                                <span v-if="receipt?.fee_type !== 'Waived'">
+                                    ₱ {{ row.amount.toFixed(2) }}
+                                </span>
+                                <span v-else class="text-amber-600">Waived</span>
+                            </div>
+                        </div>
+
+                        <!-- Blank filler rows (to match physical form look) -->
+                        <div v-for="n in Math.max(0, 5 - collectionRows.length)" :key="`blank-${n}`"
+                            class="grid grid-cols-12 border-b border-gray-100 text-xs px-2 py-1.5 h-7">
+                            <div class="col-span-7"></div>
+                            <div class="col-span-2"></div>
+                            <div class="col-span-3 text-right text-gray-300">₱</div>
+                        </div>
+                    </div>
+
+                    <!-- Total row -->
+                    <div class="grid grid-cols-12 border-b border-gray-400 text-xs px-2 py-2">
+                        <div class="col-span-9 font-bold text-gray-700 uppercase tracking-wider">TOTAL</div>
+                        <div class="col-span-3 text-right font-bold text-gray-900">
+                            <span v-if="receipt?.fee_type !== 'Waived'">₱ {{ totalAmount.toFixed(2) }}</span>
+                            <span v-else class="text-amber-600">Waived</span>
+                        </div>
+                    </div>
+
+                    <!-- Amount in words -->
+                    <div class="px-3 py-2 border-b border-gray-400 text-xs">
+                        <span class="text-gray-500">Amount in Words: </span>
+                        <span class="font-semibold text-gray-800 italic">{{ amountInWords }}</span>
+                    </div>
+
+                    <!-- Waiver reason (shown only when waived) -->
+                    <div v-if="receipt?.fee_type === 'Waived' && receipt?.waiver_reason"
+                        class="px-3 py-2 border-b border-gray-400 text-xs bg-amber-50">
+                        <span class="text-gray-500">Waiver Reason: </span>
+                        <span class="font-semibold text-amber-700">{{ receipt.waiver_reason }}</span>
+                    </div>
+
+                    <!-- Payment method: Cash / Check / Money Order checkboxes -->
+                    <div class="px-3 py-3 border-b border-gray-400 text-xs">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="flex items-center gap-2">
+                                <div class="w-4 h-4 border border-gray-600 rounded-sm flex items-center justify-center shrink-0"
+                                    :class="receipt?.payment_method === 'Cash' ? 'bg-gray-800' : 'bg-white'">
+                                    <svg v-if="receipt?.payment_method === 'Cash'" class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                                <span class="font-semibold text-gray-800">Cash</span>
+                            </label>
+                            <div class="flex items-start gap-2">
+                                <div>
+                                    <label class="flex items-center gap-2 mb-1">
+                                        <div class="w-4 h-4 border border-gray-600 rounded-sm flex items-center justify-center shrink-0 bg-white"></div>
+                                        <span class="font-semibold text-gray-800">Check</span>
+                                    </label>
+                                    <label class="flex items-center gap-2">
+                                        <div class="w-4 h-4 border border-gray-600 rounded-sm flex items-center justify-center shrink-0 bg-white"></div>
+                                        <span class="font-semibold text-gray-800">Money Order</span>
+                                    </label>
+                                </div>
+                                <div class="ml-4 grid grid-cols-3 gap-x-4 text-gray-500 text-xs">
+                                    <span class="font-semibold border-b border-gray-300 pb-0.5">Drawee Bank</span>
+                                    <span class="font-semibold border-b border-gray-300 pb-0.5">Number</span>
+                                    <span class="font-semibold border-b border-gray-300 pb-0.5">Date</span>
+                                    <span class="pt-0.5 text-gray-300">—</span>
+                                    <span class="pt-0.5 text-gray-300">—</span>
+                                    <span class="pt-0.5 text-gray-300">—</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Received statement + Collecting Officer -->
+                    <div class="px-3 py-3 border-b border-gray-400 text-xs">
+                        <p class="text-gray-700 mb-4">Received the amount stated above.</p>
+                        <div class="text-center mt-2">
+                            <div class="border-t border-gray-600 pt-1 inline-block min-w-[180px]">
+                                <p class="font-bold text-gray-800">Tourism Clerk</p>
+                                <p class="text-gray-500">Collecting Officer</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notes (if any) -->
+                    <div v-if="receipt?.notes" class="px-3 py-2 border-b border-gray-400 text-xs bg-gray-50">
+                        <span class="text-gray-500">Notes: </span>
+                        <span class="text-gray-700">{{ receipt.notes }}</span>
+                    </div>
+
+                    <!-- Footer note -->
+                    <div class="px-3 py-2 text-xs text-gray-500 italic">
+                        NOTE: Write the number and date of this receipt on the back of check or money order received.
+                    </div>
                 </div>
-
-                <hr class="my-3 border-gray-300">
-                <div class="flex justify-between font-bold text-base mt-2">
-                    <span class="text-gray-800">Total Amount</span>
-                    <span :class="receipt?.fee_type === 'Waived' ? 'text-amber-600' : 'text-green-700'">
-                        {{ receipt?.fee_type === 'Waived'
-                            ? 'Waived'
-                            : receipt?.total_amount != null
-                                ? `PHP ${Number(receipt.total_amount).toFixed(2)}`
-                                : '—' }}
-                    </span>
-                </div>
-
-                <hr class="my-4 border-dashed border-gray-300">
-
-                <p class="text-center text-xs text-gray-400 mt-2">
-                    This is an official receipt from Barangay Bel-is.<br>
-                    Thank you for visiting!
-                </p>
 
                 <!-- Action buttons (hidden on print) -->
-                <div id="receipt-actions" class="flex justify-center gap-4 mt-6">
-                    <button @click="print"
-                        class="bg-gray-900 text-white font-bold py-2 px-6 rounded hover:bg-gray-700 text-sm">
+                <div id="receipt-actions" class="flex justify-center gap-4 mt-6 print:hidden">
+                    <button @click="printPage"
+                        class="bg-gray-900 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-700 text-sm">
                         Print Receipt
                     </button>
                     <a :href="route('registration')"
-                        class="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded hover:bg-gray-300 text-sm">
+                        class="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300 text-sm">
                         New Registration
                     </a>
                 </div>
@@ -271,3 +317,10 @@ const notesExpanded = ref(false)
         </div>
     </LandingLayout>
 </template>
+
+<style>
+@media print {
+    #receipt-actions { display: none !important; }
+    body > *:not(#receipt-content) { display: none; }
+}
+</style>
