@@ -185,29 +185,6 @@
           From cultural wonders to nature escapes, let what you love point you toward Bel-is' most amazing experiences.
         </p>
 
-        <!-- Filters -->
-        <div class="reveal flex justify-center mt-6">
-          <div
-            class="flex flex-wrap justify-center gap-2 sm:gap-4 p-2 rounded-lg bg-white border border-gray-100 shadow-sm">
-
-            <a
-              class="px-3 py-1 text-sm sm:text-base border border-gray-300 rounded-md text-gray-600 hover:bg-blue-600 hover:text-white transition cursor-pointer">
-              All
-            </a>
-
-            <a
-              class="px-3 py-1 text-sm sm:text-base border border-gray-300 rounded-md text-gray-600 hover:bg-blue-600 hover:text-white transition cursor-pointer">
-              Recommended
-            </a>
-
-            <a
-              class="px-3 py-1 text-sm sm:text-base border border-gray-300 rounded-md text-gray-600 hover:bg-blue-600 hover:text-white transition cursor-pointer">
-              Popular
-            </a>
-
-          </div>
-        </div>
-
         <!-- Empty -->
         <div v-if="props.attractions.length === 0" class="text-center py-16 text-gray-400 text-sm sm:text-base">
           No attractions available yet.
@@ -233,10 +210,9 @@
 
         </div>
 
-
-
         <!-- Modal -->
-        <div v-else-if="viewMode === 'immersive' && selectedAttraction" class="fixed inset-0 z-50 flex flex-col md:flex-row bg-[#0a0f14]">
+        <div v-else-if="viewMode === 'immersive' && selectedAttraction"
+          class="fixed inset-0 z-50 flex flex-col md:flex-row bg-[#0a0f14]">
 
           <!-- HERO -->
           <div class="flex-[2] relative bg-black overflow-hidden">
@@ -246,40 +222,73 @@
 
             <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
 
-            <div class="absolute bottom-0 p-6 text-white">
-              <h1 class="text-3xl font-bold">
+            <div class="absolute bottom-0 w-full p-6 text-white space-y-4">
+
+              <!-- TITLE -->
+              <h1
+                class="text-2xl sm:text-3xl 3xl:text-4xl 4xl:text-5xl font-bold leading-tight tracking-tight drop-shadow-md">
                 {{ selectedAttraction.name }}
               </h1>
 
-              <p class="text-sm opacity-80 mt-2">
+              <!-- DESCRIPTION -->
+              <p class="text-xs sm:text-sm 3xl:text-base text-white/80 leading-relaxed max-w-md line-clamp-3">
                 {{ selectedAttraction.description }}
               </p>
+
+              <!-- BUTTON -->
+              <div class="pt-2">
+                <button @click="openInGoogleMaps"
+                  class="group inline-flex items-center gap-2 bg-white text-gray-900 px-4 py-2.5 rounded-full text-xs sm:text-sm 3xl:text-base font-semibold shadow-lg hover:shadow-xl hover:scale-[1.03] active:scale-95 transition-all">
+                  <svg class="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none"
+                    stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4" />
+                  </svg>
+
+                  View on Maps
+                </button>
+              </div>
+
             </div>
 
             <!-- BACK BUTTON -->
             <button @click="closeImmersive"
-              class="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full">
+              class="absolute top-4 right-4 bg-black/50 backdrop-blur-md text-white text-xs px-3 py-1.5 rounded-full hover:bg-black/70 transition">
               ← Back
             </button>
 
           </div>
 
           <!-- SIDE PANEL -->
-          <div class="flex-1 bg-[#11161c] p-4 overflow-y-auto">
+          <div class="flex-1 bg-gradient-to-b from-[#0b0f14] to-[#111827] p-5 overflow-y-auto">
 
-            <h2 class="text-white font-semibold mb-3">Other Attractions</h2>
+            <!-- TITLE -->
+            <h2 class="text-white text-lg font-semibold mb-4 tracking-tight">
+              Explore More
+            </h2>
 
-            <div class="space-y-3">
+            <!-- GRID -->
+            <div class="grid grid-cols-1 gap-4">
 
               <div v-for="a in visibleAttractions" :key="a.id" @click="selectedAttraction = a"
-                class="flex gap-3 p-2 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition">
+                class="group relative rounded-xl overflow-hidden cursor-pointer shadow-md hover:shadow-xl transition-all duration-300">
 
-                <img :src="a.image_url" class="w-16 h-16 object-cover rounded-md" />
+                <!-- IMAGE -->
+                <img :src="a.image_url"
+                  class="w-full h-28 object-cover group-hover:scale-110 transition duration-500" />
 
-                <div>
-                  <p class="text-white text-sm font-semibold">{{ a.name }}</p>
-                  <p class="text-white/60 text-xs line-clamp-2">{{ a.description }}</p>
+                <!-- OVERLAY -->
+                <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
+
+                <!-- NAME -->
+                <div class="absolute bottom-0 p-3">
+                  <p class="text-white text-sm font-semibold leading-tight drop-shadow-md">
+                    {{ a.name }}
+                  </p>
                 </div>
+
+                <!-- HOVER GLOW -->
+                <div class="absolute inset-0 ring-1 ring-white/0 group-hover:ring-white/20 rounded-xl transition"></div>
 
               </div>
 
@@ -619,6 +628,20 @@ onMounted(() => {
     observer.observe(el)
   })
 })
+
+function openInGoogleMaps() {
+  if (!selectedAttraction.value) return
+
+  const query = encodeURIComponent(
+    selectedAttraction.value.name +
+    ' ' +
+    (selectedAttraction.value.location || '')
+  )
+
+  const url = `https://www.google.com/maps/search/?api=1&query=${query}`
+
+  window.open(url, '_blank')
+}
 
 const route = useRoute()
 
