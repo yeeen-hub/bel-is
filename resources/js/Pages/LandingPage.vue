@@ -151,7 +151,10 @@
             <div class="relative w-full">
 
               <!-- IMAGE -->
-              <img src="/images/virtualmap.png" class="w-full h-auto object-contain 3xl:scale-110 4xl:scale-125" />
+              <img src="/images/virtualmap.png" class="w-full h-auto object-contain 3xl:scale-110 4xl:scale-125 transition-transform duration-500 ease-out
+              drop-shadow-xl
+              hover:-translate-y-2 hover:scale-[1.02]
+              animate-float" />
 
               <!-- CLICK AREA -->
               <div @click="$router.push('/VTHome')" class="absolute top-0 left-5 w-full h-full cursor-pointer"
