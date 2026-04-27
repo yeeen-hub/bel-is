@@ -11,7 +11,7 @@
 
       <!-- MAP WRAPPER -->
       <div
-      class="relative h-[500px] 3xl:h-[650px] 4xl:h-[800px] rounded-2xl overflow-hidden border border-gray-200 shadow-sm w-full">
+        class="relative h-[500px] 3xl:h-[650px] 4xl:h-[800px] rounded-2xl overflow-hidden border border-gray-200 shadow-sm w-full">
 
 
         <!-- MAP -->
@@ -21,8 +21,7 @@
           referrerpolicy="no-referrer-when-downgrade" />
 
         <!-- FLOATING PANEL -->
-        <div
-          class="absolute z-20
+        <div class="absolute z-20
            bottom-0 left-0 right-0
            sm:top-7 sm:right-3 sm:left-auto sm:bottom-auto
            w-full sm:w-[300px] sm:3xl:w-[380px] 4xl:w-[450px]
@@ -30,13 +29,13 @@
            bg-white rounded-t-2xl sm:rounded-xl
            shadow-xl border border-gray-100
            flex flex-col overflow-hidden">
-           
+
           <div v-show="!selectedStop" class="flex flex-col h-full">
 
             <!-- HEADER -->
             <div class="p-4 border-b border-gray-100 flex-shrink-0">
               <div class="text-xl 3xl:text-2xl 4xl:text-3xl font-semibold text-black leading-tight">
-                Belis Community Tourism Circuit
+                Belis Community <br /> Tourism Circuit
               </div>
 
               <div class="text-xs mt-3 text-gray-400 mt-0.5">
@@ -68,15 +67,20 @@
 
               <!-- ACTIONS -->
               <div class="flex gap-2 mt-3">
+
+                <!-- Open in Maps -->
                 <button @click="openInGoogleMaps" :disabled="stops.length < 1"
-                  class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-full px-3 py-1.5 text-xs 3xl:text-sm 4xl:text-base font-medium transition-colors flex items-center justify-center gap-1.5">
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4" />
-                  </svg> Open in Maps </button>
+                  class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-full px-3 py-1.5 text-xs font-medium flex items-center justify-center gap-1.5">
+                  Open in Maps
+                </button>
+
+
+                <!-- Clear -->
                 <button @click="clearAll" :disabled="stops.length === 0"
-                  class="bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed border border-gray-200 rounded-full px-3 py-1.5 text-xs 3xl:text-sm 4xl:text-base text-gray-600 transition-colors">
-                  Clear </button>
+                  class="bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-full px-3 py-1.5 text-xs text-gray-600">
+                  Clear
+                </button>
+
               </div>
             </div>
 
@@ -84,76 +88,158 @@
             <div class="flex-1 overflow-y-auto">
 
               <!-- EMPTY -->
-              <div v-if="stops.length === 0">
-                <p class="text-[10px] font-semibold text-gray-400 uppercase px-4 pt-3 pb-2">
-                  Available Destinations
-                </p>
+              <div class="flex-1 overflow-y-auto">
 
-                <button v-for="dest in filteredDestinations" :key="dest.id" @click="addStop(dest)"
-                  class="w-full flex items-center text-left gap-3 px-3 py-2.5 hover:bg-blue-50 border-b border-gray-50">
-                  <img :src="dest.photo" class="w-10 h-10 rounded-lg object-cover" />
-                  <div class="flex-1">
-                    <p class="text-xs 3xl:text-sm 4xl:text-base font-semibold">{{ dest.name }}</p>
-                    <p class="text-[10px] 3xl:text-xs 4xl:text-sm text-gray-400">{{ dest.type }}</p>
+                <!-- ========================= -->
+                <!-- PLANNER MODE -->
+                <!-- ========================= -->
+                <div v-if="viewMode === 'planner'">
+
+                  <!-- EMPTY STATE -->
+                  <div v-if="stops.length === 0">
+
+                    <p class="text-[10px] font-semibold text-gray-400 uppercase px-4 pt-3 pb-2">
+                      Available Destinations
+                    </p>
+
+                    <button v-for="dest in filteredDestinations" :key="dest.id" @click="addStop(dest)"
+                      class="w-full flex items-center text-left gap-3 px-3 py-2.5 hover:bg-blue-50 border-b border-gray-50">
+
+                      <img :src="dest.photo" class="w-10 h-10 rounded-lg object-cover" />
+
+                      <div class="flex-1">
+                        <p class="text-xs font-semibold">{{ dest.name }}</p>
+                        <p class="text-[10px] text-gray-400">{{ dest.type }}</p>
+                      </div>
+
+                    </button>
+
+                    <p v-if="searchQuery && filteredDestinations.length === 0" class="text-xs text-gray-400 px-4 py-3">
+                      No destinations found for "{{ searchQuery }}"
+                    </p>
+
                   </div>
-                </button>
 
-                <!-- Optional: No results -->
-                <p v-if="searchQuery && filteredDestinations.length === 0"
-                  class="text-xs 3xl:text-sm 4xl:text-base text-gray-400 px-4 py-3">
-                  No destinations found for "{{ searchQuery }}"
-                </p>
-              </div>
+                  <!-- STOP LIST -->
+                  <div v-else>
 
-              <!-- STOP LIST -->
-              <div v-else>
+                    <!-- SEARCH MODE -->
+                    <div v-if="searchQuery">
 
-                <!-- SEARCH MODE -->
-                <div v-if="searchQuery">
-                  <p class="text-[10px] font-semibold text-gray-400 uppercase px-4 pt-3 pb-2">
-                    Search Results
-                  </p>
+                      <p class="text-[10px] font-semibold text-gray-400 uppercase px-4 pt-3 pb-2">
+                        Search Results
+                      </p>
 
-                  <button v-for="dest in filteredDestinations" :key="dest.id" @click="addStop(dest)"
-                    class="w-full flex items-center text-left gap-3 px-3 py-2.5 hover:bg-blue-50 border-b border-gray-50">
-                    <img :src="dest.photo" class="w-10 h-10 rounded-lg object-cover" />
+                      <button v-for="dest in filteredDestinations" :key="dest.id" @click="addStop(dest)"
+                        class="w-full flex items-center text-left gap-3 px-3 py-2.5 hover:bg-blue-50 border-b border-gray-50">
 
-                    <div class="flex-1">
-                      <p class="text-xs 3xl:text-sm 4xl:text-base font-semibold">{{ dest.name }}</p>
-                      <p class="text-[10px] 3xl:text-xs 4xl:text-sm text-gray-400">{{ dest.type }}</p>
+                        <img :src="dest.photo" class="w-10 h-10 rounded-lg object-cover" />
+
+                        <div class="flex-1">
+                          <p class="text-xs font-semibold">{{ dest.name }}</p>
+                          <p class="text-[10px] text-gray-400">{{ dest.type }}</p>
+                        </div>
+
+                      </button>
+
+                      <p v-if="filteredDestinations.length === 0" class="text-xs text-gray-400 px-4 py-3">
+                        No destinations found for "{{ searchQuery }}"
+                      </p>
+
                     </div>
-                  </button>
 
-                  <!-- No results -->
-                  <p v-if="filteredDestinations.length === 0"
-                    class="text-xs 3xl:text-sm 4xl:text-base text-gray-400 px-4 py-3">
-                    No destinations found for "{{ searchQuery }}"
-                  </p>
+                    <!-- NORMAL MODE -->
+                    <div v-else>
+
+                      <p class="text-[10px] font-semibold text-gray-400 uppercase px-4 pt-3 pb-1">
+                        Your Circuit · drag to reorder
+                      </p>
+
+                      <div v-for="(stop, i) in stops" :key="stop.id" draggable="true" @dragstart="onDragStart(i)"
+                        @dragover.prevent="onDragOver(i)" @drop="onDrop(i)" @dragend="onDragEnd"
+                        class="flex items-start gap-2.5 px-3 py-3 hover:bg-gray-50 cursor-pointer">
+
+                        <div class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white"
+                          :class="bubbleColor(i)">
+                          {{ i + 1 }}
+                        </div>
+
+                        <img :src="stop.photo" class="w-10 h-10 rounded-lg object-cover" />
+
+                        <div class="flex-1">
+                          <p class="text-xs font-semibold">{{ stop.name }}</p>
+                          <p class="text-[10px] text-gray-400">{{ stop.type }}</p>
+                        </div>
+
+                      </div>
+
+                      <!-- 🚀 NEW BUTTON APPEARS HERE -->
+                      <div v-if="stops.length >= 2" class="px-4 pt-3">
+
+                        <button @click="generateItinerary"
+                          class="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-full py-2 text-xs font-semibold transition">
+
+                          Generate Itinerary
+
+                        </button>
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
                 </div>
 
-                <!-- NORMAL MODE (your stops) -->
-                <div v-else>
-                  <p class="text-[10px] font-semibold text-gray-400 uppercase px-4 pt-3 pb-1">
-                    Your Circuit · drag to reorder
-                  </p>
+                <!-- ========================= -->
+                <!-- ITINERARY MODE (NEW) -->
+                <!-- ========================= -->
+                <div v-else class="p-4 space-y-4">
 
-                  <div v-for="(stop, i) in stops" :key="stop.id" draggable="true" @dragstart="onDragStart(i)"
-                    @dragover.prevent="onDragOver(i)" @drop="onDrop(i)" @dragend="onDragEnd" :class="[
-                      'flex items-start gap-2.5 px-3 py-3 hover:bg-gray-50 cursor-pointer transition-opacity',
-                      dragging && dragOverIndex === i && dragIndex !== i ? 'opacity-40' : ''
-                    ]" @click="openStopDetail(stop, i)">
-                    <div class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white"
-                      :class="bubbleColor(i)">
-                      {{ i + 1 }}
+                  <!-- BACK BUTTON -->
+                  <button @click="viewMode = 'planner'" class="text-sm text-blue-500">
+                    ← Back to planner
+                  </button>
+
+                  <!-- TIMELINE -->
+                  <div v-for="(item, i) in itinerary" :key="item.id" class="relative pl-6">
+
+                    <!-- line -->
+                    <div class="absolute left-2 top-0 bottom-0 w-[2px] bg-gray-200"></div>
+
+                    <!-- dot -->
+                    <div class="absolute left-0 top-1 w-4 h-4 rounded-full bg-blue-500"></div>
+
+                    <!-- period -->
+                    <p v-if="i === 0 || itinerary[i - 1].period !== item.period"
+                      class="text-xs uppercase text-gray-400 mb-1">
+                      {{ item.period }}
+                    </p>
+
+                    <!-- time -->
+                    <p class="text-xs text-gray-500">
+                      {{ item.time }}
+                    </p>
+
+                    <!-- card -->
+                    <div class="bg-white border rounded-lg p-3 shadow-sm mt-1 mb-4">
+
+                      <p class="text-sm font-semibold">
+                        {{ item.name }}
+                      </p>
+
+                      <p class="text-xs text-gray-400">
+                        {{ item.type }}
+                      </p>
+
+                      <p class="text-xs text-gray-600 mt-1">
+                        {{ item.description }}
+                      </p>
+
                     </div>
 
-                    <img :src="stop.photo" class="w-10 h-10 rounded-lg object-cover" />
-
-                    <div class="flex-1">
-                      <p class="text-xs 3xl:text-sm 4xl:text-base font-semibold">{{ stop.name }}</p>
-                      <p class="text-[10px] 3xl:text-xs 4xl:text-sm text-gray-400">{{ stop.type }}</p>
-                    </div>
                   </div>
+
                 </div>
 
               </div>
@@ -349,6 +435,53 @@ const filteredDestinations = computed(() => {
       d.tags.some(t => t.toLowerCase().includes(q)))
   )
 })
+
+// ─── VIEW MODE ────────────────────────────────────────────────
+const viewMode = ref('planner') // planner | itinerary
+
+// ─── ITINERARY STATE ──────────────────────────────────────────
+const itinerary = ref([])
+
+// ─── GENERATE ITINERARY ───────────────────────────────────────
+function generateItinerary() {
+  if (stops.value.length === 0) return
+
+  const baseTimes = [
+    8 * 60,   // 8:00 AM
+    10 * 60,  // 10:00 AM
+    13 * 60,  // 1:00 PM
+    14 * 60,  // 2:00 PM
+    15 * 60,  // 3:00 PM
+    16 * 60,  // 4:00 PM
+    17 * 60,  // 5:00 PM cap
+  ]
+
+  itinerary.value = stops.value.map((stop, i) => {
+    const timeMinutes = baseTimes[i] ?? baseTimes[baseTimes.length - 1]
+
+    return {
+      ...stop,
+      time: formatTime(timeMinutes),
+      period: timeMinutes < 12 * 60 ? 'Morning' : 'Afternoon'
+    }
+  })
+
+  viewMode.value = 'itinerary'
+}
+
+// ─── TIME FORMAT ──────────────────────────────────────────────
+function formatTime(minutes) {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const hour = h % 12 || 12
+  return `${hour}:${m.toString().padStart(2, '0')} ${ampm}`
+}
+
+// ─── BACK TO PLANNER ──────────────────────────────────────────
+function backToPlanner() {
+  viewMode.value = 'planner'
+}
 
 const travelTimes = computed(() =>
   stops.value.map((stop, i) => {
